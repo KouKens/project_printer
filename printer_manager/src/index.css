@@ -1,0 +1,30 @@
+/* Vite のテンプレートに入っている index.css は中央寄せ・ダークテーマ前提で
+   レイアウトがぶつかるため、この内容で丸ごと置き換えてください。 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #edf0f4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}

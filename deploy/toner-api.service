@@ -1,0 +1,44 @@
+[Unit]
+Description=Toner API (NestJS)
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=user
+Group=user
+WorkingDirectory=/opt/toner/api
+
+# DATABASE_URL / HOST / PORT はここ。ユニットに直接書かない（root:user 0640）
+EnvironmentFile=/etc/toner/api.env
+
+# 日次集計はローカル暦日で 1 日を区切る。
+# UTC のままだと cron が朝 9 時に走り、集計対象日も 1 日ずれる
+Environment=TZ=Asia/Tokyo
+Environment=NODE_ENV=production
+
+ExecStart=/usr/bin/node dist/main.js
+
+Restart=always
+RestartSec=5
+
+# DB が落ちている間の再起動ループでログを溢れさせない
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+# 最低限の隔離。書き込み先がないので / は読み取り専用でよい。
+# ProtectHome=true で /home/user は見えなくなる。アプリは /opt/toner/api で
+# 完結するので問題ないが、ホーム配下に何か置く運用にするなら外すこと
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+# SNMP は UDP/161。AF_INET を落とすと機器に届かなくなる
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

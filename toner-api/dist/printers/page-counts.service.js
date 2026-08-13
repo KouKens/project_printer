@@ -1,0 +1,175 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var PageCountsService_1;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PageCountsService = void 0;
+const common_1 = require("@nestjs/common");
+const schedule_1 = require("@nestjs/schedule");
+const prisma_service_1 = require("../prisma/prisma.service");
+const snmp_service_1 = require("./snmp.service");
+function startOfDay(date) {
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+}
+function addDays(date, days) {
+    const next = new Date(date);
+    next.setUTCDate(next.getUTCDate() + days);
+    return next;
+}
+function diffDays(later, earlier) {
+    return Math.round((later.getTime() - earlier.getTime()) / 86_400_000);
+}
+function toDateKey(date) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+let PageCountsService = PageCountsService_1 = class PageCountsService {
+    prisma;
+    snmp;
+    logger = new common_1.Logger(PageCountsService_1.name);
+    constructor(prisma, snmp) {
+        this.prisma = prisma;
+        this.snmp = snmp;
+    }
+    async captureScheduled() {
+        this.logger.log('日次の印刷枚数を記録します');
+        const rows = await this.captureAll();
+        const recorded = rows.filter((r) => r.status === 'recorded').length;
+        const failed = rows.filter((r) => r.status === 'unreachable').length;
+        this.logger.log(`記録 ${recorded} 台 / 応答なし ${failed} 台`);
+    }
+    async captureAll(now = new Date()) {
+        const printers = await this.prisma.printer.findMany({
+            orderBy: { ipAddress: 'asc' },
+        });
+        const rows = [];
+        for (const printer of printers) {
+            rows.push(await this.captureOne(printer.id, now));
+        }
+        return rows;
+    }
+    async captureOne(printerId, now = new Date()) {
+        const printer = await this.prisma.printer.findUnique({
+            where: { id: printerId },
+        });
+        if (!printer) {
+            throw new common_1.NotFoundException(`ID ${printerId} のプリンターは登録されていません`);
+        }
+        const date = addDays(startOfDay(now), -1);
+        const base = {
+            printerId: printer.id,
+            ipAddress: printer.ipAddress,
+            date: toDateKey(date),
+        };
+        let total;
+        try {
+            const snapshot = await this.snmp.poll(printer.ipAddress, printer.community, printer.version);
+            total = snapshot.pageCount;
+            await this.prisma.printer.update({
+                where: { id: printer.id },
+                data: {
+                    pageCount: snapshot.pageCount,
+                    reachable: true,
+                    lastError: null,
+                    lastPolledAt: now,
+                },
+            });
+        }
+        catch (error) {
+            if (!(error instanceof snmp_service_1.SnmpUnreachableError))
+                throw error;
+            await this.prisma.printer.update({
+                where: { id: printer.id },
+                data: { reachable: false, lastError: error.message, lastPolledAt: now },
+            });
+            return {
+                ...base,
+                total: null,
+                pages: null,
+                spanDays: 0,
+                status: 'unreachable',
+                note: error.message,
+            };
+        }
+        if (total === null) {
+            return {
+                ...base,
+                total: null,
+                pages: null,
+                spanDays: 0,
+                status: 'skipped',
+                note: 'この機種は累計印刷枚数を返しません',
+            };
+        }
+        const previous = await this.prisma.pageCountDaily.findFirst({
+            where: { printerId: printer.id, date: { lt: date } },
+            orderBy: { date: 'desc' },
+        });
+        let pages = null;
+        let spanDays = 1;
+        let note;
+        if (!previous) {
+            note = '初回の記録なので前日分は出せません';
+        }
+        else {
+            spanDays = Math.max(1, diffDays(date, previous.date));
+            const delta = total - previous.total;
+            if (delta < 0) {
+                note = `カウンタが前回（${previous.total}）より小さくなっています。機器交換かリセットの可能性があります`;
+            }
+            else {
+                pages = delta;
+                if (spanDays > 1) {
+                    note = `${spanDays} 日分をまとめた値です（前回の記録は ${toDateKey(previous.date)}）`;
+                }
+            }
+        }
+        await this.prisma.pageCountDaily.upsert({
+            where: { printerId_date: { printerId: printer.id, date } },
+            create: {
+                printerId: printer.id,
+                date,
+                total,
+                pages,
+                spanDays,
+                capturedAt: now,
+            },
+            update: { total, pages, spanDays, capturedAt: now },
+        });
+        return { ...base, total, pages, spanDays, status: 'recorded', note };
+    }
+    async findDaily(printerId, days = 30) {
+        const from = addDays(startOfDay(new Date()), -days);
+        const rows = await this.prisma.pageCountDaily.findMany({
+            where: { printerId, date: { gte: from } },
+            orderBy: { date: 'desc' },
+        });
+        return rows.map((row) => ({
+            date: toDateKey(row.date),
+            pages: row.pages,
+            total: row.total,
+            spanDays: row.spanDays,
+            capturedAt: row.capturedAt,
+        }));
+    }
+};
+exports.PageCountsService = PageCountsService;
+__decorate([
+    (0, schedule_1.Cron)('5 0 * * *', { name: 'capture-page-counts' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], PageCountsService.prototype, "captureScheduled", null);
+exports.PageCountsService = PageCountsService = PageCountsService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        snmp_service_1.SnmpService])
+], PageCountsService);
+//# sourceMappingURL=page-counts.service.js.map

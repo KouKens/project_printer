@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash",
+      "PowerShell",
+      "Read",
+      "Edit",
+      "Write",
+      "Skill",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "ask": [],
+    "deny": [
+      "Bash(snmpset *)",
+      "Bash(snmpusm *)",
+      "Bash(snmpvacm *)",
+      "PowerShell(snmpset *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-printer-writes.js\"",
+            "timeout": 10,
+            "statusMessage": "プリンター書き込みの確認"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(node dist/main.js)",
+      "Bash(node dist/src/main.js)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -State Listen | ForEach-Object { Get-Process -Id $_.OwningProcess } | Select-Object Id, ProcessName, Path, StartTime | Format-List)",
+      "PowerShell(\\(Get-CimInstance Win32_Process -Filter \"ProcessId = 21436\"\\).CommandLine)",
+      "Bash(npx jest *)",
+      "Bash(curl -s -o /dev/null \"http://localhost:3000/api/printers\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" \"http://localhost:3000/api/printers\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{const l=d.trim\\(\\).split\\('\\\\n'\\);const j=JSON.parse\\(l[0]\\);console.log\\('printers:',j.length,'| readings:',j[0]?.readings.length, '|', l[1]\\)}\\)\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"exit=$?\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(node \"C:/Users/user/AppData/Local/Temp/claude/C--Users-user-project-printer/d8abe940-2d0e-4ce9-b9d0-ea5040b8a606/scratchpad/test-daily.js\")",
+      "Bash(node -e ' *)",
+      "Bash(rm -f /tmp/tz-check.js && echo \"一時ファイルを削除しました\")"
+    ]
+  }
+}

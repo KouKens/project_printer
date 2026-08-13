@@ -1,0 +1,1000 @@
+import type * as runtime from "@prisma/client/runtime/client";
+import type * as $Enums from "../enums.js";
+import type * as Prisma from "../internal/prismaNamespace.js";
+export type PrinterModel = runtime.Types.Result.DefaultSelection<Prisma.$PrinterPayload>;
+export type AggregatePrinter = {
+    _count: PrinterCountAggregateOutputType | null;
+    _avg: PrinterAvgAggregateOutputType | null;
+    _sum: PrinterSumAggregateOutputType | null;
+    _min: PrinterMinAggregateOutputType | null;
+    _max: PrinterMaxAggregateOutputType | null;
+};
+export type PrinterAvgAggregateOutputType = {
+    id: number | null;
+    pageCount: number | null;
+};
+export type PrinterSumAggregateOutputType = {
+    id: number | null;
+    pageCount: number | null;
+};
+export type PrinterMinAggregateOutputType = {
+    id: number | null;
+    ipAddress: string | null;
+    community: string | null;
+    version: $Enums.SnmpVersion | null;
+    hostName: string | null;
+    model: string | null;
+    serialNumber: string | null;
+    macAddress: string | null;
+    location: string | null;
+    pageCount: number | null;
+    reachable: boolean | null;
+    lastError: string | null;
+    lastPolledAt: Date | null;
+    createdAt: Date | null;
+    updatedAt: Date | null;
+};
+export type PrinterMaxAggregateOutputType = {
+    id: number | null;
+    ipAddress: string | null;
+    community: string | null;
+    version: $Enums.SnmpVersion | null;
+    hostName: string | null;
+    model: string | null;
+    serialNumber: string | null;
+    macAddress: string | null;
+    location: string | null;
+    pageCount: number | null;
+    reachable: boolean | null;
+    lastError: string | null;
+    lastPolledAt: Date | null;
+    createdAt: Date | null;
+    updatedAt: Date | null;
+};
+export type PrinterCountAggregateOutputType = {
+    id: number;
+    ipAddress: number;
+    community: number;
+    version: number;
+    hostName: number;
+    model: number;
+    serialNumber: number;
+    macAddress: number;
+    location: number;
+    pageCount: number;
+    reachable: number;
+    lastError: number;
+    lastPolledAt: number;
+    createdAt: number;
+    updatedAt: number;
+    _all: number;
+};
+export type PrinterAvgAggregateInputType = {
+    id?: true;
+    pageCount?: true;
+};
+export type PrinterSumAggregateInputType = {
+    id?: true;
+    pageCount?: true;
+};
+export type PrinterMinAggregateInputType = {
+    id?: true;
+    ipAddress?: true;
+    community?: true;
+    version?: true;
+    hostName?: true;
+    model?: true;
+    serialNumber?: true;
+    macAddress?: true;
+    location?: true;
+    pageCount?: true;
+    reachable?: true;
+    lastError?: true;
+    lastPolledAt?: true;
+    createdAt?: true;
+    updatedAt?: true;
+};
+export type PrinterMaxAggregateInputType = {
+    id?: true;
+    ipAddress?: true;
+    community?: true;
+    version?: true;
+    hostName?: true;
+    model?: true;
+    serialNumber?: true;
+    macAddress?: true;
+    location?: true;
+    pageCount?: true;
+    reachable?: true;
+    lastError?: true;
+    lastPolledAt?: true;
+    createdAt?: true;
+    updatedAt?: true;
+};
+export type PrinterCountAggregateInputType = {
+    id?: true;
+    ipAddress?: true;
+    community?: true;
+    version?: true;
+    hostName?: true;
+    model?: true;
+    serialNumber?: true;
+    macAddress?: true;
+    location?: true;
+    pageCount?: true;
+    reachable?: true;
+    lastError?: true;
+    lastPolledAt?: true;
+    createdAt?: true;
+    updatedAt?: true;
+    _all?: true;
+};
+export type PrinterAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PrinterWhereInput;
+    orderBy?: Prisma.PrinterOrderByWithRelationInput | Prisma.PrinterOrderByWithRelationInput[];
+    cursor?: Prisma.PrinterWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    _count?: true | PrinterCountAggregateInputType;
+    _avg?: PrinterAvgAggregateInputType;
+    _sum?: PrinterSumAggregateInputType;
+    _min?: PrinterMinAggregateInputType;
+    _max?: PrinterMaxAggregateInputType;
+};
+export type GetPrinterAggregateType<T extends PrinterAggregateArgs> = {
+    [P in keyof T & keyof AggregatePrinter]: P extends '_count' | 'count' ? T[P] extends true ? number : Prisma.GetScalarType<T[P], AggregatePrinter[P]> : Prisma.GetScalarType<T[P], AggregatePrinter[P]>;
+};
+export type PrinterGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PrinterWhereInput;
+    orderBy?: Prisma.PrinterOrderByWithAggregationInput | Prisma.PrinterOrderByWithAggregationInput[];
+    by: Prisma.PrinterScalarFieldEnum[] | Prisma.PrinterScalarFieldEnum;
+    having?: Prisma.PrinterScalarWhereWithAggregatesInput;
+    take?: number;
+    skip?: number;
+    _count?: PrinterCountAggregateInputType | true;
+    _avg?: PrinterAvgAggregateInputType;
+    _sum?: PrinterSumAggregateInputType;
+    _min?: PrinterMinAggregateInputType;
+    _max?: PrinterMaxAggregateInputType;
+};
+export type PrinterGroupByOutputType = {
+    id: number;
+    ipAddress: string;
+    community: string;
+    version: $Enums.SnmpVersion;
+    hostName: string | null;
+    model: string | null;
+    serialNumber: string | null;
+    macAddress: string | null;
+    location: string | null;
+    pageCount: number | null;
+    reachable: boolean;
+    lastError: string | null;
+    lastPolledAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    _count: PrinterCountAggregateOutputType | null;
+    _avg: PrinterAvgAggregateOutputType | null;
+    _sum: PrinterSumAggregateOutputType | null;
+    _min: PrinterMinAggregateOutputType | null;
+    _max: PrinterMaxAggregateOutputType | null;
+};
+export type GetPrinterGroupByPayload<T extends PrinterGroupByArgs> = Prisma.PrismaPromise<Array<Prisma.PickEnumerable<PrinterGroupByOutputType, T['by']> & {
+    [P in ((keyof T) & (keyof PrinterGroupByOutputType))]: P extends '_count' ? T[P] extends boolean ? number : Prisma.GetScalarType<T[P], PrinterGroupByOutputType[P]> : Prisma.GetScalarType<T[P], PrinterGroupByOutputType[P]>;
+}>>;
+export type PrinterWhereInput = {
+    AND?: Prisma.PrinterWhereInput | Prisma.PrinterWhereInput[];
+    OR?: Prisma.PrinterWhereInput[];
+    NOT?: Prisma.PrinterWhereInput | Prisma.PrinterWhereInput[];
+    id?: Prisma.IntFilter<"Printer"> | number;
+    ipAddress?: Prisma.StringFilter<"Printer"> | string;
+    community?: Prisma.StringFilter<"Printer"> | string;
+    version?: Prisma.EnumSnmpVersionFilter<"Printer"> | $Enums.SnmpVersion;
+    hostName?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    model?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    serialNumber?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    macAddress?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    location?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    pageCount?: Prisma.IntNullableFilter<"Printer"> | number | null;
+    reachable?: Prisma.BoolFilter<"Printer"> | boolean;
+    lastError?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    lastPolledAt?: Prisma.DateTimeNullableFilter<"Printer"> | Date | string | null;
+    createdAt?: Prisma.DateTimeFilter<"Printer"> | Date | string;
+    updatedAt?: Prisma.DateTimeFilter<"Printer"> | Date | string;
+    readings?: Prisma.SupplyReadingListRelationFilter;
+    pageDays?: Prisma.PageCountDailyListRelationFilter;
+};
+export type PrinterOrderByWithRelationInput = {
+    id?: Prisma.SortOrder;
+    ipAddress?: Prisma.SortOrder;
+    community?: Prisma.SortOrder;
+    version?: Prisma.SortOrder;
+    hostName?: Prisma.SortOrderInput | Prisma.SortOrder;
+    model?: Prisma.SortOrderInput | Prisma.SortOrder;
+    serialNumber?: Prisma.SortOrderInput | Prisma.SortOrder;
+    macAddress?: Prisma.SortOrderInput | Prisma.SortOrder;
+    location?: Prisma.SortOrderInput | Prisma.SortOrder;
+    pageCount?: Prisma.SortOrderInput | Prisma.SortOrder;
+    reachable?: Prisma.SortOrder;
+    lastError?: Prisma.SortOrderInput | Prisma.SortOrder;
+    lastPolledAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+    createdAt?: Prisma.SortOrder;
+    updatedAt?: Prisma.SortOrder;
+    readings?: Prisma.SupplyReadingOrderByRelationAggregateInput;
+    pageDays?: Prisma.PageCountDailyOrderByRelationAggregateInput;
+};
+export type PrinterWhereUniqueInput = Prisma.AtLeast<{
+    id?: number;
+    ipAddress?: string;
+    AND?: Prisma.PrinterWhereInput | Prisma.PrinterWhereInput[];
+    OR?: Prisma.PrinterWhereInput[];
+    NOT?: Prisma.PrinterWhereInput | Prisma.PrinterWhereInput[];
+    community?: Prisma.StringFilter<"Printer"> | string;
+    version?: Prisma.EnumSnmpVersionFilter<"Printer"> | $Enums.SnmpVersion;
+    hostName?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    model?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    serialNumber?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    macAddress?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    location?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    pageCount?: Prisma.IntNullableFilter<"Printer"> | number | null;
+    reachable?: Prisma.BoolFilter<"Printer"> | boolean;
+    lastError?: Prisma.StringNullableFilter<"Printer"> | string | null;
+    lastPolledAt?: Prisma.DateTimeNullableFilter<"Printer"> | Date | string | null;
+    createdAt?: Prisma.DateTimeFilter<"Printer"> | Date | string;
+    updatedAt?: Prisma.DateTimeFilter<"Printer"> | Date | string;
+    readings?: Prisma.SupplyReadingListRelationFilter;
+    pageDays?: Prisma.PageCountDailyListRelationFilter;
+}, "id" | "ipAddress">;
+export type PrinterOrderByWithAggregationInput = {
+    id?: Prisma.SortOrder;
+    ipAddress?: Prisma.SortOrder;
+    community?: Prisma.SortOrder;
+    version?: Prisma.SortOrder;
+    hostName?: Prisma.SortOrderInput | Prisma.SortOrder;
+    model?: Prisma.SortOrderInput | Prisma.SortOrder;
+    serialNumber?: Prisma.SortOrderInput | Prisma.SortOrder;
+    macAddress?: Prisma.SortOrderInput | Prisma.SortOrder;
+    location?: Prisma.SortOrderInput | Prisma.SortOrder;
+    pageCount?: Prisma.SortOrderInput | Prisma.SortOrder;
+    reachable?: Prisma.SortOrder;
+    lastError?: Prisma.SortOrderInput | Prisma.SortOrder;
+    lastPolledAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+    createdAt?: Prisma.SortOrder;
+    updatedAt?: Prisma.SortOrder;
+    _count?: Prisma.PrinterCountOrderByAggregateInput;
+    _avg?: Prisma.PrinterAvgOrderByAggregateInput;
+    _max?: Prisma.PrinterMaxOrderByAggregateInput;
+    _min?: Prisma.PrinterMinOrderByAggregateInput;
+    _sum?: Prisma.PrinterSumOrderByAggregateInput;
+};
+export type PrinterScalarWhereWithAggregatesInput = {
+    AND?: Prisma.PrinterScalarWhereWithAggregatesInput | Prisma.PrinterScalarWhereWithAggregatesInput[];
+    OR?: Prisma.PrinterScalarWhereWithAggregatesInput[];
+    NOT?: Prisma.PrinterScalarWhereWithAggregatesInput | Prisma.PrinterScalarWhereWithAggregatesInput[];
+    id?: Prisma.IntWithAggregatesFilter<"Printer"> | number;
+    ipAddress?: Prisma.StringWithAggregatesFilter<"Printer"> | string;
+    community?: Prisma.StringWithAggregatesFilter<"Printer"> | string;
+    version?: Prisma.EnumSnmpVersionWithAggregatesFilter<"Printer"> | $Enums.SnmpVersion;
+    hostName?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null;
+    model?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null;
+    serialNumber?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null;
+    macAddress?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null;
+    location?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null;
+    pageCount?: Prisma.IntNullableWithAggregatesFilter<"Printer"> | number | null;
+    reachable?: Prisma.BoolWithAggregatesFilter<"Printer"> | boolean;
+    lastError?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null;
+    lastPolledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Printer"> | Date | string | null;
+    createdAt?: Prisma.DateTimeWithAggregatesFilter<"Printer"> | Date | string;
+    updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Printer"> | Date | string;
+};
+export type PrinterCreateInput = {
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    readings?: Prisma.SupplyReadingCreateNestedManyWithoutPrinterInput;
+    pageDays?: Prisma.PageCountDailyCreateNestedManyWithoutPrinterInput;
+};
+export type PrinterUncheckedCreateInput = {
+    id?: number;
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    readings?: Prisma.SupplyReadingUncheckedCreateNestedManyWithoutPrinterInput;
+    pageDays?: Prisma.PageCountDailyUncheckedCreateNestedManyWithoutPrinterInput;
+};
+export type PrinterUpdateInput = {
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    readings?: Prisma.SupplyReadingUpdateManyWithoutPrinterNestedInput;
+    pageDays?: Prisma.PageCountDailyUpdateManyWithoutPrinterNestedInput;
+};
+export type PrinterUncheckedUpdateInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    readings?: Prisma.SupplyReadingUncheckedUpdateManyWithoutPrinterNestedInput;
+    pageDays?: Prisma.PageCountDailyUncheckedUpdateManyWithoutPrinterNestedInput;
+};
+export type PrinterCreateManyInput = {
+    id?: number;
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+};
+export type PrinterUpdateManyMutationInput = {
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PrinterUncheckedUpdateManyInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PrinterCountOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    ipAddress?: Prisma.SortOrder;
+    community?: Prisma.SortOrder;
+    version?: Prisma.SortOrder;
+    hostName?: Prisma.SortOrder;
+    model?: Prisma.SortOrder;
+    serialNumber?: Prisma.SortOrder;
+    macAddress?: Prisma.SortOrder;
+    location?: Prisma.SortOrder;
+    pageCount?: Prisma.SortOrder;
+    reachable?: Prisma.SortOrder;
+    lastError?: Prisma.SortOrder;
+    lastPolledAt?: Prisma.SortOrder;
+    createdAt?: Prisma.SortOrder;
+    updatedAt?: Prisma.SortOrder;
+};
+export type PrinterAvgOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    pageCount?: Prisma.SortOrder;
+};
+export type PrinterMaxOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    ipAddress?: Prisma.SortOrder;
+    community?: Prisma.SortOrder;
+    version?: Prisma.SortOrder;
+    hostName?: Prisma.SortOrder;
+    model?: Prisma.SortOrder;
+    serialNumber?: Prisma.SortOrder;
+    macAddress?: Prisma.SortOrder;
+    location?: Prisma.SortOrder;
+    pageCount?: Prisma.SortOrder;
+    reachable?: Prisma.SortOrder;
+    lastError?: Prisma.SortOrder;
+    lastPolledAt?: Prisma.SortOrder;
+    createdAt?: Prisma.SortOrder;
+    updatedAt?: Prisma.SortOrder;
+};
+export type PrinterMinOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    ipAddress?: Prisma.SortOrder;
+    community?: Prisma.SortOrder;
+    version?: Prisma.SortOrder;
+    hostName?: Prisma.SortOrder;
+    model?: Prisma.SortOrder;
+    serialNumber?: Prisma.SortOrder;
+    macAddress?: Prisma.SortOrder;
+    location?: Prisma.SortOrder;
+    pageCount?: Prisma.SortOrder;
+    reachable?: Prisma.SortOrder;
+    lastError?: Prisma.SortOrder;
+    lastPolledAt?: Prisma.SortOrder;
+    createdAt?: Prisma.SortOrder;
+    updatedAt?: Prisma.SortOrder;
+};
+export type PrinterSumOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    pageCount?: Prisma.SortOrder;
+};
+export type PrinterScalarRelationFilter = {
+    is?: Prisma.PrinterWhereInput;
+    isNot?: Prisma.PrinterWhereInput;
+};
+export type EnumSnmpVersionFieldUpdateOperationsInput = {
+    set?: $Enums.SnmpVersion;
+};
+export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null;
+    increment?: number;
+    decrement?: number;
+    multiply?: number;
+    divide?: number;
+};
+export type BoolFieldUpdateOperationsInput = {
+    set?: boolean;
+};
+export type NullableDateTimeFieldUpdateOperationsInput = {
+    set?: Date | string | null;
+};
+export type PrinterCreateNestedOneWithoutPageDaysInput = {
+    create?: Prisma.XOR<Prisma.PrinterCreateWithoutPageDaysInput, Prisma.PrinterUncheckedCreateWithoutPageDaysInput>;
+    connectOrCreate?: Prisma.PrinterCreateOrConnectWithoutPageDaysInput;
+    connect?: Prisma.PrinterWhereUniqueInput;
+};
+export type PrinterUpdateOneRequiredWithoutPageDaysNestedInput = {
+    create?: Prisma.XOR<Prisma.PrinterCreateWithoutPageDaysInput, Prisma.PrinterUncheckedCreateWithoutPageDaysInput>;
+    connectOrCreate?: Prisma.PrinterCreateOrConnectWithoutPageDaysInput;
+    upsert?: Prisma.PrinterUpsertWithoutPageDaysInput;
+    connect?: Prisma.PrinterWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.PrinterUpdateToOneWithWhereWithoutPageDaysInput, Prisma.PrinterUpdateWithoutPageDaysInput>, Prisma.PrinterUncheckedUpdateWithoutPageDaysInput>;
+};
+export type PrinterCreateNestedOneWithoutReadingsInput = {
+    create?: Prisma.XOR<Prisma.PrinterCreateWithoutReadingsInput, Prisma.PrinterUncheckedCreateWithoutReadingsInput>;
+    connectOrCreate?: Prisma.PrinterCreateOrConnectWithoutReadingsInput;
+    connect?: Prisma.PrinterWhereUniqueInput;
+};
+export type PrinterUpdateOneRequiredWithoutReadingsNestedInput = {
+    create?: Prisma.XOR<Prisma.PrinterCreateWithoutReadingsInput, Prisma.PrinterUncheckedCreateWithoutReadingsInput>;
+    connectOrCreate?: Prisma.PrinterCreateOrConnectWithoutReadingsInput;
+    upsert?: Prisma.PrinterUpsertWithoutReadingsInput;
+    connect?: Prisma.PrinterWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.PrinterUpdateToOneWithWhereWithoutReadingsInput, Prisma.PrinterUpdateWithoutReadingsInput>, Prisma.PrinterUncheckedUpdateWithoutReadingsInput>;
+};
+export type PrinterCreateWithoutPageDaysInput = {
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    readings?: Prisma.SupplyReadingCreateNestedManyWithoutPrinterInput;
+};
+export type PrinterUncheckedCreateWithoutPageDaysInput = {
+    id?: number;
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    readings?: Prisma.SupplyReadingUncheckedCreateNestedManyWithoutPrinterInput;
+};
+export type PrinterCreateOrConnectWithoutPageDaysInput = {
+    where: Prisma.PrinterWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PrinterCreateWithoutPageDaysInput, Prisma.PrinterUncheckedCreateWithoutPageDaysInput>;
+};
+export type PrinterUpsertWithoutPageDaysInput = {
+    update: Prisma.XOR<Prisma.PrinterUpdateWithoutPageDaysInput, Prisma.PrinterUncheckedUpdateWithoutPageDaysInput>;
+    create: Prisma.XOR<Prisma.PrinterCreateWithoutPageDaysInput, Prisma.PrinterUncheckedCreateWithoutPageDaysInput>;
+    where?: Prisma.PrinterWhereInput;
+};
+export type PrinterUpdateToOneWithWhereWithoutPageDaysInput = {
+    where?: Prisma.PrinterWhereInput;
+    data: Prisma.XOR<Prisma.PrinterUpdateWithoutPageDaysInput, Prisma.PrinterUncheckedUpdateWithoutPageDaysInput>;
+};
+export type PrinterUpdateWithoutPageDaysInput = {
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    readings?: Prisma.SupplyReadingUpdateManyWithoutPrinterNestedInput;
+};
+export type PrinterUncheckedUpdateWithoutPageDaysInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    readings?: Prisma.SupplyReadingUncheckedUpdateManyWithoutPrinterNestedInput;
+};
+export type PrinterCreateWithoutReadingsInput = {
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    pageDays?: Prisma.PageCountDailyCreateNestedManyWithoutPrinterInput;
+};
+export type PrinterUncheckedCreateWithoutReadingsInput = {
+    id?: number;
+    ipAddress: string;
+    community?: string;
+    version?: $Enums.SnmpVersion;
+    hostName?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    macAddress?: string | null;
+    location?: string | null;
+    pageCount?: number | null;
+    reachable?: boolean;
+    lastError?: string | null;
+    lastPolledAt?: Date | string | null;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    pageDays?: Prisma.PageCountDailyUncheckedCreateNestedManyWithoutPrinterInput;
+};
+export type PrinterCreateOrConnectWithoutReadingsInput = {
+    where: Prisma.PrinterWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PrinterCreateWithoutReadingsInput, Prisma.PrinterUncheckedCreateWithoutReadingsInput>;
+};
+export type PrinterUpsertWithoutReadingsInput = {
+    update: Prisma.XOR<Prisma.PrinterUpdateWithoutReadingsInput, Prisma.PrinterUncheckedUpdateWithoutReadingsInput>;
+    create: Prisma.XOR<Prisma.PrinterCreateWithoutReadingsInput, Prisma.PrinterUncheckedCreateWithoutReadingsInput>;
+    where?: Prisma.PrinterWhereInput;
+};
+export type PrinterUpdateToOneWithWhereWithoutReadingsInput = {
+    where?: Prisma.PrinterWhereInput;
+    data: Prisma.XOR<Prisma.PrinterUpdateWithoutReadingsInput, Prisma.PrinterUncheckedUpdateWithoutReadingsInput>;
+};
+export type PrinterUpdateWithoutReadingsInput = {
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    pageDays?: Prisma.PageCountDailyUpdateManyWithoutPrinterNestedInput;
+};
+export type PrinterUncheckedUpdateWithoutReadingsInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    ipAddress?: Prisma.StringFieldUpdateOperationsInput | string;
+    community?: Prisma.StringFieldUpdateOperationsInput | string;
+    version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion;
+    hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    pageDays?: Prisma.PageCountDailyUncheckedUpdateManyWithoutPrinterNestedInput;
+};
+export type PrinterCountOutputType = {
+    readings: number;
+    pageDays: number;
+};
+export type PrinterCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    readings?: boolean | PrinterCountOutputTypeCountReadingsArgs;
+    pageDays?: boolean | PrinterCountOutputTypeCountPageDaysArgs;
+};
+export type PrinterCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterCountOutputTypeSelect<ExtArgs> | null;
+};
+export type PrinterCountOutputTypeCountReadingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.SupplyReadingWhereInput;
+};
+export type PrinterCountOutputTypeCountPageDaysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PageCountDailyWhereInput;
+};
+export type PrinterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+    id?: boolean;
+    ipAddress?: boolean;
+    community?: boolean;
+    version?: boolean;
+    hostName?: boolean;
+    model?: boolean;
+    serialNumber?: boolean;
+    macAddress?: boolean;
+    location?: boolean;
+    pageCount?: boolean;
+    reachable?: boolean;
+    lastError?: boolean;
+    lastPolledAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
+    readings?: boolean | Prisma.Printer$readingsArgs<ExtArgs>;
+    pageDays?: boolean | Prisma.Printer$pageDaysArgs<ExtArgs>;
+    _count?: boolean | Prisma.PrinterCountOutputTypeDefaultArgs<ExtArgs>;
+}, ExtArgs["result"]["printer"]>;
+export type PrinterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+    id?: boolean;
+    ipAddress?: boolean;
+    community?: boolean;
+    version?: boolean;
+    hostName?: boolean;
+    model?: boolean;
+    serialNumber?: boolean;
+    macAddress?: boolean;
+    location?: boolean;
+    pageCount?: boolean;
+    reachable?: boolean;
+    lastError?: boolean;
+    lastPolledAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
+}, ExtArgs["result"]["printer"]>;
+export type PrinterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+    id?: boolean;
+    ipAddress?: boolean;
+    community?: boolean;
+    version?: boolean;
+    hostName?: boolean;
+    model?: boolean;
+    serialNumber?: boolean;
+    macAddress?: boolean;
+    location?: boolean;
+    pageCount?: boolean;
+    reachable?: boolean;
+    lastError?: boolean;
+    lastPolledAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
+}, ExtArgs["result"]["printer"]>;
+export type PrinterSelectScalar = {
+    id?: boolean;
+    ipAddress?: boolean;
+    community?: boolean;
+    version?: boolean;
+    hostName?: boolean;
+    model?: boolean;
+    serialNumber?: boolean;
+    macAddress?: boolean;
+    location?: boolean;
+    pageCount?: boolean;
+    reachable?: boolean;
+    lastError?: boolean;
+    lastPolledAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
+};
+export type PrinterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ipAddress" | "community" | "version" | "hostName" | "model" | "serialNumber" | "macAddress" | "location" | "pageCount" | "reachable" | "lastError" | "lastPolledAt" | "createdAt" | "updatedAt", ExtArgs["result"]["printer"]>;
+export type PrinterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    readings?: boolean | Prisma.Printer$readingsArgs<ExtArgs>;
+    pageDays?: boolean | Prisma.Printer$pageDaysArgs<ExtArgs>;
+    _count?: boolean | Prisma.PrinterCountOutputTypeDefaultArgs<ExtArgs>;
+};
+export type PrinterIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
+export type PrinterIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
+export type $PrinterPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    name: "Printer";
+    objects: {
+        readings: Prisma.$SupplyReadingPayload<ExtArgs>[];
+        pageDays: Prisma.$PageCountDailyPayload<ExtArgs>[];
+    };
+    scalars: runtime.Types.Extensions.GetPayloadResult<{
+        id: number;
+        ipAddress: string;
+        community: string;
+        version: $Enums.SnmpVersion;
+        hostName: string | null;
+        model: string | null;
+        serialNumber: string | null;
+        macAddress: string | null;
+        location: string | null;
+        pageCount: number | null;
+        reachable: boolean;
+        lastError: string | null;
+        lastPolledAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }, ExtArgs["result"]["printer"]>;
+    composites: {};
+};
+export type PrinterGetPayload<S extends boolean | null | undefined | PrinterDefaultArgs> = runtime.Types.Result.GetResult<Prisma.$PrinterPayload, S>;
+export type PrinterCountArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = Omit<PrinterFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+    select?: PrinterCountAggregateInputType | true;
+};
+export interface PrinterDelegate<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: {
+        types: Prisma.TypeMap<ExtArgs>['model']['Printer'];
+        meta: {
+            name: 'Printer';
+        };
+    };
+    findUnique<T extends PrinterFindUniqueArgs>(args: Prisma.SelectSubset<T, PrinterFindUniqueArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
+    findUniqueOrThrow<T extends PrinterFindUniqueOrThrowArgs>(args: Prisma.SelectSubset<T, PrinterFindUniqueOrThrowArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    findFirst<T extends PrinterFindFirstArgs>(args?: Prisma.SelectSubset<T, PrinterFindFirstArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
+    findFirstOrThrow<T extends PrinterFindFirstOrThrowArgs>(args?: Prisma.SelectSubset<T, PrinterFindFirstOrThrowArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    findMany<T extends PrinterFindManyArgs>(args?: Prisma.SelectSubset<T, PrinterFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>;
+    create<T extends PrinterCreateArgs>(args: Prisma.SelectSubset<T, PrinterCreateArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    createMany<T extends PrinterCreateManyArgs>(args?: Prisma.SelectSubset<T, PrinterCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>;
+    createManyAndReturn<T extends PrinterCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, PrinterCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>;
+    delete<T extends PrinterDeleteArgs>(args: Prisma.SelectSubset<T, PrinterDeleteArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    update<T extends PrinterUpdateArgs>(args: Prisma.SelectSubset<T, PrinterUpdateArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    deleteMany<T extends PrinterDeleteManyArgs>(args?: Prisma.SelectSubset<T, PrinterDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>;
+    updateMany<T extends PrinterUpdateManyArgs>(args: Prisma.SelectSubset<T, PrinterUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>;
+    updateManyAndReturn<T extends PrinterUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, PrinterUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>;
+    upsert<T extends PrinterUpsertArgs>(args: Prisma.SelectSubset<T, PrinterUpsertArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    count<T extends PrinterCountArgs>(args?: Prisma.Subset<T, PrinterCountArgs>): Prisma.PrismaPromise<T extends runtime.Types.Utils.Record<'select', any> ? T['select'] extends true ? number : Prisma.GetScalarType<T['select'], PrinterCountAggregateOutputType> : number>;
+    aggregate<T extends PrinterAggregateArgs>(args: Prisma.Subset<T, PrinterAggregateArgs>): Prisma.PrismaPromise<GetPrinterAggregateType<T>>;
+    groupBy<T extends PrinterGroupByArgs, HasSelectOrTake extends Prisma.Or<Prisma.Extends<'skip', Prisma.Keys<T>>, Prisma.Extends<'take', Prisma.Keys<T>>>, OrderByArg extends Prisma.True extends HasSelectOrTake ? {
+        orderBy: PrinterGroupByArgs['orderBy'];
+    } : {
+        orderBy?: PrinterGroupByArgs['orderBy'];
+    }, OrderFields extends Prisma.ExcludeUnderscoreKeys<Prisma.Keys<Prisma.MaybeTupleToUnion<T['orderBy']>>>, ByFields extends Prisma.MaybeTupleToUnion<T['by']>, ByValid extends Prisma.Has<ByFields, OrderFields>, HavingFields extends Prisma.GetHavingFields<T['having']>, HavingValid extends Prisma.Has<ByFields, HavingFields>, ByEmpty extends T['by'] extends never[] ? Prisma.True : Prisma.False, InputErrors extends ByEmpty extends Prisma.True ? `Error: "by" must not be empty.` : HavingValid extends Prisma.False ? {
+        [P in HavingFields]: P extends ByFields ? never : P extends string ? `Error: Field "${P}" used in "having" needs to be provided in "by".` : [
+            Error,
+            'Field ',
+            P,
+            ` in "having" needs to be provided in "by"`
+        ];
+    }[HavingFields] : 'take' extends Prisma.Keys<T> ? 'orderBy' extends Prisma.Keys<T> ? ByValid extends Prisma.True ? {} : {
+        [P in OrderFields]: P extends ByFields ? never : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`;
+    }[OrderFields] : 'Error: If you provide "take", you also need to provide "orderBy"' : 'skip' extends Prisma.Keys<T> ? 'orderBy' extends Prisma.Keys<T> ? ByValid extends Prisma.True ? {} : {
+        [P in OrderFields]: P extends ByFields ? never : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`;
+    }[OrderFields] : 'Error: If you provide "skip", you also need to provide "orderBy"' : ByValid extends Prisma.True ? {} : {
+        [P in OrderFields]: P extends ByFields ? never : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`;
+    }[OrderFields]>(args: Prisma.SubsetIntersection<T, PrinterGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetPrinterGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>;
+    readonly fields: PrinterFieldRefs;
+}
+export interface Prisma__PrinterClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise";
+    readings<T extends Prisma.Printer$readingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Printer$readingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SupplyReadingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    pageDays<T extends Prisma.Printer$pageDaysArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Printer$pageDaysArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): runtime.Types.Utils.JsPromise<TResult1 | TResult2>;
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): runtime.Types.Utils.JsPromise<T | TResult>;
+    finally(onfinally?: (() => void) | undefined | null): runtime.Types.Utils.JsPromise<T>;
+}
+export interface PrinterFieldRefs {
+    readonly id: Prisma.FieldRef<"Printer", 'Int'>;
+    readonly ipAddress: Prisma.FieldRef<"Printer", 'String'>;
+    readonly community: Prisma.FieldRef<"Printer", 'String'>;
+    readonly version: Prisma.FieldRef<"Printer", 'SnmpVersion'>;
+    readonly hostName: Prisma.FieldRef<"Printer", 'String'>;
+    readonly model: Prisma.FieldRef<"Printer", 'String'>;
+    readonly serialNumber: Prisma.FieldRef<"Printer", 'String'>;
+    readonly macAddress: Prisma.FieldRef<"Printer", 'String'>;
+    readonly location: Prisma.FieldRef<"Printer", 'String'>;
+    readonly pageCount: Prisma.FieldRef<"Printer", 'Int'>;
+    readonly reachable: Prisma.FieldRef<"Printer", 'Boolean'>;
+    readonly lastError: Prisma.FieldRef<"Printer", 'String'>;
+    readonly lastPolledAt: Prisma.FieldRef<"Printer", 'DateTime'>;
+    readonly createdAt: Prisma.FieldRef<"Printer", 'DateTime'>;
+    readonly updatedAt: Prisma.FieldRef<"Printer", 'DateTime'>;
+}
+export type PrinterFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where: Prisma.PrinterWhereUniqueInput;
+};
+export type PrinterFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where: Prisma.PrinterWhereUniqueInput;
+};
+export type PrinterFindFirstArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where?: Prisma.PrinterWhereInput;
+    orderBy?: Prisma.PrinterOrderByWithRelationInput | Prisma.PrinterOrderByWithRelationInput[];
+    cursor?: Prisma.PrinterWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PrinterScalarFieldEnum | Prisma.PrinterScalarFieldEnum[];
+};
+export type PrinterFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where?: Prisma.PrinterWhereInput;
+    orderBy?: Prisma.PrinterOrderByWithRelationInput | Prisma.PrinterOrderByWithRelationInput[];
+    cursor?: Prisma.PrinterWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PrinterScalarFieldEnum | Prisma.PrinterScalarFieldEnum[];
+};
+export type PrinterFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where?: Prisma.PrinterWhereInput;
+    orderBy?: Prisma.PrinterOrderByWithRelationInput | Prisma.PrinterOrderByWithRelationInput[];
+    cursor?: Prisma.PrinterWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PrinterScalarFieldEnum | Prisma.PrinterScalarFieldEnum[];
+};
+export type PrinterCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    data: Prisma.XOR<Prisma.PrinterCreateInput, Prisma.PrinterUncheckedCreateInput>;
+};
+export type PrinterCreateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    data: Prisma.PrinterCreateManyInput | Prisma.PrinterCreateManyInput[];
+    skipDuplicates?: boolean;
+};
+export type PrinterCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelectCreateManyAndReturn<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    data: Prisma.PrinterCreateManyInput | Prisma.PrinterCreateManyInput[];
+    skipDuplicates?: boolean;
+};
+export type PrinterUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    data: Prisma.XOR<Prisma.PrinterUpdateInput, Prisma.PrinterUncheckedUpdateInput>;
+    where: Prisma.PrinterWhereUniqueInput;
+};
+export type PrinterUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    data: Prisma.XOR<Prisma.PrinterUpdateManyMutationInput, Prisma.PrinterUncheckedUpdateManyInput>;
+    where?: Prisma.PrinterWhereInput;
+    limit?: number;
+};
+export type PrinterUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelectUpdateManyAndReturn<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    data: Prisma.XOR<Prisma.PrinterUpdateManyMutationInput, Prisma.PrinterUncheckedUpdateManyInput>;
+    where?: Prisma.PrinterWhereInput;
+    limit?: number;
+};
+export type PrinterUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where: Prisma.PrinterWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PrinterCreateInput, Prisma.PrinterUncheckedCreateInput>;
+    update: Prisma.XOR<Prisma.PrinterUpdateInput, Prisma.PrinterUncheckedUpdateInput>;
+};
+export type PrinterDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+    where: Prisma.PrinterWhereUniqueInput;
+};
+export type PrinterDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PrinterWhereInput;
+    limit?: number;
+};
+export type Printer$readingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.SupplyReadingSelect<ExtArgs> | null;
+    omit?: Prisma.SupplyReadingOmit<ExtArgs> | null;
+    include?: Prisma.SupplyReadingInclude<ExtArgs> | null;
+    where?: Prisma.SupplyReadingWhereInput;
+    orderBy?: Prisma.SupplyReadingOrderByWithRelationInput | Prisma.SupplyReadingOrderByWithRelationInput[];
+    cursor?: Prisma.SupplyReadingWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.SupplyReadingScalarFieldEnum | Prisma.SupplyReadingScalarFieldEnum[];
+};
+export type Printer$pageDaysArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where?: Prisma.PageCountDailyWhereInput;
+    orderBy?: Prisma.PageCountDailyOrderByWithRelationInput | Prisma.PageCountDailyOrderByWithRelationInput[];
+    cursor?: Prisma.PageCountDailyWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PageCountDailyScalarFieldEnum | Prisma.PageCountDailyScalarFieldEnum[];
+};
+export type PrinterDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PrinterSelect<ExtArgs> | null;
+    omit?: Prisma.PrinterOmit<ExtArgs> | null;
+    include?: Prisma.PrinterInclude<ExtArgs> | null;
+};

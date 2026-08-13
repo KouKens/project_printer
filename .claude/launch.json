@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "toner-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "toner-api", "run", "start:dev"],
+      "port": 3000
+    },
+    {
+      "name": "printer_manager",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "printer_manager", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}

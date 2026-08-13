@@ -1,0 +1,664 @@
+import type * as runtime from "@prisma/client/runtime/client";
+import type * as Prisma from "../internal/prismaNamespace.js";
+export type PageCountDailyModel = runtime.Types.Result.DefaultSelection<Prisma.$PageCountDailyPayload>;
+export type AggregatePageCountDaily = {
+    _count: PageCountDailyCountAggregateOutputType | null;
+    _avg: PageCountDailyAvgAggregateOutputType | null;
+    _sum: PageCountDailySumAggregateOutputType | null;
+    _min: PageCountDailyMinAggregateOutputType | null;
+    _max: PageCountDailyMaxAggregateOutputType | null;
+};
+export type PageCountDailyAvgAggregateOutputType = {
+    id: number | null;
+    printerId: number | null;
+    total: number | null;
+    pages: number | null;
+    spanDays: number | null;
+};
+export type PageCountDailySumAggregateOutputType = {
+    id: number | null;
+    printerId: number | null;
+    total: number | null;
+    pages: number | null;
+    spanDays: number | null;
+};
+export type PageCountDailyMinAggregateOutputType = {
+    id: number | null;
+    printerId: number | null;
+    date: Date | null;
+    total: number | null;
+    pages: number | null;
+    spanDays: number | null;
+    capturedAt: Date | null;
+};
+export type PageCountDailyMaxAggregateOutputType = {
+    id: number | null;
+    printerId: number | null;
+    date: Date | null;
+    total: number | null;
+    pages: number | null;
+    spanDays: number | null;
+    capturedAt: Date | null;
+};
+export type PageCountDailyCountAggregateOutputType = {
+    id: number;
+    printerId: number;
+    date: number;
+    total: number;
+    pages: number;
+    spanDays: number;
+    capturedAt: number;
+    _all: number;
+};
+export type PageCountDailyAvgAggregateInputType = {
+    id?: true;
+    printerId?: true;
+    total?: true;
+    pages?: true;
+    spanDays?: true;
+};
+export type PageCountDailySumAggregateInputType = {
+    id?: true;
+    printerId?: true;
+    total?: true;
+    pages?: true;
+    spanDays?: true;
+};
+export type PageCountDailyMinAggregateInputType = {
+    id?: true;
+    printerId?: true;
+    date?: true;
+    total?: true;
+    pages?: true;
+    spanDays?: true;
+    capturedAt?: true;
+};
+export type PageCountDailyMaxAggregateInputType = {
+    id?: true;
+    printerId?: true;
+    date?: true;
+    total?: true;
+    pages?: true;
+    spanDays?: true;
+    capturedAt?: true;
+};
+export type PageCountDailyCountAggregateInputType = {
+    id?: true;
+    printerId?: true;
+    date?: true;
+    total?: true;
+    pages?: true;
+    spanDays?: true;
+    capturedAt?: true;
+    _all?: true;
+};
+export type PageCountDailyAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PageCountDailyWhereInput;
+    orderBy?: Prisma.PageCountDailyOrderByWithRelationInput | Prisma.PageCountDailyOrderByWithRelationInput[];
+    cursor?: Prisma.PageCountDailyWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    _count?: true | PageCountDailyCountAggregateInputType;
+    _avg?: PageCountDailyAvgAggregateInputType;
+    _sum?: PageCountDailySumAggregateInputType;
+    _min?: PageCountDailyMinAggregateInputType;
+    _max?: PageCountDailyMaxAggregateInputType;
+};
+export type GetPageCountDailyAggregateType<T extends PageCountDailyAggregateArgs> = {
+    [P in keyof T & keyof AggregatePageCountDaily]: P extends '_count' | 'count' ? T[P] extends true ? number : Prisma.GetScalarType<T[P], AggregatePageCountDaily[P]> : Prisma.GetScalarType<T[P], AggregatePageCountDaily[P]>;
+};
+export type PageCountDailyGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PageCountDailyWhereInput;
+    orderBy?: Prisma.PageCountDailyOrderByWithAggregationInput | Prisma.PageCountDailyOrderByWithAggregationInput[];
+    by: Prisma.PageCountDailyScalarFieldEnum[] | Prisma.PageCountDailyScalarFieldEnum;
+    having?: Prisma.PageCountDailyScalarWhereWithAggregatesInput;
+    take?: number;
+    skip?: number;
+    _count?: PageCountDailyCountAggregateInputType | true;
+    _avg?: PageCountDailyAvgAggregateInputType;
+    _sum?: PageCountDailySumAggregateInputType;
+    _min?: PageCountDailyMinAggregateInputType;
+    _max?: PageCountDailyMaxAggregateInputType;
+};
+export type PageCountDailyGroupByOutputType = {
+    id: number;
+    printerId: number;
+    date: Date;
+    total: number;
+    pages: number | null;
+    spanDays: number;
+    capturedAt: Date;
+    _count: PageCountDailyCountAggregateOutputType | null;
+    _avg: PageCountDailyAvgAggregateOutputType | null;
+    _sum: PageCountDailySumAggregateOutputType | null;
+    _min: PageCountDailyMinAggregateOutputType | null;
+    _max: PageCountDailyMaxAggregateOutputType | null;
+};
+export type GetPageCountDailyGroupByPayload<T extends PageCountDailyGroupByArgs> = Prisma.PrismaPromise<Array<Prisma.PickEnumerable<PageCountDailyGroupByOutputType, T['by']> & {
+    [P in ((keyof T) & (keyof PageCountDailyGroupByOutputType))]: P extends '_count' ? T[P] extends boolean ? number : Prisma.GetScalarType<T[P], PageCountDailyGroupByOutputType[P]> : Prisma.GetScalarType<T[P], PageCountDailyGroupByOutputType[P]>;
+}>>;
+export type PageCountDailyWhereInput = {
+    AND?: Prisma.PageCountDailyWhereInput | Prisma.PageCountDailyWhereInput[];
+    OR?: Prisma.PageCountDailyWhereInput[];
+    NOT?: Prisma.PageCountDailyWhereInput | Prisma.PageCountDailyWhereInput[];
+    id?: Prisma.IntFilter<"PageCountDaily"> | number;
+    printerId?: Prisma.IntFilter<"PageCountDaily"> | number;
+    date?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string;
+    total?: Prisma.IntFilter<"PageCountDaily"> | number;
+    pages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null;
+    spanDays?: Prisma.IntFilter<"PageCountDaily"> | number;
+    capturedAt?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string;
+    printer?: Prisma.XOR<Prisma.PrinterScalarRelationFilter, Prisma.PrinterWhereInput>;
+};
+export type PageCountDailyOrderByWithRelationInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    date?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrderInput | Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+    capturedAt?: Prisma.SortOrder;
+    printer?: Prisma.PrinterOrderByWithRelationInput;
+};
+export type PageCountDailyWhereUniqueInput = Prisma.AtLeast<{
+    id?: number;
+    printerId_date?: Prisma.PageCountDailyPrinterIdDateCompoundUniqueInput;
+    AND?: Prisma.PageCountDailyWhereInput | Prisma.PageCountDailyWhereInput[];
+    OR?: Prisma.PageCountDailyWhereInput[];
+    NOT?: Prisma.PageCountDailyWhereInput | Prisma.PageCountDailyWhereInput[];
+    printerId?: Prisma.IntFilter<"PageCountDaily"> | number;
+    date?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string;
+    total?: Prisma.IntFilter<"PageCountDaily"> | number;
+    pages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null;
+    spanDays?: Prisma.IntFilter<"PageCountDaily"> | number;
+    capturedAt?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string;
+    printer?: Prisma.XOR<Prisma.PrinterScalarRelationFilter, Prisma.PrinterWhereInput>;
+}, "id" | "printerId_date">;
+export type PageCountDailyOrderByWithAggregationInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    date?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrderInput | Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+    capturedAt?: Prisma.SortOrder;
+    _count?: Prisma.PageCountDailyCountOrderByAggregateInput;
+    _avg?: Prisma.PageCountDailyAvgOrderByAggregateInput;
+    _max?: Prisma.PageCountDailyMaxOrderByAggregateInput;
+    _min?: Prisma.PageCountDailyMinOrderByAggregateInput;
+    _sum?: Prisma.PageCountDailySumOrderByAggregateInput;
+};
+export type PageCountDailyScalarWhereWithAggregatesInput = {
+    AND?: Prisma.PageCountDailyScalarWhereWithAggregatesInput | Prisma.PageCountDailyScalarWhereWithAggregatesInput[];
+    OR?: Prisma.PageCountDailyScalarWhereWithAggregatesInput[];
+    NOT?: Prisma.PageCountDailyScalarWhereWithAggregatesInput | Prisma.PageCountDailyScalarWhereWithAggregatesInput[];
+    id?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number;
+    printerId?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number;
+    date?: Prisma.DateTimeWithAggregatesFilter<"PageCountDaily"> | Date | string;
+    total?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number;
+    pages?: Prisma.IntNullableWithAggregatesFilter<"PageCountDaily"> | number | null;
+    spanDays?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number;
+    capturedAt?: Prisma.DateTimeWithAggregatesFilter<"PageCountDaily"> | Date | string;
+};
+export type PageCountDailyCreateInput = {
+    date: Date | string;
+    total: number;
+    pages?: number | null;
+    spanDays?: number;
+    capturedAt?: Date | string;
+    printer: Prisma.PrinterCreateNestedOneWithoutPageDaysInput;
+};
+export type PageCountDailyUncheckedCreateInput = {
+    id?: number;
+    printerId: number;
+    date: Date | string;
+    total: number;
+    pages?: number | null;
+    spanDays?: number;
+    capturedAt?: Date | string;
+};
+export type PageCountDailyUpdateInput = {
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    printer?: Prisma.PrinterUpdateOneRequiredWithoutPageDaysNestedInput;
+};
+export type PageCountDailyUncheckedUpdateInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    printerId?: Prisma.IntFieldUpdateOperationsInput | number;
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PageCountDailyCreateManyInput = {
+    id?: number;
+    printerId: number;
+    date: Date | string;
+    total: number;
+    pages?: number | null;
+    spanDays?: number;
+    capturedAt?: Date | string;
+};
+export type PageCountDailyUpdateManyMutationInput = {
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PageCountDailyUncheckedUpdateManyInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    printerId?: Prisma.IntFieldUpdateOperationsInput | number;
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PageCountDailyListRelationFilter = {
+    every?: Prisma.PageCountDailyWhereInput;
+    some?: Prisma.PageCountDailyWhereInput;
+    none?: Prisma.PageCountDailyWhereInput;
+};
+export type PageCountDailyOrderByRelationAggregateInput = {
+    _count?: Prisma.SortOrder;
+};
+export type PageCountDailyPrinterIdDateCompoundUniqueInput = {
+    printerId: number;
+    date: Date | string;
+};
+export type PageCountDailyCountOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    date?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+    capturedAt?: Prisma.SortOrder;
+};
+export type PageCountDailyAvgOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+};
+export type PageCountDailyMaxOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    date?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+    capturedAt?: Prisma.SortOrder;
+};
+export type PageCountDailyMinOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    date?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+    capturedAt?: Prisma.SortOrder;
+};
+export type PageCountDailySumOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    printerId?: Prisma.SortOrder;
+    total?: Prisma.SortOrder;
+    pages?: Prisma.SortOrder;
+    spanDays?: Prisma.SortOrder;
+};
+export type PageCountDailyCreateNestedManyWithoutPrinterInput = {
+    create?: Prisma.XOR<Prisma.PageCountDailyCreateWithoutPrinterInput, Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput> | Prisma.PageCountDailyCreateWithoutPrinterInput[] | Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput[];
+    connectOrCreate?: Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput | Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput[];
+    createMany?: Prisma.PageCountDailyCreateManyPrinterInputEnvelope;
+    connect?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+};
+export type PageCountDailyUncheckedCreateNestedManyWithoutPrinterInput = {
+    create?: Prisma.XOR<Prisma.PageCountDailyCreateWithoutPrinterInput, Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput> | Prisma.PageCountDailyCreateWithoutPrinterInput[] | Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput[];
+    connectOrCreate?: Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput | Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput[];
+    createMany?: Prisma.PageCountDailyCreateManyPrinterInputEnvelope;
+    connect?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+};
+export type PageCountDailyUpdateManyWithoutPrinterNestedInput = {
+    create?: Prisma.XOR<Prisma.PageCountDailyCreateWithoutPrinterInput, Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput> | Prisma.PageCountDailyCreateWithoutPrinterInput[] | Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput[];
+    connectOrCreate?: Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput | Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput[];
+    upsert?: Prisma.PageCountDailyUpsertWithWhereUniqueWithoutPrinterInput | Prisma.PageCountDailyUpsertWithWhereUniqueWithoutPrinterInput[];
+    createMany?: Prisma.PageCountDailyCreateManyPrinterInputEnvelope;
+    set?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    disconnect?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    delete?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    connect?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    update?: Prisma.PageCountDailyUpdateWithWhereUniqueWithoutPrinterInput | Prisma.PageCountDailyUpdateWithWhereUniqueWithoutPrinterInput[];
+    updateMany?: Prisma.PageCountDailyUpdateManyWithWhereWithoutPrinterInput | Prisma.PageCountDailyUpdateManyWithWhereWithoutPrinterInput[];
+    deleteMany?: Prisma.PageCountDailyScalarWhereInput | Prisma.PageCountDailyScalarWhereInput[];
+};
+export type PageCountDailyUncheckedUpdateManyWithoutPrinterNestedInput = {
+    create?: Prisma.XOR<Prisma.PageCountDailyCreateWithoutPrinterInput, Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput> | Prisma.PageCountDailyCreateWithoutPrinterInput[] | Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput[];
+    connectOrCreate?: Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput | Prisma.PageCountDailyCreateOrConnectWithoutPrinterInput[];
+    upsert?: Prisma.PageCountDailyUpsertWithWhereUniqueWithoutPrinterInput | Prisma.PageCountDailyUpsertWithWhereUniqueWithoutPrinterInput[];
+    createMany?: Prisma.PageCountDailyCreateManyPrinterInputEnvelope;
+    set?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    disconnect?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    delete?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    connect?: Prisma.PageCountDailyWhereUniqueInput | Prisma.PageCountDailyWhereUniqueInput[];
+    update?: Prisma.PageCountDailyUpdateWithWhereUniqueWithoutPrinterInput | Prisma.PageCountDailyUpdateWithWhereUniqueWithoutPrinterInput[];
+    updateMany?: Prisma.PageCountDailyUpdateManyWithWhereWithoutPrinterInput | Prisma.PageCountDailyUpdateManyWithWhereWithoutPrinterInput[];
+    deleteMany?: Prisma.PageCountDailyScalarWhereInput | Prisma.PageCountDailyScalarWhereInput[];
+};
+export type PageCountDailyCreateWithoutPrinterInput = {
+    date: Date | string;
+    total: number;
+    pages?: number | null;
+    spanDays?: number;
+    capturedAt?: Date | string;
+};
+export type PageCountDailyUncheckedCreateWithoutPrinterInput = {
+    id?: number;
+    date: Date | string;
+    total: number;
+    pages?: number | null;
+    spanDays?: number;
+    capturedAt?: Date | string;
+};
+export type PageCountDailyCreateOrConnectWithoutPrinterInput = {
+    where: Prisma.PageCountDailyWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PageCountDailyCreateWithoutPrinterInput, Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput>;
+};
+export type PageCountDailyCreateManyPrinterInputEnvelope = {
+    data: Prisma.PageCountDailyCreateManyPrinterInput | Prisma.PageCountDailyCreateManyPrinterInput[];
+    skipDuplicates?: boolean;
+};
+export type PageCountDailyUpsertWithWhereUniqueWithoutPrinterInput = {
+    where: Prisma.PageCountDailyWhereUniqueInput;
+    update: Prisma.XOR<Prisma.PageCountDailyUpdateWithoutPrinterInput, Prisma.PageCountDailyUncheckedUpdateWithoutPrinterInput>;
+    create: Prisma.XOR<Prisma.PageCountDailyCreateWithoutPrinterInput, Prisma.PageCountDailyUncheckedCreateWithoutPrinterInput>;
+};
+export type PageCountDailyUpdateWithWhereUniqueWithoutPrinterInput = {
+    where: Prisma.PageCountDailyWhereUniqueInput;
+    data: Prisma.XOR<Prisma.PageCountDailyUpdateWithoutPrinterInput, Prisma.PageCountDailyUncheckedUpdateWithoutPrinterInput>;
+};
+export type PageCountDailyUpdateManyWithWhereWithoutPrinterInput = {
+    where: Prisma.PageCountDailyScalarWhereInput;
+    data: Prisma.XOR<Prisma.PageCountDailyUpdateManyMutationInput, Prisma.PageCountDailyUncheckedUpdateManyWithoutPrinterInput>;
+};
+export type PageCountDailyScalarWhereInput = {
+    AND?: Prisma.PageCountDailyScalarWhereInput | Prisma.PageCountDailyScalarWhereInput[];
+    OR?: Prisma.PageCountDailyScalarWhereInput[];
+    NOT?: Prisma.PageCountDailyScalarWhereInput | Prisma.PageCountDailyScalarWhereInput[];
+    id?: Prisma.IntFilter<"PageCountDaily"> | number;
+    printerId?: Prisma.IntFilter<"PageCountDaily"> | number;
+    date?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string;
+    total?: Prisma.IntFilter<"PageCountDaily"> | number;
+    pages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null;
+    spanDays?: Prisma.IntFilter<"PageCountDaily"> | number;
+    capturedAt?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string;
+};
+export type PageCountDailyCreateManyPrinterInput = {
+    id?: number;
+    date: Date | string;
+    total: number;
+    pages?: number | null;
+    spanDays?: number;
+    capturedAt?: Date | string;
+};
+export type PageCountDailyUpdateWithoutPrinterInput = {
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PageCountDailyUncheckedUpdateWithoutPrinterInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PageCountDailyUncheckedUpdateManyWithoutPrinterInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    total?: Prisma.IntFieldUpdateOperationsInput | number;
+    pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    spanDays?: Prisma.IntFieldUpdateOperationsInput | number;
+    capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type PageCountDailySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+    id?: boolean;
+    printerId?: boolean;
+    date?: boolean;
+    total?: boolean;
+    pages?: boolean;
+    spanDays?: boolean;
+    capturedAt?: boolean;
+    printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>;
+}, ExtArgs["result"]["pageCountDaily"]>;
+export type PageCountDailySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+    id?: boolean;
+    printerId?: boolean;
+    date?: boolean;
+    total?: boolean;
+    pages?: boolean;
+    spanDays?: boolean;
+    capturedAt?: boolean;
+    printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>;
+}, ExtArgs["result"]["pageCountDaily"]>;
+export type PageCountDailySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
+    id?: boolean;
+    printerId?: boolean;
+    date?: boolean;
+    total?: boolean;
+    pages?: boolean;
+    spanDays?: boolean;
+    capturedAt?: boolean;
+    printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>;
+}, ExtArgs["result"]["pageCountDaily"]>;
+export type PageCountDailySelectScalar = {
+    id?: boolean;
+    printerId?: boolean;
+    date?: boolean;
+    total?: boolean;
+    pages?: boolean;
+    spanDays?: boolean;
+    capturedAt?: boolean;
+};
+export type PageCountDailyOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "printerId" | "date" | "total" | "pages" | "spanDays" | "capturedAt", ExtArgs["result"]["pageCountDaily"]>;
+export type PageCountDailyInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>;
+};
+export type PageCountDailyIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>;
+};
+export type PageCountDailyIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>;
+};
+export type $PageCountDailyPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    name: "PageCountDaily";
+    objects: {
+        printer: Prisma.$PrinterPayload<ExtArgs>;
+    };
+    scalars: runtime.Types.Extensions.GetPayloadResult<{
+        id: number;
+        printerId: number;
+        date: Date;
+        total: number;
+        pages: number | null;
+        spanDays: number;
+        capturedAt: Date;
+    }, ExtArgs["result"]["pageCountDaily"]>;
+    composites: {};
+};
+export type PageCountDailyGetPayload<S extends boolean | null | undefined | PageCountDailyDefaultArgs> = runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload, S>;
+export type PageCountDailyCountArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = Omit<PageCountDailyFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+    select?: PageCountDailyCountAggregateInputType | true;
+};
+export interface PageCountDailyDelegate<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: {
+        types: Prisma.TypeMap<ExtArgs>['model']['PageCountDaily'];
+        meta: {
+            name: 'PageCountDaily';
+        };
+    };
+    findUnique<T extends PageCountDailyFindUniqueArgs>(args: Prisma.SelectSubset<T, PageCountDailyFindUniqueArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
+    findUniqueOrThrow<T extends PageCountDailyFindUniqueOrThrowArgs>(args: Prisma.SelectSubset<T, PageCountDailyFindUniqueOrThrowArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    findFirst<T extends PageCountDailyFindFirstArgs>(args?: Prisma.SelectSubset<T, PageCountDailyFindFirstArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
+    findFirstOrThrow<T extends PageCountDailyFindFirstOrThrowArgs>(args?: Prisma.SelectSubset<T, PageCountDailyFindFirstOrThrowArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    findMany<T extends PageCountDailyFindManyArgs>(args?: Prisma.SelectSubset<T, PageCountDailyFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>;
+    create<T extends PageCountDailyCreateArgs>(args: Prisma.SelectSubset<T, PageCountDailyCreateArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    createMany<T extends PageCountDailyCreateManyArgs>(args?: Prisma.SelectSubset<T, PageCountDailyCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>;
+    createManyAndReturn<T extends PageCountDailyCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, PageCountDailyCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>;
+    delete<T extends PageCountDailyDeleteArgs>(args: Prisma.SelectSubset<T, PageCountDailyDeleteArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    update<T extends PageCountDailyUpdateArgs>(args: Prisma.SelectSubset<T, PageCountDailyUpdateArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    deleteMany<T extends PageCountDailyDeleteManyArgs>(args?: Prisma.SelectSubset<T, PageCountDailyDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>;
+    updateMany<T extends PageCountDailyUpdateManyArgs>(args: Prisma.SelectSubset<T, PageCountDailyUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>;
+    updateManyAndReturn<T extends PageCountDailyUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, PageCountDailyUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>;
+    upsert<T extends PageCountDailyUpsertArgs>(args: Prisma.SelectSubset<T, PageCountDailyUpsertArgs<ExtArgs>>): Prisma.Prisma__PageCountDailyClient<runtime.Types.Result.GetResult<Prisma.$PageCountDailyPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>;
+    count<T extends PageCountDailyCountArgs>(args?: Prisma.Subset<T, PageCountDailyCountArgs>): Prisma.PrismaPromise<T extends runtime.Types.Utils.Record<'select', any> ? T['select'] extends true ? number : Prisma.GetScalarType<T['select'], PageCountDailyCountAggregateOutputType> : number>;
+    aggregate<T extends PageCountDailyAggregateArgs>(args: Prisma.Subset<T, PageCountDailyAggregateArgs>): Prisma.PrismaPromise<GetPageCountDailyAggregateType<T>>;
+    groupBy<T extends PageCountDailyGroupByArgs, HasSelectOrTake extends Prisma.Or<Prisma.Extends<'skip', Prisma.Keys<T>>, Prisma.Extends<'take', Prisma.Keys<T>>>, OrderByArg extends Prisma.True extends HasSelectOrTake ? {
+        orderBy: PageCountDailyGroupByArgs['orderBy'];
+    } : {
+        orderBy?: PageCountDailyGroupByArgs['orderBy'];
+    }, OrderFields extends Prisma.ExcludeUnderscoreKeys<Prisma.Keys<Prisma.MaybeTupleToUnion<T['orderBy']>>>, ByFields extends Prisma.MaybeTupleToUnion<T['by']>, ByValid extends Prisma.Has<ByFields, OrderFields>, HavingFields extends Prisma.GetHavingFields<T['having']>, HavingValid extends Prisma.Has<ByFields, HavingFields>, ByEmpty extends T['by'] extends never[] ? Prisma.True : Prisma.False, InputErrors extends ByEmpty extends Prisma.True ? `Error: "by" must not be empty.` : HavingValid extends Prisma.False ? {
+        [P in HavingFields]: P extends ByFields ? never : P extends string ? `Error: Field "${P}" used in "having" needs to be provided in "by".` : [
+            Error,
+            'Field ',
+            P,
+            ` in "having" needs to be provided in "by"`
+        ];
+    }[HavingFields] : 'take' extends Prisma.Keys<T> ? 'orderBy' extends Prisma.Keys<T> ? ByValid extends Prisma.True ? {} : {
+        [P in OrderFields]: P extends ByFields ? never : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`;
+    }[OrderFields] : 'Error: If you provide "take", you also need to provide "orderBy"' : 'skip' extends Prisma.Keys<T> ? 'orderBy' extends Prisma.Keys<T> ? ByValid extends Prisma.True ? {} : {
+        [P in OrderFields]: P extends ByFields ? never : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`;
+    }[OrderFields] : 'Error: If you provide "skip", you also need to provide "orderBy"' : ByValid extends Prisma.True ? {} : {
+        [P in OrderFields]: P extends ByFields ? never : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`;
+    }[OrderFields]>(args: Prisma.SubsetIntersection<T, PageCountDailyGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetPageCountDailyGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>;
+    readonly fields: PageCountDailyFieldRefs;
+}
+export interface Prisma__PageCountDailyClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise";
+    printer<T extends Prisma.PrinterDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterDefaultArgs<ExtArgs>>): Prisma.Prisma__PrinterClient<runtime.Types.Result.GetResult<Prisma.$PrinterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): runtime.Types.Utils.JsPromise<TResult1 | TResult2>;
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): runtime.Types.Utils.JsPromise<T | TResult>;
+    finally(onfinally?: (() => void) | undefined | null): runtime.Types.Utils.JsPromise<T>;
+}
+export interface PageCountDailyFieldRefs {
+    readonly id: Prisma.FieldRef<"PageCountDaily", 'Int'>;
+    readonly printerId: Prisma.FieldRef<"PageCountDaily", 'Int'>;
+    readonly date: Prisma.FieldRef<"PageCountDaily", 'DateTime'>;
+    readonly total: Prisma.FieldRef<"PageCountDaily", 'Int'>;
+    readonly pages: Prisma.FieldRef<"PageCountDaily", 'Int'>;
+    readonly spanDays: Prisma.FieldRef<"PageCountDaily", 'Int'>;
+    readonly capturedAt: Prisma.FieldRef<"PageCountDaily", 'DateTime'>;
+}
+export type PageCountDailyFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where: Prisma.PageCountDailyWhereUniqueInput;
+};
+export type PageCountDailyFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where: Prisma.PageCountDailyWhereUniqueInput;
+};
+export type PageCountDailyFindFirstArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where?: Prisma.PageCountDailyWhereInput;
+    orderBy?: Prisma.PageCountDailyOrderByWithRelationInput | Prisma.PageCountDailyOrderByWithRelationInput[];
+    cursor?: Prisma.PageCountDailyWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PageCountDailyScalarFieldEnum | Prisma.PageCountDailyScalarFieldEnum[];
+};
+export type PageCountDailyFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where?: Prisma.PageCountDailyWhereInput;
+    orderBy?: Prisma.PageCountDailyOrderByWithRelationInput | Prisma.PageCountDailyOrderByWithRelationInput[];
+    cursor?: Prisma.PageCountDailyWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PageCountDailyScalarFieldEnum | Prisma.PageCountDailyScalarFieldEnum[];
+};
+export type PageCountDailyFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where?: Prisma.PageCountDailyWhereInput;
+    orderBy?: Prisma.PageCountDailyOrderByWithRelationInput | Prisma.PageCountDailyOrderByWithRelationInput[];
+    cursor?: Prisma.PageCountDailyWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.PageCountDailyScalarFieldEnum | Prisma.PageCountDailyScalarFieldEnum[];
+};
+export type PageCountDailyCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    data: Prisma.XOR<Prisma.PageCountDailyCreateInput, Prisma.PageCountDailyUncheckedCreateInput>;
+};
+export type PageCountDailyCreateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    data: Prisma.PageCountDailyCreateManyInput | Prisma.PageCountDailyCreateManyInput[];
+    skipDuplicates?: boolean;
+};
+export type PageCountDailyCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelectCreateManyAndReturn<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    data: Prisma.PageCountDailyCreateManyInput | Prisma.PageCountDailyCreateManyInput[];
+    skipDuplicates?: boolean;
+    include?: Prisma.PageCountDailyIncludeCreateManyAndReturn<ExtArgs> | null;
+};
+export type PageCountDailyUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    data: Prisma.XOR<Prisma.PageCountDailyUpdateInput, Prisma.PageCountDailyUncheckedUpdateInput>;
+    where: Prisma.PageCountDailyWhereUniqueInput;
+};
+export type PageCountDailyUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    data: Prisma.XOR<Prisma.PageCountDailyUpdateManyMutationInput, Prisma.PageCountDailyUncheckedUpdateManyInput>;
+    where?: Prisma.PageCountDailyWhereInput;
+    limit?: number;
+};
+export type PageCountDailyUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelectUpdateManyAndReturn<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    data: Prisma.XOR<Prisma.PageCountDailyUpdateManyMutationInput, Prisma.PageCountDailyUncheckedUpdateManyInput>;
+    where?: Prisma.PageCountDailyWhereInput;
+    limit?: number;
+    include?: Prisma.PageCountDailyIncludeUpdateManyAndReturn<ExtArgs> | null;
+};
+export type PageCountDailyUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where: Prisma.PageCountDailyWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PageCountDailyCreateInput, Prisma.PageCountDailyUncheckedCreateInput>;
+    update: Prisma.XOR<Prisma.PageCountDailyUpdateInput, Prisma.PageCountDailyUncheckedUpdateInput>;
+};
+export type PageCountDailyDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+    where: Prisma.PageCountDailyWhereUniqueInput;
+};
+export type PageCountDailyDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.PageCountDailyWhereInput;
+    limit?: number;
+};
+export type PageCountDailyDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.PageCountDailySelect<ExtArgs> | null;
+    omit?: Prisma.PageCountDailyOmit<ExtArgs> | null;
+    include?: Prisma.PageCountDailyInclude<ExtArgs> | null;
+};

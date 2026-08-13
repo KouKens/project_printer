@@ -1,0 +1,174 @@
+.pr {
+  --ink: #16202b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --panel: #ffffff;
+  --bg: #f2f5f8;
+  --accent: #1f6f8b;
+  --danger: #b23a3a;
+
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+  color: var(--ink);
+  /*font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;*/
+  /*background: var(--bg);*/
+  /*min-height: 100vh;*/
+}
+
+.pr-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.pr-head p {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- 入力フォーム --- */
+.pr-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.pr-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pr-form label:first-child { grid-column: 1 / -1; }
+.pr-form input {
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.pr-form input:focus-visible,
+.pr button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.pr-form button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 10px 22px;
+  font: inherit;
+  font-size: 14px;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pr-form button:disabled { background: #9fb4bd; cursor: not-allowed; }
+
+/* --- メッセージ --- */
+.pr-msg {
+  margin: 14px 0 0;
+  padding: 10px 13px;
+  font-size: 13px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+.pr-msg-error { color: var(--danger); background: #fdf1f1; border-color: var(--danger); }
+.pr-msg-ok { color: #1d6b48; background: #eef8f2; border-color: #1d6b48; }
+
+/* --- 一覧 --- */
+.pr-list { margin-top: 24px; display: grid; gap: 12px; }
+.pr-empty { color: var(--muted); font-size: 13px; }
+
+.pr-card {
+  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+}
+.pr-card-down { border-left-color: var(--danger); opacity: 0.75; }
+
+.pr-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pr-ip {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 15px;
+  font-weight: 600;
+}
+.pr-model { flex: 1; font-size: 13px; color: var(--muted); }
+.pr-repoll {
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pr-repoll:disabled { color: #a7b3bd; cursor: not-allowed; }
+
+.pr-meta {
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 18px;
+  font-size: 12px;
+}
+.pr-meta dt { color: var(--muted); }
+.pr-meta dd {
+  margin: 1px 0 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12.5px;
+}
+
+/* --- 消耗品バー --- */
+.pr-supplies {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 7px;
+}
+.pr-supplies li {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.4fr) 3fr 56px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.pr-supply-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-bar { height: 7px; background: #e7ecf1; border-radius: 4px; overflow: hidden; }
+.pr-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+.pr-supply-pct {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .pr-form { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-bar-fill { transition: none; }
+}

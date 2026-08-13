@@ -1,0 +1,220 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// 操作区分
+enum TonerAction {
+  REGISTER // 登録（マスタ新規追加）
+  RECEIVE // 搬入（在庫加算）
+  ISSUE // 持ち出し（在庫減算）
+  DISPOSE // 廃棄（搬入累計の範囲内でのみ記録）
+
+  @@map("toner_action")
+}
+
+/// SNMP のバージョン。機種によって片方しか応答しない
+enum SnmpVersion {
+  V1  @map("1")
+  V2C @map("2c")
+
+  @@map("snmp_version")
+}
+
+/// 注文の状態
+enum OrderStatus {
+  PENDING // 発注済み・未入荷
+  RECEIVED // 入荷済み
+  CANCELED // 取消
+
+  @@map("order_status")
+}
+
+/// トナーマスタ
+model Toner {
+  id        String   @id
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stock   TonerStock?
+  entries TonerEntry[]
+  orders  TonerOrder[]
+
+  @@map("toners")
+}
+
+/// 在庫テーブル（品番ごとの現在数と累計）
+model TonerStock {
+  tonerId String @id @map("toner_id")
+
+  /// 現在庫。搬入で増え、持ち出しで減る
+  quantity Int @default(0)
+
+  /// 搬入の累計。廃棄できる本数の上限になる
+  received Int @default(0)
+
+  /// 廃棄の累計。received を超えられない
+  disposed Int @default(0)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  toner Toner @relation(fields: [tonerId], references: [id], onDelete: Cascade)
+
+  @@map("toner_stocks")
+}
+
+/// 履歴テーブル（誰がいつ何をしたか）
+model TonerEntry {
+  id      Int         @id @default(autoincrement())
+  userId  String      @map("user_id")
+  tonerId String      @map("toner_id")
+  action  TonerAction
+
+  /// 操作した本数。常に 0 以上。登録は 0
+  quantity Int @default(0)
+
+  /// 操作直後の在庫数
+  balance Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  toner Toner @relation(fields: [tonerId], references: [id])
+
+  @@index([createdAt])
+  @@index([tonerId, createdAt])
+  @@map("toner_entries")
+}
+
+/// 注文テーブル
+model TonerOrder {
+  id      Int    @id @default(autoincrement())
+  tonerId String @map("toner_id")
+
+  /// 注文した本数
+  quantity Int
+
+  /// 注文日時。入力値を保持する（登録日時とは別）
+  orderedAt DateTime @map("ordered_at")
+
+  status OrderStatus @default(PENDING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  toner Toner @relation(fields: [tonerId], references: [id])
+
+  @@index([status, orderedAt])
+  @@index([tonerId, orderedAt])
+  @@map("toner_orders")
+}
+
+/// プリンター。IP アドレスで一意に管理する
+model Printer {
+  id Int @id @default(autoincrement())
+
+  /// SNMP の宛先。登録の入力値
+  ipAddress String @unique @map("ip_address")
+
+  /// SNMP コミュニティ名
+  community String @default("public")
+
+  /// 応答があったバージョン。次回のポーリングで最初に試す
+  version SnmpVersion @default(V1)
+
+  /// sysName（1.3.6.1.2.1.1.5.0）
+  hostName String? @map("host_name")
+
+  /// hrDeviceDescr ないし sysDescr から拾った機種名
+  model String?
+
+  serialNumber String? @map("serial_number")
+  macAddress   String? @map("mac_address")
+
+  /// 設置場所。SNMP の sysLocation ではなく手入力を優先する
+  location String?
+
+  /// 累計印刷枚数（prtMarkerLifeCount）
+  pageCount Int? @map("page_count")
+
+  /// 直近のポーリングで応答があったか
+  reachable Boolean @default(false)
+
+  /// 応答がなかったときの理由
+  lastError String? @map("last_error")
+
+  lastPolledAt DateTime? @map("last_polled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  readings  SupplyReading[]
+  pageDays  PageCountDaily[]
+
+  @@map("printers")
+}
+
+/// 日次の印刷枚数。累計カウンタのスナップショットと、そこから出した 1 日分
+model PageCountDaily {
+  id        Int @id @default(autoincrement())
+  printerId Int @map("printer_id")
+
+  /// 集計対象日。この日に印刷された枚数を pages に持つ
+  date DateTime @db.Date
+
+  /// date の終了時点で読んだ累計印刷枚数（prtMarkerLifeCount）
+  total Int
+
+  /// date 当日の印刷枚数。前回値がない初回と、
+  /// カウンタが巻き戻った（機器交換・リセット）ときは null
+  pages Int?
+
+  /// pages が何日分か。1 なら純粋に date 当日の分。
+  /// 取得が飛ぶと 2 以上になり、その日数分をまとめた値になる
+  spanDays Int @default(1) @map("span_days")
+
+  /// 実際に SNMP を読んだ時刻
+  capturedAt DateTime @default(now()) @map("captured_at")
+
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@unique([printerId, date])
+  @@index([date])
+  @@map("page_count_daily")
+}
+
+/// トナー等の残量。ポーリングのたびに上書きする
+model SupplyReading {
+  id        Int @id @default(autoincrement())
+  printerId Int @map("printer_id")
+
+  /// prtMarkerSuppliesTable の行番号
+  supplyIndex Int @map("supply_index")
+
+  /// prtMarkerSuppliesDescription
+  name String
+
+  /// 色名（prtMarkerColorantValue）。黒一色の機種では null
+  colorant String?
+
+  /// 残量。-1 = 不明、-2 = 取得不可、-3 = 残量あり（数値では取れない）
+  level Int
+
+  /// 満量時の値。-1 / -2 は不明
+  maxCapacity Int @map("max_capacity")
+
+  /// level と maxCapacity から出したパーセント。出せないときは null
+  percent Int?
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@unique([printerId, supplyIndex])
+  @@map("supply_readings")
+}
