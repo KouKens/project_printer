@@ -13,7 +13,8 @@ export const TonerAction = {
   REGISTER: 'REGISTER',
   RECEIVE: 'RECEIVE',
   ISSUE: 'ISSUE',
-  DISPOSE: 'DISPOSE'
+  DISPOSE: 'DISPOSE',
+  ADJUST: 'ADJUST'
 } as const
 
 export type TonerAction = (typeof TonerAction)[keyof typeof TonerAction]
@@ -25,6 +26,52 @@ export const SnmpVersion = {
 } as const
 
 export type SnmpVersion = (typeof SnmpVersion)[keyof typeof SnmpVersion]
+
+
+export const RepairCategory = {
+  PART_REPLACEMENT: 'PART_REPLACEMENT',
+  SENSOR_DIRT: 'SENSOR_DIRT',
+  PAPER_JAM: 'PAPER_JAM',
+  PRINT_QUALITY: 'PRINT_QUALITY',
+  SERVICE_CALL: 'SERVICE_CALL',
+  FEED_FAILURE: 'FEED_FAILURE',
+  FUSING_FAILURE: 'FUSING_FAILURE',
+  NETWORK: 'NETWORK',
+  NOISE_SMELL: 'NOISE_SMELL',
+  NO_POWER: 'NO_POWER',
+  OTHER: 'OTHER'
+} as const
+
+export type RepairCategory = (typeof RepairCategory)[keyof typeof RepairCategory]
+
+
+export const RepairHandler = {
+  IN_HOUSE: 'IN_HOUSE',
+  VENDOR: 'VENDOR'
+} as const
+
+export type RepairHandler = (typeof RepairHandler)[keyof typeof RepairHandler]
+
+
+export const RepairStatus = {
+  INVESTIGATING: 'INVESTIGATING',
+  QUOTING: 'QUOTING',
+  SETTLING: 'SETTLING',
+  SHIPPED: 'SHIPPED',
+  RECEIVED: 'RECEIVED',
+  DONE: 'DONE'
+} as const
+
+export type RepairStatus = (typeof RepairStatus)[keyof typeof RepairStatus]
+
+
+export const CountLayout = {
+  TOTAL: 'TOTAL',
+  MONO_COLOR: 'MONO_COLOR',
+  COLOR_MONO: 'COLOR_MONO'
+} as const
+
+export type CountLayout = (typeof CountLayout)[keyof typeof CountLayout]
 
 
 export const OrderStatus = {

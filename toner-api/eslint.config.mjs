@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    // src/generated は prisma generate の出力。整形すると次の生成で消えるので触らない。
+    // dist はビルド出力
+    ignores: ['eslint.config.mjs', 'src/generated/**', 'dist/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

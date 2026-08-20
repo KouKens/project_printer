@@ -1,3 +1,9 @@
+/**
+ * API の基点。画面側と同じものを使う。
+ * ここだけ '/api' を直書きしていると VITE_API_BASE を変えたときに食い違う
+ */
+import { API } from './lib/request'
+
 export type Mode = 'REGISTER' | 'RECEIVE' | 'ISSUE' | 'DISPOSE'
 
 export type StockRow = {
@@ -7,6 +13,24 @@ export type StockRow = {
   received: number
   disposed: number
   updatedAt: string
+}
+
+/**
+ * トナーマスタの 1 件。受付画面の検索に使う。
+ * printers は端末情報の台帳なので、部署や No. で引ける
+ */
+export type TonerCatalogRow = {
+  id: string
+  name: string | null
+  color: string | null
+  stock: number
+  printers: {
+    id: number
+    department: string | null
+    no: string | null
+    ipAddress: string | null
+    model: string | null
+  }[]
 }
 
 export type EntryResult = {
@@ -61,19 +85,31 @@ async function get<T>(path: string, fallback: string): Promise<T> {
 }
 
 export function submitEntry(payload: Record<string, unknown>) {
-  return post<EntryResult>('/api/toner-entries', payload)
+  return post<EntryResult>(`${API}/toner-entries`, payload)
 }
 
 export function fetchStock() {
-  return get<StockRow[]>('/api/toner-entries/stock', '在庫を取得できませんでした')
+  return get<StockRow[]>(`${API}/toner-entries/stock`, '在庫を取得できませんでした')
+}
+
+/** 同じ区分の複数行をまとめて送る。1 行でも通らなければ全体が取り消される */
+export function submitBulkEntry(payload: Record<string, unknown>) {
+  return post<EntryResult[]>(`${API}/toner-entries/bulk`, payload)
+}
+
+export function fetchToners() {
+  return get<TonerCatalogRow[]>(
+    `${API}/toners`,
+    'トナーマスタを取得できませんでした',
+  )
 }
 
 export function submitOrder(payload: Record<string, unknown>) {
-  return post<OrderResult>('/api/toner-orders', payload)
+  return post<OrderResult>(`${API}/toner-orders`, payload)
 }
 
 export function fetchPendingOrders() {
-  return get<OrderRow[]>('/api/toner-orders/pending', '注文を取得できませんでした')
+  return get<OrderRow[]>(`${API}/toner-orders/pending`, '注文を取得できませんでした')
 }
 
 /** datetime-local の値（ローカル時刻）を作る */

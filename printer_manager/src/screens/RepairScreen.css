@@ -1,0 +1,299 @@
+/* 修理履歴。入力欄を上に、過去の一覧を下に置く */
+.rp {
+  --ink: #16202b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --panel: #ffffff;
+  --accent: #1f6f8b;
+  --danger: #b23a3a;
+
+  width: 100%;
+  min-width: 0;
+  padding: 32px 20px 64px;
+  box-sizing: border-box;
+  color: var(--ink);
+}
+
+.rp-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.rp-head p {
+  /* 説明文まで画面幅いっぱいに伸びると読みにくい */
+  max-width: 78ch;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.rp h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+/* --- 入力 --- */
+.rp-form {
+  max-width: 900px;
+  padding: 18px 20px 16px;
+  margin-bottom: 26px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+/*
+ * 2 列に並べる。プリンター名と修理内容は長くなるので 1 行を丸ごと使う。
+ * 幅が足りないときは 1 列に落とす
+ */
+.rp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+.rp-wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .rp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.rp-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* 必須の印。3 つしかないので、任意側ではなくこちらに付ける */
+.rp-req {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: #fdf1f1;
+  border-radius: 3px;
+}
+
+.rp-grid input,
+.rp-grid select,
+.rp-grid textarea {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.rp-grid textarea { resize: vertical; line-height: 1.5; }
+
+/* --- プリンターを探す欄 --- */
+/* label 要素ではないので、他の欄と同じ見た目を自分で作る */
+.rp-find {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.rp-find-hint { margin: 0; font-size: 11px; line-height: 1.5; }
+.rp-find-empty { margin: 2px 0 0; font-size: 12px; color: var(--danger); }
+
+/* 選んだあとは 1 台だけを出す。探す欄は引っ込める */
+.rp-find-picked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: #eef3f7;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.rp-find-picked button {
+  flex: none;
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rp-find-list {
+  /* 候補が伸びても入力欄が押し出されないよう、この中で送る */
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.rp-find-list li + li { border-top: 1px solid var(--line); }
+
+.rp-find-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13ch 18ch;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--ink);
+  background: var(--panel);
+  border: 0;
+  cursor: pointer;
+}
+.rp-find-item:hover { background: #f2f7fa; }
+.rp-find-name { min-width: 0; }
+.rp-find-sub { font-size: 11.5px; color: var(--muted); }
+
+.rp-find-more { padding: 7px 10px; font-size: 11.5px; background: #f7f9fb; }
+
+@media (max-width: 640px) {
+  /* 幅が足りないときは 1 台ぶんを縦に積む */
+  .rp-find-item { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+.rp :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.rp-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.rp-actions button {
+  padding: 9px 22px;
+  font: inherit;
+  font-size: 13px;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.rp-actions button.rp-plain {
+  color: var(--accent);
+  background: transparent;
+  border-color: var(--line);
+}
+.rp-actions button:disabled {
+  color: #ffffff;
+  background: #a7b3bd;
+  border-color: #a7b3bd;
+  cursor: not-allowed;
+}
+.rp-actions button.rp-plain:disabled { color: #a7b3bd; background: transparent; }
+
+/* --- メッセージ --- */
+.rp-msg {
+  margin: 14px 0 0;
+  padding: 10px 13px;
+  font-size: 13px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+.rp-msg-error { color: var(--danger); background: #fdf1f1; border-color: var(--danger); }
+.rp-msg-ok { color: #1d6b48; background: #eef8f2; border-color: #1d6b48; }
+
+/* --- 一覧 --- */
+.rp-hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); }
+.rp-empty { color: var(--muted); font-size: 13px; }
+
+.rp-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 240px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  scrollbar-gutter: stable;
+}
+.rp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.rp-table th,
+.rp-table td {
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.rp-table th {
+  padding: 0;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: #f7f9fb;
+  position: sticky;
+  top: 0;
+}
+.rp-table th button {
+  width: 100%;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-align: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.rp-table th button:hover { background: #eef3f7; color: var(--ink); }
+.rp-table th[aria-sort='ascending'] button,
+.rp-table th[aria-sort='descending'] button { color: var(--accent); }
+/* 押せない「操作」列だけは元の余白を戻す */
+.rp-table th:last-child { padding: 9px 12px; }
+.rp-arrow { margin-left: 4px; font-size: 9px; }
+.rp-table tbody tr:last-child td { border-bottom: 0; }
+
+/* 修理内容は長いので折り返して読ませる */
+.rp-detail {
+  white-space: normal;
+  min-width: 22ch;
+  max-width: 46ch;
+  line-height: 1.5;
+}
+
+/* 復旧していない履歴。編集中（rp-row-on）は後に書いて勝たせる */
+.rp-row-open td { background: #fdf7ea; }
+.rp-row-open td:first-child { box-shadow: inset 3px 0 0 #d99a2b; }
+.rp-row-on td { background: #cfe4ee; }
+
+.rp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  color: #8a4b0a;
+  background: #fdf3e6;
+  border-radius: 999px;
+}
+.rp-badge-done { color: #1d6b48; background: #eef8f2; }
+
+/* 対応区分。業者を呼んだ分は費用が出るので色を分ける */
+.rp-badge-vendor { color: #1f6f8b; background: #e9f2f6; }
+.rp-badge-inhouse { color: #4a5565; background: #eef1f4; }
+
+.rp-ops { display: flex; gap: 6px; }
+.rp-ops button {
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.rp-ops button.rp-del { color: var(--danger); }
+.rp-ops button:disabled { color: #a7b3bd; cursor: not-allowed; }

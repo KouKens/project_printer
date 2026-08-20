@@ -14,7 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrintersController = void 0;
 const common_1 = require("@nestjs/common");
+const bulk_create_printers_dto_1 = require("./dto/bulk-create-printers.dto");
 const create_printer_dto_1 = require("./dto/create-printer.dto");
+const probe_printer_dto_1 = require("./dto/probe-printer.dto");
 const page_counts_service_1 = require("./page-counts.service");
 const printers_service_1 = require("./printers.service");
 let PrintersController = class PrintersController {
@@ -30,8 +32,17 @@ let PrintersController = class PrintersController {
     findAll() {
         return this.service.findAll();
     }
+    probe(dto) {
+        return this.service.probe(dto);
+    }
+    createMany(dto) {
+        return this.service.createMany(dto);
+    }
     capture() {
         return this.pageCounts.captureAll();
+    }
+    findAllDaily(days, from, to) {
+        return this.pageCounts.findAllDaily(days, from, to);
     }
     findOne(id) {
         return this.service.findOne(id);
@@ -39,8 +50,8 @@ let PrintersController = class PrintersController {
     poll(id) {
         return this.service.poll(id);
     }
-    findDaily(id, days) {
-        return this.pageCounts.findDaily(id, days);
+    findDaily(id, days, from, to) {
+        return this.pageCounts.findDaily(id, days, from, to);
     }
     captureOne(id) {
         return this.pageCounts.captureOne(id);
@@ -61,11 +72,34 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PrintersController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Post)('probe'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [probe_printer_dto_1.ProbePrinterDto]),
+    __metadata("design:returntype", void 0)
+], PrintersController.prototype, "probe", null);
+__decorate([
+    (0, common_1.Post)('bulk'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [bulk_create_printers_dto_1.BulkCreatePrintersDto]),
+    __metadata("design:returntype", void 0)
+], PrintersController.prototype, "createMany", null);
+__decorate([
     (0, common_1.Post)('page-counts/capture'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], PrintersController.prototype, "capture", null);
+__decorate([
+    (0, common_1.Get)('page-counts'),
+    __param(0, (0, common_1.Query)('days', new common_1.DefaultValuePipe(30), common_1.ParseIntPipe)),
+    __param(1, (0, common_1.Query)('from')),
+    __param(2, (0, common_1.Query)('to')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, String]),
+    __metadata("design:returntype", void 0)
+], PrintersController.prototype, "findAllDaily", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
@@ -84,8 +118,10 @@ __decorate([
     (0, common_1.Get)(':id/page-counts'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('days', new common_1.DefaultValuePipe(30), common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('from')),
+    __param(3, (0, common_1.Query)('to')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [Number, Number, String, String]),
     __metadata("design:returntype", void 0)
 ], PrintersController.prototype, "findDaily", null);
 __decorate([

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { request } from '../lib/request';
 import './PrinterScreen.css';
-
-// 既定は相対パス。他の画面と同じく vite の proxy 経由で API に届く
-const API = import.meta.env.VITE_API_BASE ?? '/api';
 
 type SupplyReading = {
   id: number;
@@ -28,17 +26,46 @@ type Printer = {
   readings: SupplyReading[];
 };
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-  const body = await res.json().catch(() => null);
-  if (!res.ok) {
-    const message = Array.isArray(body?.message) ? body.message.join(' / ') : body?.message;
-    throw new Error(message ?? `通信に失敗しました (HTTP ${res.status})`);
+/** 一括登録の 1 行分の結果 */
+type BulkResult = {
+  ipAddress: string;
+  status: 'registered' | 'failed';
+  model: string | null;
+  location: string | null;
+  message?: string;
+};
+
+/**
+ * 貼り付けた文字列を 1 行 1 台として読む。
+ * 「IP」だけの行と「IP,設置場所」の行の両方を受ける。
+ * 区切りはカンマ・タブ・全角カンマのいずれでもよい。
+ * IP に見えない行（見出しの「IP」や「USB接続」など）は落とす。
+ */
+function parseBulkInput(text: string): { entries: { ipAddress: string; location?: string }[]; skipped: string[] } {
+  const entries: { ipAddress: string; location?: string }[] = [];
+  const skipped: string[] = [];
+  const seen = new Set<string>();
+
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue;
+
+    const [rawIp, ...rest] = trimmed.split(/[,\t，]/);
+    const ip = rawIp.trim();
+
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
+      skipped.push(trimmed);
+      continue;
+    }
+    // 同じ IP を 2 回投げても意味がない
+    if (seen.has(ip)) continue;
+    seen.add(ip);
+
+    const place = rest.join(',').trim();
+    entries.push(place ? { ipAddress: ip, location: place } : { ipAddress: ip });
   }
-  return body as T;
+
+  return { entries, skipped };
 }
 
 export default function PrinterScreen() {
@@ -49,6 +76,10 @@ export default function PrinterScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const [bulkText, setBulkText] = useState('');
+  const [useLedger, setUseLedger] = useState(true);
+  const [bulkResults, setBulkResults] = useState<BulkResult[] | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -78,6 +109,44 @@ export default function PrinterScreen() {
       setNotice(`${saved.ipAddress}（${saved.model ?? '機種名なし'}）を登録しました`);
       setIpAddress('');
       setLocation('');
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 貼り付けた IP をまとめて登録する。応答しない機器があっても他は続く */
+  const submitBulk = async () => {
+    const { entries, skipped } = parseBulkInput(bulkText);
+
+    if (entries.length === 0) {
+      setError('IP アドレスとして読める行がありません');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    setBulkResults(null);
+
+    try {
+      const results = await request<BulkResult[]>('/printers/bulk', {
+        method: 'POST',
+        body: JSON.stringify({
+          printers: entries,
+          community: community.trim() || undefined,
+          fillLocationFromLedger: useLedger,
+        }),
+      });
+
+      setBulkResults(results);
+      const ok = results.filter((r) => r.status === 'registered').length;
+      setNotice(
+        `${ok} 台を登録しました（応答なし ${results.length - ok} 台` +
+          `${skipped.length > 0 ? ` / IP として読めず除外 ${skipped.length} 行` : ''}）`,
+      );
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -142,8 +211,64 @@ export default function PrinterScreen() {
         </button>
       </section>
 
+      <section className="pr-bulk">
+        <h2>まとめて登録</h2>
+        <p>
+          1 行に 1 台。「IP アドレス」だけ、または「IP アドレス,設置場所」の形で貼り付けます。
+          IP として読めない行は読み飛ばします。
+        </p>
+
+        <textarea
+          value={bulkText}
+          onChange={(e) => setBulkText(e.target.value)}
+          rows={7}
+          placeholder={'172.31.13.211,予約外来（１診）\n172.31.32.201\n172.31.10.208'}
+          spellCheck={false}
+        />
+
+        <label className="pr-check">
+          <input
+            type="checkbox"
+            checked={useLedger}
+            onChange={(e) => setUseLedger(e.target.checked)}
+          />
+          <span>
+            設置場所が空の機器は、端末台帳の部署を入れる（シリアルで突き合わせ）
+          </span>
+        </label>
+
+        <button onClick={() => void submitBulk()} disabled={busy || bulkText.trim() === ''}>
+          {busy ? '登録中…' : 'まとめて登録'}
+        </button>
+      </section>
+
       {error && <p className="pr-msg pr-msg-error">{error}</p>}
       {notice && <p className="pr-msg pr-msg-ok">{notice}</p>}
+
+      {bulkResults && (
+        <div className="pr-bulk-result">
+          <table>
+            <thead>
+              <tr>
+                <th>IP アドレス</th>
+                <th>結果</th>
+                <th>機種 / 理由</th>
+                <th>設置場所</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bulkResults.map((row) => (
+                <tr key={row.ipAddress} className={row.status === 'failed' ? 'pr-ng' : undefined}>
+                  <td className="pr-ip-cell">{row.ipAddress}</td>
+                  <td>{row.status === 'registered' ? '登録' : '応答なし'}</td>
+                  <td>{row.status === 'registered' ? (row.model ?? '—') : (row.message ?? '—')}</td>
+                  <td>{row.location ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <section className="pr-list">
         {printers.length === 0 && (

@@ -14,6 +14,7 @@ enum TonerAction {
   RECEIVE // 搬入（在庫加算）
   ISSUE // 持ち出し（在庫減算）
   DISPOSE // 廃棄（搬入累計の範囲内でのみ記録）
+  ADJUST // 棚卸し調整（実際に数えた本数に在庫を合わせる）
 
   @@map("toner_action")
 }
@@ -24,6 +25,77 @@ enum SnmpVersion {
   V2C @map("2c")
 
   @@map("snmp_version")
+}
+
+/// 修理の分類。
+/// 前半 4 つは現場の分類そのまま。後半はこの台数で実際に起きている故障を足した
+enum RepairCategory {
+  /// パーツ交換表示
+  PART_REPLACEMENT
+  /// センサー汚れ
+  SENSOR_DIRT
+  /// 用紙詰まり
+  PAPER_JAM
+  /// インクのかすれ・色合い不調
+  PRINT_QUALITY
+  /// サービスコール（SC 表示で停止）
+  SERVICE_CALL
+  /// 給紙不良（重送・給紙されない）。詰まりとは原因が違う
+  FEED_FAILURE
+  /// 定着不良（印字が剥がれる・こすれて落ちる）
+  FUSING_FAILURE
+  /// ネットワーク・通信不良（印刷指示が届かない）
+  NETWORK
+  /// 異音・異臭
+  NOISE_SMELL
+  /// 電源が入らない
+  NO_POWER
+  /// その他
+  OTHER
+
+  @@map("repair_category")
+}
+
+/// 誰が対応したか。業者を呼んだか、自分たちで直したか
+enum RepairHandler {
+  /// 自分で対応
+  IN_HOUSE
+  /// 業者を呼んだ
+  VENDOR
+
+  @@map("repair_handler")
+}
+
+/// 修理の状態。現場の区分をそのまま持つ
+enum RepairStatus {
+  /// 調査中
+  INVESTIGATING
+  /// 見積中
+  QUOTING
+  /// 決算中
+  SETTLING
+  /// 発送済
+  SHIPPED
+  /// 受取済
+  RECEIVED
+  /// 完了
+  DONE
+
+  @@map("repair_status")
+}
+
+/// 枚数の集計表で、その機器が何行を占めるか
+enum CountLayout {
+  /// 合計の 1 行
+  TOTAL
+  /// モノクロ → カラー の 2 行
+  MONO_COLOR
+  /// カラー → モノクロ の 2 行。
+  /// 集計表の 3 台（002・021・022）が実際にこの順で入っている。
+  /// 機器の申告はモノクロが多いほうだが、表の並びに合わせないと貼り付けがずれる
+  COLOR_MONO
+
+  @@map("count_layout")
 }
 
 /// 注文の状態
@@ -37,16 +109,73 @@ enum OrderStatus {
 
 /// トナーマスタ
 model Toner {
-  id        String   @id
-  name      String?
+  id   String  @id
+  name String?
+
+  /// 色。「ブラック」「ライトシアン」「4色パック」など一覧の表記をそのまま持つ。
+  /// 色の無い消耗品（メンテナンスボックス・廃トナーボトル）は null
+  color String?
+
+  /// リサイクル品・互換品か。純正なら false
+  recycled Boolean @default(false)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  stock   TonerStock?
-  entries TonerEntry[]
-  orders  TonerOrder[]
+  stock    TonerStock?
+  entries  TonerEntry[]
+  orders   TonerOrder[]
+  printers TonerPrinter[]
+  prices   TonerPrice[]
 
   @@map("toners")
+}
+
+/// トナーと機器の対応。
+/// 1 種類のトナーを複数台で共用する（P500H は P501 が 14 台）ので中間テーブルにする。
+/// 逆に 1 台が複数のトナーを使う（カラー機の BK/C/M/Y）ため、多対多になる。
+///
+/// 相手は SNMP の実機マスタ（printers）ではなく**端末台帳**にしてある。
+/// FAX や USB 接続機など SNMP に応答しない機器も台帳には載っており、
+/// 実機マスタに寄せると台帳 62 件のうち 19 件が紐づけ不能になるため
+model TonerPrinter {
+  tonerId        String @map("toner_id")
+  printerAssetId Int    @map("printer_asset_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  toner Toner        @relation(fields: [tonerId], references: [id], onDelete: Cascade)
+  asset PrinterAsset @relation(fields: [printerAssetId], references: [id], onDelete: Cascade)
+
+  @@id([tonerId, printerAssetId])
+  @@index([printerAssetId])
+  @@map("toner_printers")
+}
+
+/// 価格の履歴。
+/// 値が変わったら行を足し、過去の行は消さない。
+/// ある日の価格は「適用開始日がその日以前で最も新しい行」を見る。
+/// こうしないと、過去の使用実績を今の単価で計算してしまう
+model TonerPrice {
+  id      Int    @id @default(autoincrement())
+  tonerId String @map("toner_id")
+
+  /// 税別価格（円）。円未満を扱わないので整数
+  price Int
+
+  /// この価格の適用開始日。同じトナーで同じ日を二重に持たない
+  effectiveFrom DateTime @map("effective_from") @db.Date
+
+  /// 覚書。値上げの理由や見積の番号を残す用
+  note String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  toner Toner @relation(fields: [tonerId], references: [id], onDelete: Cascade)
+
+  @@unique([tonerId, effectiveFrom])
+  @@index([tonerId, effectiveFrom])
+  @@map("toner_prices")
 }
 
 /// 在庫テーブル（品番ごとの現在数と累計）
@@ -148,15 +277,125 @@ model Printer {
   /// 応答がなかったときの理由
   lastError String? @map("last_error")
 
+  /// 最後に問い合わせた時刻。失敗しても進む
   lastPolledAt DateTime? @map("last_polled_at")
+
+  /// 最後に実際に取得できた時刻。
+  /// 応答がなくても前回の値は残すので、表示中の情報がいつのものかはこちらで見る
+  lastSuccessAt DateTime? @map("last_success_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  readings  SupplyReading[]
-  pageDays  PageCountDaily[]
+  /// 操作パネルに出ている文字（prtConsoleDisplayBufferText）。
+  /// 警告表を持たない機種でも、交換時期はここに出ることがある
+  consoleText String? @map("console_text")
+
+  readings SupplyReading[]
+  alerts   PrinterAlert[]
+  pageDays PageCountDaily[]
 
   @@map("printers")
+}
+
+/// 機器が出している警告。部品の交換案内や異常。
+/// 解消した警告を残さないため、ポーリングのたびに入れ替える
+model PrinterAlert {
+  id        Int @id @default(autoincrement())
+  printerId Int @map("printer_id")
+
+  /// prtAlertTable の行番号
+  alertIndex Int @map("alert_index")
+
+  /// prtAlertSeverityLevel。3 重大 / 4 警告 / 5 状態変化。
+  /// 規格外の値（0 など）を返す機種があるので、これだけで判断しない
+  severity Int?
+
+  /// prtAlertGroup。どの部位に対する警告か
+  alertGroup Int? @map("alert_group")
+
+  /// prtAlertGroupIndex。group が消耗品(11)のとき、対象の supply_index を指す。
+  /// これでトナーの警告か交換部品の警告かを見分けられる。-1 は特定不可
+  groupIndex Int? @map("group_index")
+
+  /// prtAlertCode。同じ意味でもメーカーで値が違うため判断には使わない
+  code Int?
+
+  /// prtAlertDescription。実際に読めるのはこれ
+  description String?
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  printer Printer @relation(fields: [printerId], references: [id], onDelete: Cascade)
+
+  @@unique([printerId, alertIndex])
+  @@map("printer_alerts")
+}
+
+/// 端末台帳。契約・保守まわりの手入力の情報を持つ。
+/// SNMP で取れる値（残量・累計枚数・機種）はここには持たない。
+/// あちらは実機の今の状態で、こちらは人が管理する台帳なので寿命が違う
+model PrinterAsset {
+  id Int @id @default(autoincrement())
+
+  /// 部署
+  department String?
+
+  /// 管理番号。「No.」の列
+  no String?
+
+  /// SNMP の宛先。USB 接続の機器は持たないので null を許す。
+  /// 台帳の実データに同じ IP を持つ機器が実在するため一意にはしない
+  ipAddress String? @map("ip_address")
+
+  maker String?
+
+  /// 型番。同じメーカーでも機種で消耗品が変わるので台帳側にも持つ
+  model String?
+
+  serialNumber String? @map("serial_number")
+
+  /// 購入日。@db.Date なので UTC 成分で読み書きする
+  purchasedOn DateTime? @map("purchased_on") @db.Date
+
+  /// 契約番号
+  contractNo String? @map("contract_no")
+
+  /// 保守契約の有無。台帳の「有」「×」をそのまま持つ
+  maintContract String? @map("maint_contract")
+
+  maintStartOn DateTime? @map("maint_start_on") @db.Date
+  maintEndOn   DateTime? @map("maint_end_on") @db.Date
+
+  /// 保守取引日
+  maintDealOn DateTime? @map("maint_deal_on") @db.Date
+
+  /// 保守金額（円）。円未満を扱わないので整数
+  maintFee Int? @map("maint_fee")
+
+  /// 備考。「初期」「リース」など、日付や金額の欄に入っていた数値でない値の受け皿
+  note String?
+
+  /// 枚数の集計表でこの機器が占める行。既定は合計の 1 行。
+  ///
+  /// **実機の情報からは決められないので台帳に持つ。** 一度も応答していない機器が
+  /// 19 台あり、カラー機かどうかを SNMP から判断できない。導出に頼ると行数がずれ、
+  /// エクセルへ貼ったとき以降の行が全部ずれる。
+  /// 2 行の機器で上下どちらがモノクロかも表ごとに違うため、順序まで持つ
+  countLayout CountLayout @default(TOTAL) @map("count_layout")
+
+  repairs RepairRecord[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// 更新日。一覧の「更新」ボタンでも現在時刻に進む
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  toners TonerPrinter[]
+
+  @@index([department])
+  @@index([ipAddress])
+  @@map("printer_assets")
 }
 
 /// 日次の印刷枚数。累計カウンタのスナップショットと、そこから出した 1 日分
@@ -170,9 +409,21 @@ model PageCountDaily {
   /// date の終了時点で読んだ累計印刷枚数（prtMarkerLifeCount）
   total Int
 
+  /// 同時点の累計モノクロ枚数。内訳を返さない機種は null
+  totalMono Int? @map("total_mono")
+
+  /// 同時点の累計カラー枚数。内訳を返さない機種は null
+  totalColor Int? @map("total_color")
+
   /// date 当日の印刷枚数。前回値がない初回と、
   /// カウンタが巻き戻った（機器交換・リセット）ときは null
   pages Int?
+
+  /// 同期間のモノクロ枚数。内訳を返さない機種は null
+  monoPages Int? @map("mono_pages")
+
+  /// 同期間のカラー枚数。内訳を返さない機種は null
+  colorPages Int? @map("color_pages")
 
   /// pages が何日分か。1 なら純粋に date 当日の分。
   /// 取得が飛ぶと 2 以上になり、その日数分をまとめた値になる
@@ -199,6 +450,14 @@ model SupplyReading {
   /// prtMarkerSuppliesDescription
   name String
 
+  /// prtMarkerSuppliesType。名前の表記はメーカーごとに違うので、分類はこれで行う。
+  /// 3 トナー / 4 廃トナー / 5 インク / 6 インクカートリッジ / 9 感光体（ドラム）/
+  /// 15 定着 / 20 転写ユニット / 21 トナーカートリッジ / 1 その他
+  supplyType Int? @map("supply_type")
+
+  /// prtMarkerSuppliesClass。4 は溜まる側（廃トナー等）で、残量は空き容量を指す
+  supplyClass Int? @map("supply_class")
+
   /// 色名（prtMarkerColorantValue）。黒一色の機種では null
   colorant String?
 
@@ -217,4 +476,46 @@ model SupplyReading {
 
   @@unique([printerId, supplyIndex])
   @@map("supply_readings")
+}
+
+/// 修理履歴。1 件の不具合とその対応をまとめて持つ。
+///
+/// 対象の機器は**端末台帳**を指す。SNMP の実機マスタではなく台帳にしたのは
+/// トナーの紐づけと同じ理由で、FAX や USB 接続機など SNMP に応答しない機器も
+/// 修理の対象になるため
+model RepairRecord {
+  id Int @id @default(autoincrement())
+
+  /// 担当。対応した人の名前。あとから思い出して埋めることがあるので任意
+  assignee String?
+
+  /// 対象の機器。台帳から選ぶ。必須
+  printerAssetId Int @map("printer_asset_id")
+
+  /// 発生日。@db.Date なので UTC 成分で読み書きする。
+  /// いつ壊れたか分からないまま直すことがあるので任意
+  occurredOn DateTime? @map("occurred_on") @db.Date
+
+  /// 修理分類。分類しきれない時点で残せるよう任意
+  category RepairCategory?
+
+  /// 対応区分。既存の履歴は自分で対応した扱いにするので既定は IN_HOUSE。必須
+  handledBy RepairHandler @default(IN_HOUSE) @map("handled_by")
+
+  /// 修理内容。何が起きて何をしたか。任意
+  detail String?
+
+  /// 復旧日。必須
+  restoredOn DateTime @map("restored_on") @db.Date
+
+  status RepairStatus @default(INVESTIGATING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  asset PrinterAsset @relation(fields: [printerAssetId], references: [id], onDelete: Cascade)
+
+  @@index([occurredOn])
+  @@index([printerAssetId, occurredOn])
+  @@map("repair_records")
 }

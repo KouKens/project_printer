@@ -1,2 +1,9 @@
 # Claude Code の個人設定。「常に許可」の選択がここに溜まる
 .claude/settings.local.json
+
+# フロントのビルド出力。配布はサーバー上で npm run build して作る（deploy/README.md）。
+# API の dist は配置用にコミットしているので、こちらだけ無視する
+printer_manager/dist/
+
+# tsc -b の中間ファイル
+*.tsbuildinfo

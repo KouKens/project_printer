@@ -16,25 +16,25 @@ export declare class TonerOrdersController {
             name: string | null;
         };
     } & {
-        id: number;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
+        status: import("../generated/prisma/enums").OrderStatus;
         tonerId: string;
         quantity: number;
         orderedAt: Date;
-        status: import("../generated/prisma/enums").OrderStatus;
     })[]>;
     findPending(): import("../generated/prisma/internal/prismaNamespace").PrismaPromise<({
         toner: {
             name: string | null;
         };
     } & {
-        id: number;
         createdAt: Date;
         updatedAt: Date;
+        id: number;
+        status: import("../generated/prisma/enums").OrderStatus;
         tonerId: string;
         quantity: number;
         orderedAt: Date;
-        status: import("../generated/prisma/enums").OrderStatus;
     })[]>;
 }

@@ -116,6 +116,19 @@
   gap: 28px;
 }
 
+/* 一覧表の画面。620px には収まらないので窓いっぱいを使い、
+   余白は各画面側で持たせる。min-width: 0 が無いと flex の子が
+   中身の幅まで膨らんで、表の overflow-x が効かなくなる */
+.station__main--wide {
+  max-width: none;
+  padding: 0;
+  min-width: 0;
+}
+
+.station__main--wide > * {
+  min-width: 0;
+}
+
 .slip {
   background: var(--card);
   border: 1px solid var(--rule);
@@ -270,6 +283,182 @@
 .row--active .row__label {
   color: var(--cyan-deep);
 }
+
+/* --- まとめて受け付ける。明細は区分ごとで、タブを移ると捨てる --- */
+.batch__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.batch__toggle input { width: 16px; height: 16px; }
+.batch__note { font-size: 12px; color: var(--ink-3); }
+
+.batch {
+  padding: 16px 28px 18px;
+  border-bottom: 1px solid var(--rule);
+  background: #fbfcfd;
+}
+.batch__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+}
+.batch__count {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+}
+.batch__empty { margin: 0; font-size: 12px; color: var(--ink-3); }
+.batch__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.batch__item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+.batch__id {
+  flex: none;
+  min-width: 140px;
+  font-family: var(--font-mono);
+}
+.batch__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+.batch__qty {
+  flex: none;
+  min-width: 52px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.batch__remove {
+  flex: none;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--alert);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* --- トナーを探す欄。番号付きの行とは別扱いなのでレールに載せない --- */
+.finder {
+  padding: 16px 28px 18px 70px;
+  border-bottom: 1px solid var(--rule);
+  background: #fafcfd;
+}
+.finder__label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+}
+.finder__input {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+.finder__input:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+.finder__hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+.finder__empty {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--alert);
+}
+.finder__list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* 候補は 1 行 1 件。品番・名称・設置場所・在庫を左から並べる */
+.finder__item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.finder__item:hover { background: var(--cyan-soft); }
+.finder__item--on { border-color: var(--cyan); background: var(--cyan-soft); }
+.finder__id {
+  flex: none;
+  min-width: 120px;
+  font-family: var(--font-mono);
+}
+.finder__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.finder__place { flex: none; font-size: 12px; color: var(--ink-3); }
+.finder__stock {
+  flex: none;
+  min-width: 56px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.finder__more { padding: 4px 10px; font-size: 12px; color: var(--ink-3); }
 
 .row__tag {
   padding: 2px 6px;

@@ -14,7 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TonerEntriesController = void 0;
 const common_1 = require("@nestjs/common");
+const bulk_toner_entry_dto_1 = require("./dto/bulk-toner-entry.dto");
 const create_toner_entry_dto_1 = require("./dto/create-toner-entry.dto");
+const stock_take_dto_1 = require("./dto/stock-take.dto");
 const toner_entries_service_1 = require("./toner-entries.service");
 let TonerEntriesController = class TonerEntriesController {
     service;
@@ -24,11 +26,17 @@ let TonerEntriesController = class TonerEntriesController {
     create(dto) {
         return this.service.create(dto);
     }
+    createMany(dto) {
+        return this.service.bulk(dto);
+    }
     findRecent() {
         return this.service.findRecent();
     }
     findStock() {
         return this.service.findStock();
+    }
+    stockTake(dto) {
+        return this.service.stockTake(dto);
     }
 };
 exports.TonerEntriesController = TonerEntriesController;
@@ -39,6 +47,13 @@ __decorate([
     __metadata("design:paramtypes", [create_toner_entry_dto_1.CreateTonerEntryDto]),
     __metadata("design:returntype", void 0)
 ], TonerEntriesController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('bulk'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [bulk_toner_entry_dto_1.BulkTonerEntryDto]),
+    __metadata("design:returntype", void 0)
+], TonerEntriesController.prototype, "createMany", null);
 __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
@@ -51,6 +66,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], TonerEntriesController.prototype, "findStock", null);
+__decorate([
+    (0, common_1.Post)('stock-take'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [stock_take_dto_1.StockTakeDto]),
+    __metadata("design:returntype", void 0)
+], TonerEntriesController.prototype, "stockTake", null);
 exports.TonerEntriesController = TonerEntriesController = __decorate([
     (0, common_1.Controller)('toner-entries'),
     __metadata("design:paramtypes", [toner_entries_service_1.TonerEntriesService])

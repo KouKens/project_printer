@@ -1,0 +1,190 @@
+/* 棚卸し。一覧の作りは他の表の画面に合わせてある */
+.st {
+  --ink: #16202b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --panel: #ffffff;
+  --accent: #1f6f8b;
+  --danger: #b23a3a;
+  --plus: #1d6b48;
+
+  width: 100%;
+  min-width: 0;
+  padding: 32px 20px 64px;
+  box-sizing: border-box;
+  color: var(--ink);
+}
+
+.st-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.st-head p {
+  max-width: 78ch;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- 操作 --- */
+.st-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.st-tools label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.st-tools input,
+.st-tools select {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.st-tools button {
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 13px;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.st-tools button.st-sub {
+  color: var(--accent);
+  background: transparent;
+  border-color: var(--line);
+}
+.st-tools button:disabled {
+  background: #9fb4bd;
+  border-color: transparent;
+  color: #fff;
+  cursor: not-allowed;
+}
+.st input:focus-visible,
+.st select:focus-visible,
+.st button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* --- メッセージ --- */
+.st-msg {
+  margin: 0 0 14px;
+  padding: 10px 13px;
+  font-size: 13px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+.st-msg-error { color: var(--danger); background: #fdf1f1; border-color: var(--danger); }
+.st-msg-ok { color: #1d6b48; background: #eef8f2; border-color: #1d6b48; }
+
+/* --- 合計 --- */
+.st-summary {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin: 0 0 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.st-summary dt { color: var(--muted); }
+.st-summary dd {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 直前の調整 --- */
+.st-result {
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.st-result h2 { margin: 0 0 8px; font-size: 14px; letter-spacing: 0.04em; }
+.st-result ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.st-result li {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+.st-result .st-rid { min-width: 150px; }
+.st-result .st-rname { min-width: 280px; color: var(--muted); }
+
+/* --- 一覧 --- */
+.st-empty { color: var(--muted); font-size: 13px; }
+.st-table-wrap {
+  overflow: auto;
+  max-height: 62vh;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.st-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--panel);
+}
+.st-table th,
+.st-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.st-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f4f7f9;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--muted);
+}
+.st-table tbody tr:hover { background: #f7fafc; }
+/* 差のある行は目で追えるようにする。棚卸しはここだけ見れば済む */
+.st-row-diff { background: #fdf6e8; }
+.st-num { text-align: right; font-variant-numeric: tabular-nums; }
+.st-mono { font-variant-numeric: tabular-nums; }
+.st-muted { color: var(--muted); }
+.st-table input[type='number'] {
+  width: 74px;
+  padding: 4px 7px;
+  font: inherit;
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.st-plus { color: var(--plus); font-weight: 600; }
+.st-minus { color: var(--danger); font-weight: 600; }
+.st-same { color: var(--muted); }

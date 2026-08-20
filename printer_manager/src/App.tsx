@@ -1,22 +1,54 @@
 import { useEffect, useState } from 'react'
 import type { ComponentType } from 'react'
 import './App.css'
+import AssetScreen from './screens/AssetScreen'
 import OrderScreen from './screens/OrderScreen'
+import PageCountScreen from './screens/PageCountScreen'
+import PrinterListScreen from './screens/PrinterListScreen'
 import PrinterScreen from './screens/PrinterScreen'
 import ReceptionScreen from './screens/ReceptionScreen'
+import RepairScreen from './screens/RepairScreen'
+import StockTakeScreen from './screens/StockTakeScreen'
+import TonerScreen from './screens/TonerScreen'
 
-type View = 'reception' | 'order' | 'printer'
+type View =
+  | 'reception'
+  | 'order'
+  | 'printer'
+  | 'printers'
+  | 'pages'
+  | 'asset'
+  | 'toner'
+  | 'stocktake'
+  | 'repair'
 
-const VIEWS: { value: View; label: string }[] = [
+/**
+ * wide = 表を並べる画面。
+ * 受付・注文は伝票を模した 620px の幅に収めるが、一覧は列が多く収まらないので
+ * 窓いっぱいまで使う。
+ */
+const VIEWS: { value: View; label: string; wide?: boolean }[] = [
   { value: 'reception', label: '受付' },
   { value: 'order', label: '注文' },
   { value: 'printer', label: '機器' },
+  { value: 'printers', label: '機器一覧', wide: true },
+  { value: 'pages', label: '印刷枚数', wide: true },
+  { value: 'asset', label: '端末情報', wide: true },
+  { value: 'toner', label: 'トナー登録', wide: true },
+  { value: 'stocktake', label: '棚卸し', wide: true },
+  { value: 'repair', label: '修理履歴', wide: true },
 ]
 
 const SCREENS: Record<View, ComponentType> = {
   reception: ReceptionScreen,
   order: OrderScreen,
   printer: PrinterScreen,
+  printers: PrinterListScreen,
+  pages: PageCountScreen,
+  asset: AssetScreen,
+  toner: TonerScreen,
+  stocktake: StockTakeScreen,
+  repair: RepairScreen,
 }
 
 const timeFormat = new Intl.DateTimeFormat('ja-JP', {
@@ -44,6 +76,7 @@ export default function App() {
   const [view, setView] = useState<View>('reception')
   const now = useClock()
   const Screen = SCREENS[view]
+  const wide = VIEWS.find((item) => item.value === view)?.wide === true
 
   return (
     <div className="station">
@@ -70,7 +103,7 @@ export default function App() {
         </p>
       </header>
 
-      <main className="station__main">
+      <main className={`station__main${wide ? ' station__main--wide' : ''}`}>
         <Screen />
       </main>
     </div>

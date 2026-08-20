@@ -23,6 +23,25 @@ export * from './enums.js';
  */
 export type Toner = Prisma.TonerModel
 /**
+ * Model TonerPrinter
+ * トナーと機器の対応。
+ * 1 種類のトナーを複数台で共用する（P500H は P501 が 14 台）ので中間テーブルにする。
+ * 逆に 1 台が複数のトナーを使う（カラー機の BK/C/M/Y）ため、多対多になる。
+ * 
+ * 相手は SNMP の実機マスタ（printers）ではなく**端末台帳**にしてある。
+ * FAX や USB 接続機など SNMP に応答しない機器も台帳には載っており、
+ * 実機マスタに寄せると台帳 62 件のうち 19 件が紐づけ不能になるため
+ */
+export type TonerPrinter = Prisma.TonerPrinterModel
+/**
+ * Model TonerPrice
+ * 価格の履歴。
+ * 値が変わったら行を足し、過去の行は消さない。
+ * ある日の価格は「適用開始日がその日以前で最も新しい行」を見る。
+ * こうしないと、過去の使用実績を今の単価で計算してしまう
+ */
+export type TonerPrice = Prisma.TonerPriceModel
+/**
  * Model TonerStock
  * 在庫テーブル（品番ごとの現在数と累計）
  */
@@ -43,6 +62,19 @@ export type TonerOrder = Prisma.TonerOrderModel
  */
 export type Printer = Prisma.PrinterModel
 /**
+ * Model PrinterAlert
+ * 機器が出している警告。部品の交換案内や異常。
+ * 解消した警告を残さないため、ポーリングのたびに入れ替える
+ */
+export type PrinterAlert = Prisma.PrinterAlertModel
+/**
+ * Model PrinterAsset
+ * 端末台帳。契約・保守まわりの手入力の情報を持つ。
+ * SNMP で取れる値（残量・累計枚数・機種）はここには持たない。
+ * あちらは実機の今の状態で、こちらは人が管理する台帳なので寿命が違う
+ */
+export type PrinterAsset = Prisma.PrinterAssetModel
+/**
  * Model PageCountDaily
  * 日次の印刷枚数。累計カウンタのスナップショットと、そこから出した 1 日分
  */
@@ -52,3 +84,12 @@ export type PageCountDaily = Prisma.PageCountDailyModel
  * トナー等の残量。ポーリングのたびに上書きする
  */
 export type SupplyReading = Prisma.SupplyReadingModel
+/**
+ * Model RepairRecord
+ * 修理履歴。1 件の不具合とその対応をまとめて持つ。
+ * 
+ * 対象の機器は**端末台帳**を指す。SNMP の実機マスタではなく台帳にしたのは
+ * トナーの紐づけと同じ理由で、FAX や USB 接続機など SNMP に応答しない機器も
+ * 修理の対象になるため
+ */
+export type RepairRecord = Prisma.RepairRecordModel

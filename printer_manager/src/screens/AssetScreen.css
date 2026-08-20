@@ -1,0 +1,370 @@
+.as {
+  --ink: #16202b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --panel: #ffffff;
+  --accent: #1f6f8b;
+  --danger: #b23a3a;
+
+  /* 列が多いので窓幅をそのまま使う */
+  width: 100%;
+  min-width: 0;
+  padding: 32px 20px 64px;
+  box-sizing: border-box;
+  color: var(--ink);
+}
+
+.as-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.as-head p {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- 入力フォーム --- */
+.as-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 16px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.as-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.as-form input,
+.as-form select {
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.as-form .as-wide { grid-column: span 2; }
+
+/* 保守は入力させず、保守終了日からの判定を出すだけ。入力欄と同じ背丈で並べる */
+.as-form .as-derived {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.as-form .as-derived p {
+  margin: 0;
+  padding: 9px 11px;
+  font-size: 14px;
+  color: var(--ink);
+  background: #f2f4f7;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.as-form input:focus-visible,
+.as-form select:focus-visible,
+.as button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.as-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.as-actions button {
+  padding: 10px 22px;
+  font: inherit;
+  font-size: 14px;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.as-actions button.as-sub {
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.as-actions button:disabled {
+  background: #9fb4bd;
+  color: #fff;
+  border-color: transparent;
+  cursor: not-allowed;
+}
+.as-editing {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --- メッセージ --- */
+.as-msg {
+  margin: 14px 0 0;
+  padding: 10px 13px;
+  font-size: 13px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+.as-msg-error { color: var(--danger); background: #fdf1f1; border-color: var(--danger); }
+.as-msg-ok { color: #1d6b48; background: #eef8f2; border-color: #1d6b48; }
+
+/* --- 実機の取得結果（保存しない） --- */
+.as-result {
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+}
+.as-result-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.as-ip-label {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 15px;
+  font-weight: 600;
+}
+.as-model { flex: 1; font-size: 13px; color: var(--muted); }
+.as-badge {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--accent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.as-meta {
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px 18px;
+  font-size: 12px;
+}
+.as-meta dt { color: var(--muted); }
+.as-meta dd {
+  margin: 1px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12.5px;
+}
+
+.as-chip {
+  padding: 1px 7px;
+  font-family: system-ui, sans-serif;
+  font-size: 10.5px;
+  border-radius: 999px;
+}
+.as-chip-ok { color: #1d6b48; background: #eef8f2; }
+.as-chip-ng { color: var(--danger); background: #fdf1f1; }
+
+/* --- 消耗品バー --- */
+.as-supplies {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 7px;
+}
+.as-supplies li {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.4fr) 3fr 56px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.as-supply-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.as-bar { height: 7px; background: #e7ecf1; border-radius: 4px; overflow: hidden; }
+.as-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+.as-supply-pct {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.as-note {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* --- 保存済み一覧 --- */
+.as-list { margin-top: 32px; }
+.as-list h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+}
+/* 行の色分けの凡例。見本は行と同じ「背景＋左端の帯」で作る */
+.as-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px 18px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+.as-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.as-swatch {
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.as-swatch-expired { background: #fdf7ea; border-left: 3px solid #d99a2b; }
+.as-swatch-none { background: #dfe6eb; border-left: 3px solid #8a9aa8; }
+.as-swatch-bad { background: #f8d5d5; border-left: 3px solid #962f2f; }
+/* 補足はひとまとまりで折り返したいので、行いっぱいを取る */
+.as-legend-note { flex-basis: 100%; color: var(--muted); font-size: 11.5px; }
+
+.as-hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); }
+.as-empty { color: var(--muted); font-size: 13px; }
+
+/*
+ * 縦も箱の中でスクロールさせる。ページ全体に任せると横スクロールバーが
+ * 表の最下端に付いてしまい、47 行あると掴めなくなる。見出しは sticky で残す。
+ */
+.as-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 300px);
+  min-height: 220px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  scrollbar-gutter: stable;
+  scrollbar-color: #b0bdc8 #eef2f5;
+}
+
+/* 既定の細いバーだと横に動かせることに気づけないので、太めに出す */
+.as-table-wrap::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
+}
+.as-table-wrap::-webkit-scrollbar-track {
+  background: #eef2f5;
+  border-radius: 0 0 6px 6px;
+}
+.as-table-wrap::-webkit-scrollbar-thumb {
+  background: #b0bdc8;
+  border: 3px solid #eef2f5;
+  border-radius: 7px;
+}
+.as-table-wrap::-webkit-scrollbar-thumb:hover { background: #90a0ad; }
+.as-table-wrap::-webkit-scrollbar-corner { background: #eef2f5; }
+.as-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.as-table th,
+.as-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.as-table th {
+  padding: 0;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: #f7f9fb;
+  position: sticky;
+  top: 0;
+}
+/* 見出しごと押せるようにする。見た目は文字のまま */
+.as-table th button {
+  width: 100%;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-align: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+.as-table th button:hover { background: #eef3f7; color: var(--ink); }
+.as-table th[aria-sort='ascending'] button,
+.as-table th[aria-sort='descending'] button { color: var(--accent); }
+.as-table th.as-num button { text-align: right; }
+.as-arrow { margin-left: 4px; font-size: 9px; }
+/* 押せない「操作」列だけは元の余白を戻す */
+.as-table th:last-child { padding: 9px 12px; }
+.as-table tbody tr:last-child td { border-bottom: 0; }
+/*
+ * 保守が切れた行。左端の帯で示し、背景は薄く敷く。
+ * 編集中の強調（as-row-on）と重ねて付くので、
+ * 背景は as-row-on を後に書いて勝たせ、帯だけ残るようにする
+ */
+.as-row-expired td { background: #fdf7ea; }
+.as-row-expired td:first-child { box-shadow: inset 3px 0 0 #d99a2b; }
+
+/* 終了日が開始日より前。入力の誤りなので期限切れより強く出す */
+.as-row-bad td { background: #f8d5d5; }
+.as-row-bad td:first-child { box-shadow: inset 3px 0 0 #962f2f; }
+
+/*
+ * 保守なし（終了日が未入力）。切れたのではなく、そもそも契約情報が無い。
+ * 21 件と数が多く、手当ても要らないので、灰色で控えめに敷くだけにする
+ */
+.as-row-none td { background: #dfe6eb; }
+.as-row-none td:first-child { box-shadow: inset 3px 0 0 #8a9aa8; }
+
+.as-row-on td { background: #cfe4ee; }
+.as-mono {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+.as-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.as-ops { display: flex; gap: 6px; }
+.as-ops button {
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.as-ops button.as-del { color: var(--danger); }
+.as-ops button:disabled { color: #a7b3bd; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .as-form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .as-form { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .as-bar-fill { transition: none; }
+}

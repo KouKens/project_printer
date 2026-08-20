@@ -41,6 +41,7 @@ var __importStar = (this && this.__importStar) || (function () {
 var SnmpService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SnmpService = exports.SnmpUnreachableError = void 0;
+exports.isReplaceablePart = isReplaceablePart;
 const common_1 = require("@nestjs/common");
 const snmp = __importStar(require("net-snmp"));
 const TIMEOUT_MS = 2500;
@@ -57,17 +58,66 @@ const TABLE = {
     ifPhysAddress: '1.3.6.1.2.1.2.2.1.6',
     supplyDescription: '1.3.6.1.2.1.43.11.1.1.6',
     supplyColorantIndex: '1.3.6.1.2.1.43.11.1.1.3',
+    supplyClass: '1.3.6.1.2.1.43.11.1.1.4',
+    supplyType: '1.3.6.1.2.1.43.11.1.1.5',
     supplyMaxCapacity: '1.3.6.1.2.1.43.11.1.1.8',
     supplyLevel: '1.3.6.1.2.1.43.11.1.1.9',
     colorantValue: '1.3.6.1.2.1.43.12.1.1.4',
+    alertSeverity: '1.3.6.1.2.1.43.18.1.1.2',
+    alertGroup: '1.3.6.1.2.1.43.18.1.1.4',
+    alertGroupIndex: '1.3.6.1.2.1.43.18.1.1.5',
+    alertCode: '1.3.6.1.2.1.43.18.1.1.7',
+    alertDescription: '1.3.6.1.2.1.43.18.1.1.8',
+    consoleText: '1.3.6.1.2.1.43.16.5.1.2',
 };
+const CONSUMABLE_TYPES = [
+    3,
+    5,
+    6,
+    21,
+];
+const COUNTER = {
+    ricohId: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.2',
+    ricohValue: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.9',
+    canonId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
+    canonValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
+};
+const RICOH_COUNTER = {
+    total: 400,
+    mono: 401,
+    single: 402,
+    full: 403,
+};
+const CANON_COUNTER = { total: 101, mono: 108 };
+const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
+function isReplaceablePart(supply) {
+    if (supply.supplyType === null)
+        return false;
+    return !CONSUMABLE_TYPES.includes(supply.supplyType);
+}
 class SnmpUnreachableError extends Error {
 }
 exports.SnmpUnreachableError = SnmpUnreachableError;
+const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true });
+const SHIFT_JIS = new TextDecoder('shift_jis', { fatal: true });
+const UTF8_LOOSE = new TextDecoder('utf-8');
+function decodeOctets(value) {
+    try {
+        return UTF8_STRICT.decode(value);
+    }
+    catch {
+    }
+    try {
+        return SHIFT_JIS.decode(value);
+    }
+    catch {
+        return UTF8_LOOSE.decode(value);
+    }
+}
 function readText(value) {
     let text;
     if (Buffer.isBuffer(value)) {
-        text = value.toString('utf8');
+        text = decodeOctets(value);
     }
     else if (typeof value === 'string') {
         text = value;
@@ -137,36 +187,81 @@ let SnmpService = SnmpService_1 = class SnmpService {
                 this.get(session, SCALAR.serialNumber),
                 this.get(session, SCALAR.pageCount),
             ]);
-            const [macs, supplies] = await Promise.all([
+            const [macs, supplies, alerts, consoleText] = await Promise.all([
                 this.walk(session, TABLE.ifPhysAddress),
                 this.readSupplies(session),
+                this.readAlerts(session),
+                this.readConsoleText(session),
             ]);
             const macAddress = Array.from(macs.values())
                 .map((varbind) => readMac(varbind.value))
                 .find((mac) => mac !== null) ?? null;
+            const total = pageCount ? readNumber(pageCount.value) : null;
+            const descr = sysDescr ? readText(sysDescr.value) : null;
+            const counts = await this.readCounts(session, descr, total, supplies);
             return {
                 version,
                 hostName: sysName ? readText(sysName.value) : null,
                 model: (hrDeviceDescr ? readText(hrDeviceDescr.value) : null) ??
-                    (sysDescr ? readText(sysDescr.value)?.split(/[\r\n;]/)[0] : null) ??
+                    descr?.split(/[\r\n;]/)[0] ??
                     null,
                 serialNumber: serialNumber ? readText(serialNumber.value) : null,
                 macAddress,
-                pageCount: pageCount ? readNumber(pageCount.value) : null,
+                pageCount: total,
+                ...counts,
                 supplies,
+                alerts,
+                consoleText,
             };
         }
         finally {
             session.close();
         }
     }
+    async readAlerts(session) {
+        const [severities, groups, groupIndexes, codes, descriptions] = await Promise.all([
+            this.walk(session, TABLE.alertSeverity),
+            this.walk(session, TABLE.alertGroup),
+            this.walk(session, TABLE.alertGroupIndex),
+            this.walk(session, TABLE.alertCode),
+            this.walk(session, TABLE.alertDescription),
+        ]);
+        const alerts = [];
+        for (const [suffix, varbind] of descriptions) {
+            const alertIndex = lastIndexOf(suffix);
+            if (alertIndex === null)
+                continue;
+            const rawGroupIndex = readNumber(groupIndexes.get(suffix)?.value ?? null);
+            alerts.push({
+                alertIndex,
+                severity: readNumber(severities.get(suffix)?.value ?? null),
+                alertGroup: readNumber(groups.get(suffix)?.value ?? null),
+                groupIndex: rawGroupIndex !== null && rawGroupIndex > 0 ? rawGroupIndex : null,
+                code: readNumber(codes.get(suffix)?.value ?? null),
+                description: readText(varbind.value),
+            });
+        }
+        return alerts
+            .filter((alert) => alert.description !== null)
+            .sort((a, b) => a.alertIndex - b.alertIndex);
+    }
+    async readConsoleText(session) {
+        const rows = await this.walk(session, TABLE.consoleText);
+        const lines = [...rows.entries()]
+            .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+            .map(([, varbind]) => readText(varbind.value))
+            .filter((line) => line !== null);
+        return lines.length > 0 ? lines.join(' / ') : null;
+    }
     async readSupplies(session) {
-        const [descriptions, levels, capacities, colorantIndexes, colorantValues] = await Promise.all([
+        const [descriptions, levels, capacities, colorantIndexes, colorantValues, types, classes,] = await Promise.all([
             this.walk(session, TABLE.supplyDescription),
             this.walk(session, TABLE.supplyLevel),
             this.walk(session, TABLE.supplyMaxCapacity),
             this.walk(session, TABLE.supplyColorantIndex),
             this.walk(session, TABLE.colorantValue),
+            this.walk(session, TABLE.supplyType),
+            this.walk(session, TABLE.supplyClass),
         ]);
         const colorants = new Map();
         for (const [suffix, varbind] of colorantValues) {
@@ -187,6 +282,8 @@ let SnmpService = SnmpService_1 = class SnmpService {
             supplies.push({
                 supplyIndex,
                 name,
+                supplyType: readNumber(types.get(suffix)?.value ?? null),
+                supplyClass: readNumber(classes.get(suffix)?.value ?? null),
                 colorant: colorantIndex !== null
                     ? (colorants.get(colorantIndex) ?? null)
                     : null,
@@ -203,6 +300,50 @@ let SnmpService = SnmpService_1 = class SnmpService {
             });
         }
         return supplies;
+    }
+    async readCounts(session, sysDescr, total, supplies) {
+        const descr = sysDescr ?? '';
+        if (/ricoh|ipsio/i.test(descr)) {
+            const counters = await this.readCounterTable(session, COUNTER.ricohId, COUNTER.ricohValue);
+            const mono = counters.get(RICOH_COUNTER.mono);
+            if (mono !== undefined) {
+                const color = (counters.get(RICOH_COUNTER.single) ?? 0) +
+                    (counters.get(RICOH_COUNTER.full) ?? 0);
+                return { monoCount: mono, colorCount: color, countSource: 'vendor' };
+            }
+        }
+        else if (/canon/i.test(descr)) {
+            const counters = await this.readCounterTable(session, COUNTER.canonId, COUNTER.canonValue);
+            const mono = counters.get(CANON_COUNTER.mono);
+            const sum = counters.get(CANON_COUNTER.total);
+            if (mono !== undefined && sum !== undefined) {
+                return {
+                    monoCount: mono,
+                    colorCount: sum - mono,
+                    countSource: 'vendor',
+                };
+            }
+        }
+        const hasColor = supplies.some((supply) => supply.colorant !== null &&
+            COLOR_NAMES.includes(supply.colorant.toLowerCase()));
+        if (!hasColor && supplies.length > 0 && total !== null) {
+            return { monoCount: total, colorCount: 0, countSource: 'mono-only' };
+        }
+        return { monoCount: null, colorCount: null, countSource: 'none' };
+    }
+    async readCounterTable(session, idBase, valueBase) {
+        const [ids, values] = await Promise.all([
+            this.walk(session, idBase),
+            this.walk(session, valueBase),
+        ]);
+        const counters = new Map();
+        for (const [row, varbind] of ids) {
+            const id = readCounterId(varbind.value);
+            const value = readNumber(values.get(row)?.value ?? null);
+            if (id !== null && value !== null)
+                counters.set(id, value);
+        }
+        return counters;
     }
     get(session, oid) {
         return new Promise((resolve, reject) => {
@@ -243,6 +384,16 @@ exports.SnmpService = SnmpService;
 exports.SnmpService = SnmpService = SnmpService_1 = __decorate([
     (0, common_1.Injectable)()
 ], SnmpService);
+function readCounterId(value) {
+    const direct = readNumber(value);
+    if (direct !== null)
+        return Number.isInteger(direct) ? direct : null;
+    const text = readText(value);
+    if (text === null)
+        return null;
+    const parsed = Number(text);
+    return Number.isInteger(parsed) ? parsed : null;
+}
 function lastIndexOf(suffix) {
     const last = suffix.split('.').pop();
     if (last === undefined)

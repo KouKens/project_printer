@@ -1,6 +1,15 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { BulkCreatePrintersDto } from './dto/bulk-create-printers.dto';
 import { CreatePrinterDto, SnmpVersionInput } from './dto/create-printer.dto';
+import { ProbePrinterDto } from './dto/probe-printer.dto';
 import { SnmpService } from './snmp.service';
+export type BulkResultRow = {
+    ipAddress: string;
+    status: 'registered' | 'failed';
+    model: string | null;
+    location: string | null;
+    message?: string;
+};
 export declare class PrintersService {
     private readonly prisma;
     private readonly snmp;
@@ -19,15 +28,41 @@ export declare class PrintersService {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
         }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
+        }[];
+    }>;
+    createMany(dto: BulkCreatePrintersDto): Promise<BulkResultRow[]>;
+    probe(dto: ProbePrinterDto): Promise<{
+        ipAddress: string;
+        community: string;
+        version: SnmpVersionInput;
+        hostName: string | null;
+        model: string | null;
+        serialNumber: string | null;
+        macAddress: string | null;
+        pageCount: number | null;
+        polledAt: Date;
+        supplies: import("./snmp.service").SupplySnapshot[];
     }>;
     poll(id: number): Promise<{
         id: number;
@@ -43,14 +78,27 @@ export declare class PrintersService {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
+        }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
         }[];
     }>;
     findAll(): Promise<{
@@ -67,14 +115,27 @@ export declare class PrintersService {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
+        }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
         }[];
     }[]>;
     findOne(id: number): Promise<{
@@ -91,17 +152,34 @@ export declare class PrintersService {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
         }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
+        }[];
     }>;
+    private createOneForBulk;
+    private toBulkRow;
+    private ledgerBySerial;
     private pollOrFail;
+    private replaceAlerts;
     private snapshotFields;
     private replaceReadings;
     private toResponse;

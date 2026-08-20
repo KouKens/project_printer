@@ -1,0 +1,354 @@
+/* 一覧表の共通スタイル。機器一覧と印刷枚数の 2 画面で使う */
+.dt {
+  --ink: #16202b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --panel: #ffffff;
+  --accent: #1f6f8b;
+  --danger: #b23a3a;
+
+  /* 列が多いので窓幅をそのまま使う。中央寄せの上限は設けない */
+  width: 100%;
+  min-width: 0;
+  padding: 32px 20px 64px;
+  box-sizing: border-box;
+  color: var(--ink);
+}
+
+.dt-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.dt-head p {
+  /* 説明文まで画面幅いっぱいに伸びると読みにくい */
+  max-width: 78ch;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* --- 絞り込み --- */
+.dt-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.dt-tools label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.dt-tools select,
+.dt-tools input[type='date'] {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.dt-tools button {
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dt-tools button:disabled { color: #a7b3bd; cursor: not-allowed; }
+.dt select:focus-visible,
+.dt input:focus-visible,
+.dt button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* --- 合計 --- */
+.dt-summary {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.dt-summary dt { color: var(--muted); }
+.dt-summary dd {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+/* 期間は日付が 2 つ並ぶので、枚数より小さくして横幅を抑える */
+.dt-summary .dt-period { font-size: 14px; }
+
+/* --- 折れ線グラフ --- */
+.dt-chart {
+  padding: 14px 16px 12px;
+  margin-bottom: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.dt-chart h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+.dt-chart-hint {
+  margin: 3px 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+/* viewBox で描いているので、幅は箱に合わせて高さは比率のまま伸ばす */
+.dt-chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dt-chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.dt-chart-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.dt-chart-line {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.dt-chart-dot { stroke: var(--panel); stroke-width: 1; }
+.dt-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.dt-chart-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dt-chart-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+.dt-chart-note { color: var(--muted); }
+
+/* --- メッセージ --- */
+.dt-msg {
+  margin: 0 0 14px;
+  padding: 10px 13px;
+  font-size: 13px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+.dt-msg-error { color: var(--danger); background: #fdf1f1; border-color: var(--danger); }
+.dt-msg-ok { color: #1d6b48; background: #eef8f2; border-color: #1d6b48; }
+.dt-empty { color: var(--muted); font-size: 13px; }
+.dt-hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); }
+
+/* --- 表 --- */
+/*
+ * 縦も箱の中でスクロールさせる。
+ * ページ全体のスクロールに任せると、横スクロールバーが表の最下端＝
+ * ずっと下に付いてしまい、行が多いときに掴めなくなるため。
+ * 見出しは sticky で残す。
+ */
+.dt-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 300px);
+  min-height: 220px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  /* スクロールできることが分かるよう、バーの領域を常に確保する */
+  scrollbar-gutter: stable;
+  scrollbar-color: #b0bdc8 #eef2f5;
+}
+
+/* 既定の細いバーだと横に動かせることに気づけないので、太めに出す */
+.dt-wrap::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
+}
+.dt-wrap::-webkit-scrollbar-track {
+  background: #eef2f5;
+  border-radius: 0 0 6px 6px;
+}
+.dt-wrap::-webkit-scrollbar-thumb {
+  background: #b0bdc8;
+  border: 3px solid #eef2f5;
+  border-radius: 7px;
+}
+.dt-wrap::-webkit-scrollbar-thumb:hover { background: #90a0ad; }
+.dt-wrap::-webkit-scrollbar-corner { background: #eef2f5; }
+.dt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.dt-table th,
+.dt-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.dt-table th {
+  padding: 0;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: #f7f9fb;
+  position: sticky;
+  top: 0;
+}
+.dt-table th button {
+  width: 100%;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-align: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.dt-table th button:hover { background: #eef3f7; color: var(--ink); }
+.dt-table th[aria-sort='ascending'] button,
+.dt-table th[aria-sort='descending'] button { color: var(--accent); }
+.dt-table th.dt-num button { text-align: right; }
+.dt-arrow { margin-left: 4px; font-size: 9px; }
+.dt-table th.dt-plain { padding: 9px 12px; }
+.dt-table tbody tr:last-child td { border-bottom: 0; }
+.dt-table tbody tr:hover { background: #f9fbfc; }
+
+.dt-mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
+.dt-num { text-align: right; font-variant-numeric: tabular-nums; }
+/* 実機の情報が無い行。空欄が続くので、行ごと控えめにする */
+.dt-down td { color: #94a3b0; }
+
+/* 台帳 / 機器 / 枚数 のまとまりを示す見出し行と区切り線 */
+.dt-group-row th {
+  top: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: #eef4f7;
+  border-bottom: 1px solid var(--line);
+}
+.dt-group-row + tr th { top: 33px; }
+.dt-group-sep { border-left: 2px solid #c9d6df; }
+
+/* --- 状態と残量 --- */
+.dt-badge {
+  padding: 2px 8px;
+  font-size: 10.5px;
+  border-radius: 999px;
+}
+.dt-badge-ok { color: #1d6b48; background: #eef8f2; }
+.dt-badge-ng { color: var(--danger); background: #fdf1f1; }
+/* 修理中。残量の赤・橙とは別の色にして、意味を混ぜない */
+.dt-badge-repair { color: #1f4f8b; background: #e9f0f9; font-weight: 600; }
+
+.dt-supplies { display: flex; gap: 6px; flex-wrap: wrap; }
+.dt-supply {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.dt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+/*
+ * 交換部品。種別ごとに 1 行、色ごとに分かれている部品はその行の中に並べる。
+ * 平らに並べるとカラー機で「ドラム」が 4 つ散らばって読めないため。
+ */
+.dt-parts { display: inline-flex; flex-direction: column; gap: 3px; }
+.dt-part { display: flex; align-items: center; gap: 6px; }
+.dt-part-label {
+  /* 種別名を縦に揃えて、右の残量を並べて見比べられるようにする */
+  min-width: 4.5em;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.dt-low { color: var(--danger); font-weight: 600; }
+.dt-soon { color: #a86a12; font-weight: 600; }
+.dt-muted { color: var(--muted); }
+.dt-supply-warn {
+  color: #8a4b0a;
+  background: #fdf3e6;
+  border-color: #e8c9a0;
+}
+
+/* 交換部品が残り少ない行。トナー・インクは対象外 */
+.dt-row-due td { background: #fdf1f1; }
+.dt-row-due td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+.dt-row-soon td { background: #fdf7ea; }
+.dt-row-soon td:first-child { box-shadow: inset 3px 0 0 #d99a2b; }
+.dt-table tbody tr.dt-row-due:hover td { background: #fbe7e7; }
+.dt-table tbody tr.dt-row-soon:hover td { background: #fbf1dc; }
+
+/* 完了していない修理が残っている行。消耗品の色より優先して付ける */
+.dt-row-repair td { background: #eaf1fa; }
+.dt-row-repair td:first-child { box-shadow: inset 3px 0 0 #1f4f8b; }
+.dt-table tbody tr.dt-row-repair:hover td { background: #dfe9f6; }
+
+/* 凡例 */
+.dt-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.dt-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+}
+.dt-swatch-repair { background: #eaf1fa; border-left: 3px solid #1f4f8b; }
+.dt-swatch-due { background: #fdf1f1; border-left: 3px solid var(--danger); }
+.dt-swatch-soon { background: #fdf7ea; border-left: 3px solid #d99a2b; }
+.dt-legend-note { color: var(--muted); font-size: 11.5px; }
+
+.dt-ops button {
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dt-ops button:disabled { color: #a7b3bd; cursor: not-allowed; }

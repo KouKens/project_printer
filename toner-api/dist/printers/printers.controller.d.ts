@@ -1,4 +1,6 @@
+import { BulkCreatePrintersDto } from './dto/bulk-create-printers.dto';
 import { CreatePrinterDto } from './dto/create-printer.dto';
+import { ProbePrinterDto } from './dto/probe-printer.dto';
 import { PageCountsService } from './page-counts.service';
 import { PrintersService } from './printers.service';
 export declare class PrintersController {
@@ -19,14 +21,27 @@ export declare class PrintersController {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
+        }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
         }[];
     }>;
     findAll(): Promise<{
@@ -43,17 +58,58 @@ export declare class PrintersController {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
         }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
+        }[];
     }[]>;
+    probe(dto: ProbePrinterDto): Promise<{
+        ipAddress: string;
+        community: string;
+        version: import("./dto/create-printer.dto").SnmpVersionInput;
+        hostName: string | null;
+        model: string | null;
+        serialNumber: string | null;
+        macAddress: string | null;
+        pageCount: number | null;
+        polledAt: Date;
+        supplies: import("./snmp.service").SupplySnapshot[];
+    }>;
+    createMany(dto: BulkCreatePrintersDto): Promise<import("./printers.service").BulkResultRow[]>;
     capture(): Promise<import("./page-counts.service").CaptureRow[]>;
+    findAllDaily(days: number, from?: string, to?: string): Promise<{
+        id: number;
+        printerId: number;
+        ipAddress: string;
+        model: string | null;
+        date: string;
+        total: number;
+        totalMono: number | null;
+        totalColor: number | null;
+        pages: number | null;
+        monoPages: number | null;
+        colorPages: number | null;
+        spanDays: number;
+        capturedAt: Date;
+    }[]>;
     findOne(id: number): Promise<{
         id: number;
         ipAddress: string;
@@ -68,14 +124,27 @@ export declare class PrintersController {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
+        }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
         }[];
     }>;
     poll(id: number): Promise<{
@@ -92,20 +161,37 @@ export declare class PrintersController {
         reachable: boolean;
         lastError: string | null;
         lastPolledAt: Date | null;
+        lastSuccessAt: Date | null;
+        consoleText: string | null;
         readings: {
             id: number;
             supplyIndex: number;
             name: string;
+            supplyType: number | null;
+            supplyClass: number | null;
             colorant: string | null;
             level: number;
             maxCapacity: number;
             percent: number | null;
         }[];
+        alerts: {
+            id: number;
+            alertIndex: number;
+            severity: number | null;
+            alertGroup: number | null;
+            groupIndex: number | null;
+            code: number | null;
+            description: string | null;
+        }[];
     }>;
-    findDaily(id: number, days: number): Promise<{
+    findDaily(id: number, days: number, from?: string, to?: string): Promise<{
         date: string;
         pages: number | null;
+        monoPages: number | null;
+        colorPages: number | null;
         total: number;
+        totalMono: number | null;
+        totalColor: number | null;
         spanDays: number;
         capturedAt: Date;
     }[]>;

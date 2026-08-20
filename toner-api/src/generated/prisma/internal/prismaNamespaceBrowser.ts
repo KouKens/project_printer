@@ -52,12 +52,17 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   Toner: 'Toner',
+  TonerPrinter: 'TonerPrinter',
+  TonerPrice: 'TonerPrice',
   TonerStock: 'TonerStock',
   TonerEntry: 'TonerEntry',
   TonerOrder: 'TonerOrder',
   Printer: 'Printer',
+  PrinterAlert: 'PrinterAlert',
+  PrinterAsset: 'PrinterAsset',
   PageCountDaily: 'PageCountDaily',
-  SupplyReading: 'SupplyReading'
+  SupplyReading: 'SupplyReading',
+  RepairRecord: 'RepairRecord'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -79,11 +84,34 @@ export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof
 export const TonerScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  color: 'color',
+  recycled: 'recycled',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type TonerScalarFieldEnum = (typeof TonerScalarFieldEnum)[keyof typeof TonerScalarFieldEnum]
+
+
+export const TonerPrinterScalarFieldEnum = {
+  tonerId: 'tonerId',
+  printerAssetId: 'printerAssetId',
+  createdAt: 'createdAt'
+} as const
+
+export type TonerPrinterScalarFieldEnum = (typeof TonerPrinterScalarFieldEnum)[keyof typeof TonerPrinterScalarFieldEnum]
+
+
+export const TonerPriceScalarFieldEnum = {
+  id: 'id',
+  tonerId: 'tonerId',
+  price: 'price',
+  effectiveFrom: 'effectiveFrom',
+  note: 'note',
+  createdAt: 'createdAt'
+} as const
+
+export type TonerPriceScalarFieldEnum = (typeof TonerPriceScalarFieldEnum)[keyof typeof TonerPriceScalarFieldEnum]
 
 
 export const TonerStockScalarFieldEnum = {
@@ -137,11 +165,52 @@ export const PrinterScalarFieldEnum = {
   reachable: 'reachable',
   lastError: 'lastError',
   lastPolledAt: 'lastPolledAt',
+  lastSuccessAt: 'lastSuccessAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  consoleText: 'consoleText'
+} as const
+
+export type PrinterScalarFieldEnum = (typeof PrinterScalarFieldEnum)[keyof typeof PrinterScalarFieldEnum]
+
+
+export const PrinterAlertScalarFieldEnum = {
+  id: 'id',
+  printerId: 'printerId',
+  alertIndex: 'alertIndex',
+  severity: 'severity',
+  alertGroup: 'alertGroup',
+  groupIndex: 'groupIndex',
+  code: 'code',
+  description: 'description',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PrinterAlertScalarFieldEnum = (typeof PrinterAlertScalarFieldEnum)[keyof typeof PrinterAlertScalarFieldEnum]
+
+
+export const PrinterAssetScalarFieldEnum = {
+  id: 'id',
+  department: 'department',
+  no: 'no',
+  ipAddress: 'ipAddress',
+  maker: 'maker',
+  model: 'model',
+  serialNumber: 'serialNumber',
+  purchasedOn: 'purchasedOn',
+  contractNo: 'contractNo',
+  maintContract: 'maintContract',
+  maintStartOn: 'maintStartOn',
+  maintEndOn: 'maintEndOn',
+  maintDealOn: 'maintDealOn',
+  maintFee: 'maintFee',
+  note: 'note',
+  countLayout: 'countLayout',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
-export type PrinterScalarFieldEnum = (typeof PrinterScalarFieldEnum)[keyof typeof PrinterScalarFieldEnum]
+export type PrinterAssetScalarFieldEnum = (typeof PrinterAssetScalarFieldEnum)[keyof typeof PrinterAssetScalarFieldEnum]
 
 
 export const PageCountDailyScalarFieldEnum = {
@@ -149,7 +218,11 @@ export const PageCountDailyScalarFieldEnum = {
   printerId: 'printerId',
   date: 'date',
   total: 'total',
+  totalMono: 'totalMono',
+  totalColor: 'totalColor',
   pages: 'pages',
+  monoPages: 'monoPages',
+  colorPages: 'colorPages',
   spanDays: 'spanDays',
   capturedAt: 'capturedAt'
 } as const
@@ -162,6 +235,8 @@ export const SupplyReadingScalarFieldEnum = {
   printerId: 'printerId',
   supplyIndex: 'supplyIndex',
   name: 'name',
+  supplyType: 'supplyType',
+  supplyClass: 'supplyClass',
   colorant: 'colorant',
   level: 'level',
   maxCapacity: 'maxCapacity',
@@ -170,6 +245,23 @@ export const SupplyReadingScalarFieldEnum = {
 } as const
 
 export type SupplyReadingScalarFieldEnum = (typeof SupplyReadingScalarFieldEnum)[keyof typeof SupplyReadingScalarFieldEnum]
+
+
+export const RepairRecordScalarFieldEnum = {
+  id: 'id',
+  assignee: 'assignee',
+  printerAssetId: 'printerAssetId',
+  occurredOn: 'occurredOn',
+  category: 'category',
+  handledBy: 'handledBy',
+  detail: 'detail',
+  restoredOn: 'restoredOn',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RepairRecordScalarFieldEnum = (typeof RepairRecordScalarFieldEnum)[keyof typeof RepairRecordScalarFieldEnum]
 
 
 export const SortOrder = {

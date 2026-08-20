@@ -28,19 +28,101 @@ const TABLE = {
   ifPhysAddress: '1.3.6.1.2.1.2.2.1.6',
   supplyDescription: '1.3.6.1.2.1.43.11.1.1.6',
   supplyColorantIndex: '1.3.6.1.2.1.43.11.1.1.3',
+  supplyClass: '1.3.6.1.2.1.43.11.1.1.4',
+  supplyType: '1.3.6.1.2.1.43.11.1.1.5',
   supplyMaxCapacity: '1.3.6.1.2.1.43.11.1.1.8',
   supplyLevel: '1.3.6.1.2.1.43.11.1.1.9',
   colorantValue: '1.3.6.1.2.1.43.12.1.1.4',
+  /** prtAlertTable。部品の交換案内や異常が入る */
+  alertSeverity: '1.3.6.1.2.1.43.18.1.1.2',
+  alertGroup: '1.3.6.1.2.1.43.18.1.1.4',
+  /** group が消耗品のとき、対象の消耗品の行番号を指す */
+  alertGroupIndex: '1.3.6.1.2.1.43.18.1.1.5',
+  alertCode: '1.3.6.1.2.1.43.18.1.1.7',
+  alertDescription: '1.3.6.1.2.1.43.18.1.1.8',
+  /** 操作パネルの表示文字。警告表を持たない機種の受け皿 */
+  consoleText: '1.3.6.1.2.1.43.16.5.1.2',
 } as const;
+
+/**
+ * prtMarkerSuppliesType のうち、印刷に使う消耗品（トナー・インク）。
+ * これ以外は交換部品として扱う。
+ */
+const CONSUMABLE_TYPES = [
+  3, // toner
+  5, // ink
+  6, // inkCartridge
+  21, // tonerCartridge
+];
+
+/**
+ * モノクロ・カラー別の枚数はメーカー拡張 MIB にしかない。
+ * 標準の prtMarkerTable はどの機種もマーカー 1 本で、内訳を持っていない。
+ * どちらの表も「ID の列」と「値の列」を行番号で突き合わせて読む。
+ */
+const COUNTER = {
+  /** RICOH ricohEngineCounter */
+  ricohId: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.2',
+  ricohValue: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.9',
+  /** Canon cnPrtCounter */
+  canonId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
+  canonValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
+} as const;
+
+/** RICOH のカウンタ ID。401 + 402 + 403 = 400 になる */
+const RICOH_COUNTER = {
+  total: 400,
+  mono: 401,
+  single: 402,
+  full: 403,
+} as const;
+
+/** Canon のカウンタ ID。カラーは合計から引いて出す */
+const CANON_COUNTER = { total: 101, mono: 108 } as const;
+
+/** カラー機なら必ず持っている色 */
+const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
 
 export type SupplySnapshot = {
   supplyIndex: number;
   name: string;
+  /** prtMarkerSuppliesType。分類はこれで行う */
+  supplyType: number | null;
+  supplyClass: number | null;
   colorant: string | null;
   level: number;
   maxCapacity: number;
   percent: number | null;
 };
+
+/** 機器が出している警告 1 件 */
+export type AlertSnapshot = {
+  alertIndex: number;
+  severity: number | null;
+  alertGroup: number | null;
+  /** 対象の消耗品の行番号。-1 や null は特定できない */
+  groupIndex: number | null;
+  code: number | null;
+  description: string | null;
+};
+
+/** トナー・インク以外の交換部品か */
+export function isReplaceablePart(supply: {
+  supplyType: number | null;
+}): boolean {
+  // 種別を返さない機種は判断できないので、部品扱いにはしない
+  if (supply.supplyType === null) return false;
+  return !CONSUMABLE_TYPES.includes(supply.supplyType);
+}
+
+/** モノクロ・カラーの内訳をどこから得たか */
+export type CountSource =
+  /** メーカー拡張 MIB がそのまま返した */
+  | 'vendor'
+  /** カラーの消耗品を持たない機種なので、全部モノクロと判断した */
+  | 'mono-only'
+  /** 内訳を取れなかった */
+  | 'none';
 
 export type PrinterSnapshot = {
   /** 実際に応答があったバージョン */
@@ -50,18 +132,53 @@ export type PrinterSnapshot = {
   serialNumber: string | null;
   macAddress: string | null;
   pageCount: number | null;
+  /** 累計のモノクロ枚数。取れない機種は null */
+  monoCount: number | null;
+  /** 累計のカラー枚数。取れない機種は null */
+  colorCount: number | null;
+  countSource: CountSource;
   supplies: SupplySnapshot[];
+  alerts: AlertSnapshot[];
+  /** 操作パネルの表示文字 */
+  consoleText: string | null;
 };
 
 /** 応答がなかった。バージョン違い・コミュニティ名違い・そもそも不在のいずれか */
 export class SnmpUnreachableError extends Error {}
+
+/** decode() は状態を持たないので使い回してよい。fatal で不正なバイト列を例外にする */
+const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true });
+const SHIFT_JIS = new TextDecoder('shift_jis', { fatal: true });
+const UTF8_LOOSE = new TextDecoder('utf-8');
+
+/**
+ * OctetString のバイト列を文字にする。
+ * 機種によっては Shift-JIS(CP932) で返してくる（RICOH の「ﾄﾅｰ」「廃ﾄﾅｰ」など）ので、
+ * UTF-8 として読めなければ Shift-JIS で読み直す。
+ * Shift-JIS の多バイト列と半角カナは UTF-8 としては不正なバイト列になるため、
+ * この順で試せば ASCII と UTF-8 で返す機種の結果は変わらない。
+ */
+function decodeOctets(value: Buffer): string {
+  try {
+    return UTF8_STRICT.decode(value);
+  } catch {
+    // UTF-8 ではない。次を試す
+  }
+
+  try {
+    return SHIFT_JIS.decode(value);
+  } catch {
+    // どちらでもない。読めるところだけ拾って先へ進む
+    return UTF8_LOOSE.decode(value);
+  }
+}
 
 /** OctetString / 文字列を読める形にする。制御文字と余白は落とす */
 function readText(value: Varbind['value']): string | null {
   let text: string;
 
   if (Buffer.isBuffer(value)) {
-    text = value.toString('utf8');
+    text = decodeOctets(value);
   } else if (typeof value === 'string') {
     text = value;
   } else {
@@ -165,9 +282,11 @@ export class SnmpService {
           this.get(session, SCALAR.pageCount),
         ]);
 
-      const [macs, supplies] = await Promise.all([
+      const [macs, supplies, alerts, consoleText] = await Promise.all([
         this.walk(session, TABLE.ifPhysAddress),
         this.readSupplies(session),
+        this.readAlerts(session),
+        this.readConsoleText(session),
       ]);
 
       const macAddress =
@@ -175,33 +294,101 @@ export class SnmpService {
           .map((varbind) => readMac(varbind.value))
           .find((mac) => mac !== null) ?? null;
 
+      const total = pageCount ? readNumber(pageCount.value) : null;
+      const descr = sysDescr ? readText(sysDescr.value) : null;
+      const counts = await this.readCounts(session, descr, total, supplies);
+
       return {
         version,
         hostName: sysName ? readText(sysName.value) : null,
         model:
           (hrDeviceDescr ? readText(hrDeviceDescr.value) : null) ??
-          (sysDescr ? readText(sysDescr.value)?.split(/[\r\n;]/)[0] : null) ??
+          descr?.split(/[\r\n;]/)[0] ??
           null,
         serialNumber: serialNumber ? readText(serialNumber.value) : null,
         macAddress,
-        pageCount: pageCount ? readNumber(pageCount.value) : null,
+        pageCount: total,
+        ...counts,
         supplies,
+        alerts,
+        consoleText,
       };
     } finally {
       session.close();
     }
   }
 
+  /**
+   * 機器が出している警告を読む。部品の交換案内はここに入る。
+   * 表を持たない機種（RICOH SP C341 / EPSON など）は空で返る。
+   */
+  private async readAlerts(session: Session): Promise<AlertSnapshot[]> {
+    const [severities, groups, groupIndexes, codes, descriptions] =
+      await Promise.all([
+        this.walk(session, TABLE.alertSeverity),
+        this.walk(session, TABLE.alertGroup),
+        this.walk(session, TABLE.alertGroupIndex),
+        this.walk(session, TABLE.alertCode),
+        this.walk(session, TABLE.alertDescription),
+      ]);
+
+    const alerts: AlertSnapshot[] = [];
+
+    for (const [suffix, varbind] of descriptions) {
+      const alertIndex = lastIndexOf(suffix);
+      if (alertIndex === null) continue;
+
+      // -1 は「対象を特定できない」の意味なので、null に寄せる
+      const rawGroupIndex = readNumber(groupIndexes.get(suffix)?.value ?? null);
+
+      alerts.push({
+        alertIndex,
+        severity: readNumber(severities.get(suffix)?.value ?? null),
+        alertGroup: readNumber(groups.get(suffix)?.value ?? null),
+        groupIndex:
+          rawGroupIndex !== null && rawGroupIndex > 0 ? rawGroupIndex : null,
+        code: readNumber(codes.get(suffix)?.value ?? null),
+        description: readText(varbind.value),
+      });
+    }
+
+    // 説明が空の行は読んでも仕方がないので落とす（KYOCERA がこれを返す）
+    return alerts
+      .filter((alert) => alert.description !== null)
+      .sort((a, b) => a.alertIndex - b.alertIndex);
+  }
+
+  /** 操作パネルの表示。複数行に分かれるので繋げる */
+  private async readConsoleText(session: Session): Promise<string | null> {
+    const rows = await this.walk(session, TABLE.consoleText);
+
+    const lines = [...rows.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(([, varbind]) => readText(varbind.value))
+      .filter((line): line is string => line !== null);
+
+    return lines.length > 0 ? lines.join(' / ') : null;
+  }
+
   /** 消耗品の表をまとめて読む */
   private async readSupplies(session: Session): Promise<SupplySnapshot[]> {
-    const [descriptions, levels, capacities, colorantIndexes, colorantValues] =
-      await Promise.all([
-        this.walk(session, TABLE.supplyDescription),
-        this.walk(session, TABLE.supplyLevel),
-        this.walk(session, TABLE.supplyMaxCapacity),
-        this.walk(session, TABLE.supplyColorantIndex),
-        this.walk(session, TABLE.colorantValue),
-      ]);
+    const [
+      descriptions,
+      levels,
+      capacities,
+      colorantIndexes,
+      colorantValues,
+      types,
+      classes,
+    ] = await Promise.all([
+      this.walk(session, TABLE.supplyDescription),
+      this.walk(session, TABLE.supplyLevel),
+      this.walk(session, TABLE.supplyMaxCapacity),
+      this.walk(session, TABLE.supplyColorantIndex),
+      this.walk(session, TABLE.colorantValue),
+      this.walk(session, TABLE.supplyType),
+      this.walk(session, TABLE.supplyClass),
+    ]);
 
     // prtMarkerColorantTable は色番号で引く。末尾の添字だけ見れば足りる
     const colorants = new Map<number, string>();
@@ -228,6 +415,8 @@ export class SnmpService {
       supplies.push({
         supplyIndex,
         name,
+        supplyType: readNumber(types.get(suffix)?.value ?? null),
+        supplyClass: readNumber(classes.get(suffix)?.value ?? null),
         colorant:
           colorantIndex !== null
             ? (colorants.get(colorantIndex) ?? null)
@@ -250,6 +439,88 @@ export class SnmpService {
     }
 
     return supplies;
+  }
+
+  /**
+   * モノクロ・カラー別の累計を読む。
+   * RICOH と Canon は拡張 MIB を持っている。それ以外はカラーの消耗品の有無で
+   * 判断し、モノクロ専用機なら累計を全部モノクロとして扱う。
+   */
+  private async readCounts(
+    session: Session,
+    sysDescr: string | null,
+    total: number | null,
+    supplies: SupplySnapshot[],
+  ): Promise<
+    Pick<PrinterSnapshot, 'monoCount' | 'colorCount' | 'countSource'>
+  > {
+    const descr = sysDescr ?? '';
+
+    if (/ricoh|ipsio/i.test(descr)) {
+      const counters = await this.readCounterTable(
+        session,
+        COUNTER.ricohId,
+        COUNTER.ricohValue,
+      );
+      const mono = counters.get(RICOH_COUNTER.mono);
+
+      if (mono !== undefined) {
+        // 単色はカラー側に寄せる。401 + 402 + 403 = 400 になる
+        const color =
+          (counters.get(RICOH_COUNTER.single) ?? 0) +
+          (counters.get(RICOH_COUNTER.full) ?? 0);
+        return { monoCount: mono, colorCount: color, countSource: 'vendor' };
+      }
+    } else if (/canon/i.test(descr)) {
+      const counters = await this.readCounterTable(
+        session,
+        COUNTER.canonId,
+        COUNTER.canonValue,
+      );
+      const mono = counters.get(CANON_COUNTER.mono);
+      const sum = counters.get(CANON_COUNTER.total);
+
+      if (mono !== undefined && sum !== undefined) {
+        return {
+          monoCount: mono,
+          colorCount: sum - mono,
+          countSource: 'vendor',
+        };
+      }
+    }
+
+    // カラーの消耗品を 1 つも持たない機種は、そもそもカラーを刷れない
+    const hasColor = supplies.some(
+      (supply) =>
+        supply.colorant !== null &&
+        COLOR_NAMES.includes(supply.colorant.toLowerCase()),
+    );
+
+    if (!hasColor && supplies.length > 0 && total !== null) {
+      return { monoCount: total, colorCount: 0, countSource: 'mono-only' };
+    }
+
+    return { monoCount: null, colorCount: null, countSource: 'none' };
+  }
+
+  /** ID の列と値の列を行番号で突き合わせて、カウンタ ID から値を引けるようにする */
+  private async readCounterTable(
+    session: Session,
+    idBase: string,
+    valueBase: string,
+  ): Promise<Map<number, number>> {
+    const [ids, values] = await Promise.all([
+      this.walk(session, idBase),
+      this.walk(session, valueBase),
+    ]);
+
+    const counters = new Map<number, number>();
+    for (const [row, varbind] of ids) {
+      const id = readCounterId(varbind.value);
+      const value = readNumber(values.get(row)?.value ?? null);
+      if (id !== null && value !== null) counters.set(id, value);
+    }
+    return counters;
   }
 
   /**
@@ -303,6 +574,22 @@ export class SnmpService {
       );
     });
   }
+}
+
+/**
+ * カウンタ ID を読む。
+ * RICOH は整数で返すが、Canon は OctetString の "101" で返してくる。
+ * 数値として読めなければ文字列として読み直す。
+ */
+function readCounterId(value: Varbind['value']): number | null {
+  const direct = readNumber(value);
+  if (direct !== null) return Number.isInteger(direct) ? direct : null;
+
+  const text = readText(value);
+  if (text === null) return null;
+
+  const parsed = Number(text);
+  return Number.isInteger(parsed) ? parsed : null;
 }
 
 /** "1.2" → 2。表の添字は末尾が行番号 */

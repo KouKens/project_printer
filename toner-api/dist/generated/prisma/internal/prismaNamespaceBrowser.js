@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.SupplyReadingScalarFieldEnum = exports.PageCountDailyScalarFieldEnum = exports.PrinterScalarFieldEnum = exports.TonerOrderScalarFieldEnum = exports.TonerEntryScalarFieldEnum = exports.TonerStockScalarFieldEnum = exports.TonerScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.Decimal = void 0;
+exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.RepairRecordScalarFieldEnum = exports.SupplyReadingScalarFieldEnum = exports.PageCountDailyScalarFieldEnum = exports.PrinterAssetScalarFieldEnum = exports.PrinterAlertScalarFieldEnum = exports.PrinterScalarFieldEnum = exports.TonerOrderScalarFieldEnum = exports.TonerEntryScalarFieldEnum = exports.TonerStockScalarFieldEnum = exports.TonerPriceScalarFieldEnum = exports.TonerPrinterScalarFieldEnum = exports.TonerScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.Decimal = void 0;
 const runtime = __importStar(require("@prisma/client/runtime/index-browser"));
 exports.Decimal = runtime.Decimal;
 exports.NullTypes = {
@@ -46,12 +46,17 @@ exports.JsonNull = runtime.JsonNull;
 exports.AnyNull = runtime.AnyNull;
 exports.ModelName = {
     Toner: 'Toner',
+    TonerPrinter: 'TonerPrinter',
+    TonerPrice: 'TonerPrice',
     TonerStock: 'TonerStock',
     TonerEntry: 'TonerEntry',
     TonerOrder: 'TonerOrder',
     Printer: 'Printer',
+    PrinterAlert: 'PrinterAlert',
+    PrinterAsset: 'PrinterAsset',
     PageCountDaily: 'PageCountDaily',
-    SupplyReading: 'SupplyReading'
+    SupplyReading: 'SupplyReading',
+    RepairRecord: 'RepairRecord'
 };
 exports.TransactionIsolationLevel = runtime.makeStrictEnum({
     ReadUncommitted: 'ReadUncommitted',
@@ -62,8 +67,23 @@ exports.TransactionIsolationLevel = runtime.makeStrictEnum({
 exports.TonerScalarFieldEnum = {
     id: 'id',
     name: 'name',
+    color: 'color',
+    recycled: 'recycled',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
+};
+exports.TonerPrinterScalarFieldEnum = {
+    tonerId: 'tonerId',
+    printerAssetId: 'printerAssetId',
+    createdAt: 'createdAt'
+};
+exports.TonerPriceScalarFieldEnum = {
+    id: 'id',
+    tonerId: 'tonerId',
+    price: 'price',
+    effectiveFrom: 'effectiveFrom',
+    note: 'note',
+    createdAt: 'createdAt'
 };
 exports.TonerStockScalarFieldEnum = {
     tonerId: 'tonerId',
@@ -104,6 +124,39 @@ exports.PrinterScalarFieldEnum = {
     reachable: 'reachable',
     lastError: 'lastError',
     lastPolledAt: 'lastPolledAt',
+    lastSuccessAt: 'lastSuccessAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    consoleText: 'consoleText'
+};
+exports.PrinterAlertScalarFieldEnum = {
+    id: 'id',
+    printerId: 'printerId',
+    alertIndex: 'alertIndex',
+    severity: 'severity',
+    alertGroup: 'alertGroup',
+    groupIndex: 'groupIndex',
+    code: 'code',
+    description: 'description',
+    updatedAt: 'updatedAt'
+};
+exports.PrinterAssetScalarFieldEnum = {
+    id: 'id',
+    department: 'department',
+    no: 'no',
+    ipAddress: 'ipAddress',
+    maker: 'maker',
+    model: 'model',
+    serialNumber: 'serialNumber',
+    purchasedOn: 'purchasedOn',
+    contractNo: 'contractNo',
+    maintContract: 'maintContract',
+    maintStartOn: 'maintStartOn',
+    maintEndOn: 'maintEndOn',
+    maintDealOn: 'maintDealOn',
+    maintFee: 'maintFee',
+    note: 'note',
+    countLayout: 'countLayout',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
@@ -112,7 +165,11 @@ exports.PageCountDailyScalarFieldEnum = {
     printerId: 'printerId',
     date: 'date',
     total: 'total',
+    totalMono: 'totalMono',
+    totalColor: 'totalColor',
     pages: 'pages',
+    monoPages: 'monoPages',
+    colorPages: 'colorPages',
     spanDays: 'spanDays',
     capturedAt: 'capturedAt'
 };
@@ -121,10 +178,25 @@ exports.SupplyReadingScalarFieldEnum = {
     printerId: 'printerId',
     supplyIndex: 'supplyIndex',
     name: 'name',
+    supplyType: 'supplyType',
+    supplyClass: 'supplyClass',
     colorant: 'colorant',
     level: 'level',
     maxCapacity: 'maxCapacity',
     percent: 'percent',
+    updatedAt: 'updatedAt'
+};
+exports.RepairRecordScalarFieldEnum = {
+    id: 'id',
+    assignee: 'assignee',
+    printerAssetId: 'printerAssetId',
+    occurredOn: 'occurredOn',
+    category: 'category',
+    handledBy: 'handledBy',
+    detail: 'detail',
+    restoredOn: 'restoredOn',
+    status: 'status',
+    createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
 exports.SortOrder = {

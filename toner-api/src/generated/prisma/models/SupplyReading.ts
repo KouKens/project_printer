@@ -30,6 +30,8 @@ export type SupplyReadingAvgAggregateOutputType = {
   id: number | null
   printerId: number | null
   supplyIndex: number | null
+  supplyType: number | null
+  supplyClass: number | null
   level: number | null
   maxCapacity: number | null
   percent: number | null
@@ -39,6 +41,8 @@ export type SupplyReadingSumAggregateOutputType = {
   id: number | null
   printerId: number | null
   supplyIndex: number | null
+  supplyType: number | null
+  supplyClass: number | null
   level: number | null
   maxCapacity: number | null
   percent: number | null
@@ -49,6 +53,8 @@ export type SupplyReadingMinAggregateOutputType = {
   printerId: number | null
   supplyIndex: number | null
   name: string | null
+  supplyType: number | null
+  supplyClass: number | null
   colorant: string | null
   level: number | null
   maxCapacity: number | null
@@ -61,6 +67,8 @@ export type SupplyReadingMaxAggregateOutputType = {
   printerId: number | null
   supplyIndex: number | null
   name: string | null
+  supplyType: number | null
+  supplyClass: number | null
   colorant: string | null
   level: number | null
   maxCapacity: number | null
@@ -73,6 +81,8 @@ export type SupplyReadingCountAggregateOutputType = {
   printerId: number
   supplyIndex: number
   name: number
+  supplyType: number
+  supplyClass: number
   colorant: number
   level: number
   maxCapacity: number
@@ -86,6 +96,8 @@ export type SupplyReadingAvgAggregateInputType = {
   id?: true
   printerId?: true
   supplyIndex?: true
+  supplyType?: true
+  supplyClass?: true
   level?: true
   maxCapacity?: true
   percent?: true
@@ -95,6 +107,8 @@ export type SupplyReadingSumAggregateInputType = {
   id?: true
   printerId?: true
   supplyIndex?: true
+  supplyType?: true
+  supplyClass?: true
   level?: true
   maxCapacity?: true
   percent?: true
@@ -105,6 +119,8 @@ export type SupplyReadingMinAggregateInputType = {
   printerId?: true
   supplyIndex?: true
   name?: true
+  supplyType?: true
+  supplyClass?: true
   colorant?: true
   level?: true
   maxCapacity?: true
@@ -117,6 +133,8 @@ export type SupplyReadingMaxAggregateInputType = {
   printerId?: true
   supplyIndex?: true
   name?: true
+  supplyType?: true
+  supplyClass?: true
   colorant?: true
   level?: true
   maxCapacity?: true
@@ -129,6 +147,8 @@ export type SupplyReadingCountAggregateInputType = {
   printerId?: true
   supplyIndex?: true
   name?: true
+  supplyType?: true
+  supplyClass?: true
   colorant?: true
   level?: true
   maxCapacity?: true
@@ -228,6 +248,8 @@ export type SupplyReadingGroupByOutputType = {
   printerId: number
   supplyIndex: number
   name: string
+  supplyType: number | null
+  supplyClass: number | null
   colorant: string | null
   level: number
   maxCapacity: number
@@ -263,6 +285,8 @@ export type SupplyReadingWhereInput = {
   printerId?: Prisma.IntFilter<"SupplyReading"> | number
   supplyIndex?: Prisma.IntFilter<"SupplyReading"> | number
   name?: Prisma.StringFilter<"SupplyReading"> | string
+  supplyType?: Prisma.IntNullableFilter<"SupplyReading"> | number | null
+  supplyClass?: Prisma.IntNullableFilter<"SupplyReading"> | number | null
   colorant?: Prisma.StringNullableFilter<"SupplyReading"> | string | null
   level?: Prisma.IntFilter<"SupplyReading"> | number
   maxCapacity?: Prisma.IntFilter<"SupplyReading"> | number
@@ -276,6 +300,8 @@ export type SupplyReadingOrderByWithRelationInput = {
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrderInput | Prisma.SortOrder
+  supplyClass?: Prisma.SortOrderInput | Prisma.SortOrder
   colorant?: Prisma.SortOrderInput | Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
@@ -293,6 +319,8 @@ export type SupplyReadingWhereUniqueInput = Prisma.AtLeast<{
   printerId?: Prisma.IntFilter<"SupplyReading"> | number
   supplyIndex?: Prisma.IntFilter<"SupplyReading"> | number
   name?: Prisma.StringFilter<"SupplyReading"> | string
+  supplyType?: Prisma.IntNullableFilter<"SupplyReading"> | number | null
+  supplyClass?: Prisma.IntNullableFilter<"SupplyReading"> | number | null
   colorant?: Prisma.StringNullableFilter<"SupplyReading"> | string | null
   level?: Prisma.IntFilter<"SupplyReading"> | number
   maxCapacity?: Prisma.IntFilter<"SupplyReading"> | number
@@ -306,6 +334,8 @@ export type SupplyReadingOrderByWithAggregationInput = {
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrderInput | Prisma.SortOrder
+  supplyClass?: Prisma.SortOrderInput | Prisma.SortOrder
   colorant?: Prisma.SortOrderInput | Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
@@ -326,6 +356,8 @@ export type SupplyReadingScalarWhereWithAggregatesInput = {
   printerId?: Prisma.IntWithAggregatesFilter<"SupplyReading"> | number
   supplyIndex?: Prisma.IntWithAggregatesFilter<"SupplyReading"> | number
   name?: Prisma.StringWithAggregatesFilter<"SupplyReading"> | string
+  supplyType?: Prisma.IntNullableWithAggregatesFilter<"SupplyReading"> | number | null
+  supplyClass?: Prisma.IntNullableWithAggregatesFilter<"SupplyReading"> | number | null
   colorant?: Prisma.StringNullableWithAggregatesFilter<"SupplyReading"> | string | null
   level?: Prisma.IntWithAggregatesFilter<"SupplyReading"> | number
   maxCapacity?: Prisma.IntWithAggregatesFilter<"SupplyReading"> | number
@@ -336,6 +368,8 @@ export type SupplyReadingScalarWhereWithAggregatesInput = {
 export type SupplyReadingCreateInput = {
   supplyIndex: number
   name: string
+  supplyType?: number | null
+  supplyClass?: number | null
   colorant?: string | null
   level: number
   maxCapacity: number
@@ -349,6 +383,8 @@ export type SupplyReadingUncheckedCreateInput = {
   printerId: number
   supplyIndex: number
   name: string
+  supplyType?: number | null
+  supplyClass?: number | null
   colorant?: string | null
   level: number
   maxCapacity: number
@@ -359,6 +395,8 @@ export type SupplyReadingUncheckedCreateInput = {
 export type SupplyReadingUpdateInput = {
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -372,6 +410,8 @@ export type SupplyReadingUncheckedUpdateInput = {
   printerId?: Prisma.IntFieldUpdateOperationsInput | number
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -384,6 +424,8 @@ export type SupplyReadingCreateManyInput = {
   printerId: number
   supplyIndex: number
   name: string
+  supplyType?: number | null
+  supplyClass?: number | null
   colorant?: string | null
   level: number
   maxCapacity: number
@@ -394,6 +436,8 @@ export type SupplyReadingCreateManyInput = {
 export type SupplyReadingUpdateManyMutationInput = {
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -406,6 +450,8 @@ export type SupplyReadingUncheckedUpdateManyInput = {
   printerId?: Prisma.IntFieldUpdateOperationsInput | number
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -433,6 +479,8 @@ export type SupplyReadingCountOrderByAggregateInput = {
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrder
+  supplyClass?: Prisma.SortOrder
   colorant?: Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
@@ -444,6 +492,8 @@ export type SupplyReadingAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrder
+  supplyClass?: Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
   percent?: Prisma.SortOrder
@@ -454,6 +504,8 @@ export type SupplyReadingMaxOrderByAggregateInput = {
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrder
+  supplyClass?: Prisma.SortOrder
   colorant?: Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
@@ -466,6 +518,8 @@ export type SupplyReadingMinOrderByAggregateInput = {
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrder
+  supplyClass?: Prisma.SortOrder
   colorant?: Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
@@ -477,6 +531,8 @@ export type SupplyReadingSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   printerId?: Prisma.SortOrder
   supplyIndex?: Prisma.SortOrder
+  supplyType?: Prisma.SortOrder
+  supplyClass?: Prisma.SortOrder
   level?: Prisma.SortOrder
   maxCapacity?: Prisma.SortOrder
   percent?: Prisma.SortOrder
@@ -527,6 +583,8 @@ export type SupplyReadingUncheckedUpdateManyWithoutPrinterNestedInput = {
 export type SupplyReadingCreateWithoutPrinterInput = {
   supplyIndex: number
   name: string
+  supplyType?: number | null
+  supplyClass?: number | null
   colorant?: string | null
   level: number
   maxCapacity: number
@@ -538,6 +596,8 @@ export type SupplyReadingUncheckedCreateWithoutPrinterInput = {
   id?: number
   supplyIndex: number
   name: string
+  supplyType?: number | null
+  supplyClass?: number | null
   colorant?: string | null
   level: number
   maxCapacity: number
@@ -579,6 +639,8 @@ export type SupplyReadingScalarWhereInput = {
   printerId?: Prisma.IntFilter<"SupplyReading"> | number
   supplyIndex?: Prisma.IntFilter<"SupplyReading"> | number
   name?: Prisma.StringFilter<"SupplyReading"> | string
+  supplyType?: Prisma.IntNullableFilter<"SupplyReading"> | number | null
+  supplyClass?: Prisma.IntNullableFilter<"SupplyReading"> | number | null
   colorant?: Prisma.StringNullableFilter<"SupplyReading"> | string | null
   level?: Prisma.IntFilter<"SupplyReading"> | number
   maxCapacity?: Prisma.IntFilter<"SupplyReading"> | number
@@ -590,6 +652,8 @@ export type SupplyReadingCreateManyPrinterInput = {
   id?: number
   supplyIndex: number
   name: string
+  supplyType?: number | null
+  supplyClass?: number | null
   colorant?: string | null
   level: number
   maxCapacity: number
@@ -600,6 +664,8 @@ export type SupplyReadingCreateManyPrinterInput = {
 export type SupplyReadingUpdateWithoutPrinterInput = {
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -611,6 +677,8 @@ export type SupplyReadingUncheckedUpdateWithoutPrinterInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -622,6 +690,8 @@ export type SupplyReadingUncheckedUpdateManyWithoutPrinterInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   supplyIndex?: Prisma.IntFieldUpdateOperationsInput | number
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  supplyType?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  supplyClass?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   colorant?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   maxCapacity?: Prisma.IntFieldUpdateOperationsInput | number
@@ -636,6 +706,8 @@ export type SupplyReadingSelect<ExtArgs extends runtime.Types.Extensions.Interna
   printerId?: boolean
   supplyIndex?: boolean
   name?: boolean
+  supplyType?: boolean
+  supplyClass?: boolean
   colorant?: boolean
   level?: boolean
   maxCapacity?: boolean
@@ -649,6 +721,8 @@ export type SupplyReadingSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   printerId?: boolean
   supplyIndex?: boolean
   name?: boolean
+  supplyType?: boolean
+  supplyClass?: boolean
   colorant?: boolean
   level?: boolean
   maxCapacity?: boolean
@@ -662,6 +736,8 @@ export type SupplyReadingSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   printerId?: boolean
   supplyIndex?: boolean
   name?: boolean
+  supplyType?: boolean
+  supplyClass?: boolean
   colorant?: boolean
   level?: boolean
   maxCapacity?: boolean
@@ -675,6 +751,8 @@ export type SupplyReadingSelectScalar = {
   printerId?: boolean
   supplyIndex?: boolean
   name?: boolean
+  supplyType?: boolean
+  supplyClass?: boolean
   colorant?: boolean
   level?: boolean
   maxCapacity?: boolean
@@ -682,7 +760,7 @@ export type SupplyReadingSelectScalar = {
   updatedAt?: boolean
 }
 
-export type SupplyReadingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "printerId" | "supplyIndex" | "name" | "colorant" | "level" | "maxCapacity" | "percent" | "updatedAt", ExtArgs["result"]["supplyReading"]>
+export type SupplyReadingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "printerId" | "supplyIndex" | "name" | "supplyType" | "supplyClass" | "colorant" | "level" | "maxCapacity" | "percent" | "updatedAt", ExtArgs["result"]["supplyReading"]>
 export type SupplyReadingInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>
 }
@@ -709,6 +787,16 @@ export type $SupplyReadingPayload<ExtArgs extends runtime.Types.Extensions.Inter
      * prtMarkerSuppliesDescription
      */
     name: string
+    /**
+     * prtMarkerSuppliesType。名前の表記はメーカーごとに違うので、分類はこれで行う。
+     * 3 トナー / 4 廃トナー / 5 インク / 6 インクカートリッジ / 9 感光体（ドラム）/
+     * 15 定着 / 20 転写ユニット / 21 トナーカートリッジ / 1 その他
+     */
+    supplyType: number | null
+    /**
+     * prtMarkerSuppliesClass。4 は溜まる側（廃トナー等）で、残量は空き容量を指す
+     */
+    supplyClass: number | null
     /**
      * 色名（prtMarkerColorantValue）。黒一色の機種では null
      */
@@ -1154,6 +1242,8 @@ export interface SupplyReadingFieldRefs {
   readonly printerId: Prisma.FieldRef<"SupplyReading", 'Int'>
   readonly supplyIndex: Prisma.FieldRef<"SupplyReading", 'Int'>
   readonly name: Prisma.FieldRef<"SupplyReading", 'String'>
+  readonly supplyType: Prisma.FieldRef<"SupplyReading", 'Int'>
+  readonly supplyClass: Prisma.FieldRef<"SupplyReading", 'Int'>
   readonly colorant: Prisma.FieldRef<"SupplyReading", 'String'>
   readonly level: Prisma.FieldRef<"SupplyReading", 'Int'>
   readonly maxCapacity: Prisma.FieldRef<"SupplyReading", 'Int'>

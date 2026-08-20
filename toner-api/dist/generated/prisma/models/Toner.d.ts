@@ -9,18 +9,24 @@ export type AggregateToner = {
 export type TonerMinAggregateOutputType = {
     id: string | null;
     name: string | null;
+    color: string | null;
+    recycled: boolean | null;
     createdAt: Date | null;
     updatedAt: Date | null;
 };
 export type TonerMaxAggregateOutputType = {
     id: string | null;
     name: string | null;
+    color: string | null;
+    recycled: boolean | null;
     createdAt: Date | null;
     updatedAt: Date | null;
 };
 export type TonerCountAggregateOutputType = {
     id: number;
     name: number;
+    color: number;
+    recycled: number;
     createdAt: number;
     updatedAt: number;
     _all: number;
@@ -28,18 +34,24 @@ export type TonerCountAggregateOutputType = {
 export type TonerMinAggregateInputType = {
     id?: true;
     name?: true;
+    color?: true;
+    recycled?: true;
     createdAt?: true;
     updatedAt?: true;
 };
 export type TonerMaxAggregateInputType = {
     id?: true;
     name?: true;
+    color?: true;
+    recycled?: true;
     createdAt?: true;
     updatedAt?: true;
 };
 export type TonerCountAggregateInputType = {
     id?: true;
     name?: true;
+    color?: true;
+    recycled?: true;
     createdAt?: true;
     updatedAt?: true;
     _all?: true;
@@ -71,6 +83,8 @@ export type TonerGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
 export type TonerGroupByOutputType = {
     id: string;
     name: string | null;
+    color: string | null;
+    recycled: boolean;
     createdAt: Date;
     updatedAt: Date;
     _count: TonerCountAggregateOutputType | null;
@@ -86,20 +100,28 @@ export type TonerWhereInput = {
     NOT?: Prisma.TonerWhereInput | Prisma.TonerWhereInput[];
     id?: Prisma.StringFilter<"Toner"> | string;
     name?: Prisma.StringNullableFilter<"Toner"> | string | null;
+    color?: Prisma.StringNullableFilter<"Toner"> | string | null;
+    recycled?: Prisma.BoolFilter<"Toner"> | boolean;
     createdAt?: Prisma.DateTimeFilter<"Toner"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"Toner"> | Date | string;
     stock?: Prisma.XOR<Prisma.TonerStockNullableScalarRelationFilter, Prisma.TonerStockWhereInput> | null;
     entries?: Prisma.TonerEntryListRelationFilter;
     orders?: Prisma.TonerOrderListRelationFilter;
+    printers?: Prisma.TonerPrinterListRelationFilter;
+    prices?: Prisma.TonerPriceListRelationFilter;
 };
 export type TonerOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     name?: Prisma.SortOrderInput | Prisma.SortOrder;
+    color?: Prisma.SortOrderInput | Prisma.SortOrder;
+    recycled?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
     stock?: Prisma.TonerStockOrderByWithRelationInput;
     entries?: Prisma.TonerEntryOrderByRelationAggregateInput;
     orders?: Prisma.TonerOrderOrderByRelationAggregateInput;
+    printers?: Prisma.TonerPrinterOrderByRelationAggregateInput;
+    prices?: Prisma.TonerPriceOrderByRelationAggregateInput;
 };
 export type TonerWhereUniqueInput = Prisma.AtLeast<{
     id?: string;
@@ -107,15 +129,21 @@ export type TonerWhereUniqueInput = Prisma.AtLeast<{
     OR?: Prisma.TonerWhereInput[];
     NOT?: Prisma.TonerWhereInput | Prisma.TonerWhereInput[];
     name?: Prisma.StringNullableFilter<"Toner"> | string | null;
+    color?: Prisma.StringNullableFilter<"Toner"> | string | null;
+    recycled?: Prisma.BoolFilter<"Toner"> | boolean;
     createdAt?: Prisma.DateTimeFilter<"Toner"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"Toner"> | Date | string;
     stock?: Prisma.XOR<Prisma.TonerStockNullableScalarRelationFilter, Prisma.TonerStockWhereInput> | null;
     entries?: Prisma.TonerEntryListRelationFilter;
     orders?: Prisma.TonerOrderListRelationFilter;
+    printers?: Prisma.TonerPrinterListRelationFilter;
+    prices?: Prisma.TonerPriceListRelationFilter;
 }, "id">;
 export type TonerOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
     name?: Prisma.SortOrderInput | Prisma.SortOrder;
+    color?: Prisma.SortOrderInput | Prisma.SortOrder;
+    recycled?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
     _count?: Prisma.TonerCountOrderByAggregateInput;
@@ -128,78 +156,108 @@ export type TonerScalarWhereWithAggregatesInput = {
     NOT?: Prisma.TonerScalarWhereWithAggregatesInput | Prisma.TonerScalarWhereWithAggregatesInput[];
     id?: Prisma.StringWithAggregatesFilter<"Toner"> | string;
     name?: Prisma.StringNullableWithAggregatesFilter<"Toner"> | string | null;
+    color?: Prisma.StringNullableWithAggregatesFilter<"Toner"> | string | null;
+    recycled?: Prisma.BoolWithAggregatesFilter<"Toner"> | boolean;
     createdAt?: Prisma.DateTimeWithAggregatesFilter<"Toner"> | Date | string;
     updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Toner"> | Date | string;
 };
 export type TonerCreateInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     stock?: Prisma.TonerStockCreateNestedOneWithoutTonerInput;
     entries?: Prisma.TonerEntryCreateNestedManyWithoutTonerInput;
     orders?: Prisma.TonerOrderCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceCreateNestedManyWithoutTonerInput;
 };
 export type TonerUncheckedCreateInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     stock?: Prisma.TonerStockUncheckedCreateNestedOneWithoutTonerInput;
     entries?: Prisma.TonerEntryUncheckedCreateNestedManyWithoutTonerInput;
     orders?: Prisma.TonerOrderUncheckedCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceUncheckedCreateNestedManyWithoutTonerInput;
 };
 export type TonerUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     stock?: Prisma.TonerStockUpdateOneWithoutTonerNestedInput;
     entries?: Prisma.TonerEntryUpdateManyWithoutTonerNestedInput;
     orders?: Prisma.TonerOrderUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUpdateManyWithoutTonerNestedInput;
 };
 export type TonerUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     stock?: Prisma.TonerStockUncheckedUpdateOneWithoutTonerNestedInput;
     entries?: Prisma.TonerEntryUncheckedUpdateManyWithoutTonerNestedInput;
     orders?: Prisma.TonerOrderUncheckedUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUncheckedUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUncheckedUpdateManyWithoutTonerNestedInput;
 };
 export type TonerCreateManyInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
 export type TonerUpdateManyMutationInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 export type TonerUncheckedUpdateManyInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 export type TonerCountOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     name?: Prisma.SortOrder;
+    color?: Prisma.SortOrder;
+    recycled?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
 };
 export type TonerMaxOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     name?: Prisma.SortOrder;
+    color?: Prisma.SortOrder;
+    recycled?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
 };
 export type TonerMinOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     name?: Prisma.SortOrder;
+    color?: Prisma.SortOrder;
+    recycled?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
 };
@@ -213,8 +271,35 @@ export type StringFieldUpdateOperationsInput = {
 export type NullableStringFieldUpdateOperationsInput = {
     set?: string | null;
 };
+export type BoolFieldUpdateOperationsInput = {
+    set?: boolean;
+};
 export type DateTimeFieldUpdateOperationsInput = {
     set?: Date | string;
+};
+export type TonerCreateNestedOneWithoutPrintersInput = {
+    create?: Prisma.XOR<Prisma.TonerCreateWithoutPrintersInput, Prisma.TonerUncheckedCreateWithoutPrintersInput>;
+    connectOrCreate?: Prisma.TonerCreateOrConnectWithoutPrintersInput;
+    connect?: Prisma.TonerWhereUniqueInput;
+};
+export type TonerUpdateOneRequiredWithoutPrintersNestedInput = {
+    create?: Prisma.XOR<Prisma.TonerCreateWithoutPrintersInput, Prisma.TonerUncheckedCreateWithoutPrintersInput>;
+    connectOrCreate?: Prisma.TonerCreateOrConnectWithoutPrintersInput;
+    upsert?: Prisma.TonerUpsertWithoutPrintersInput;
+    connect?: Prisma.TonerWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.TonerUpdateToOneWithWhereWithoutPrintersInput, Prisma.TonerUpdateWithoutPrintersInput>, Prisma.TonerUncheckedUpdateWithoutPrintersInput>;
+};
+export type TonerCreateNestedOneWithoutPricesInput = {
+    create?: Prisma.XOR<Prisma.TonerCreateWithoutPricesInput, Prisma.TonerUncheckedCreateWithoutPricesInput>;
+    connectOrCreate?: Prisma.TonerCreateOrConnectWithoutPricesInput;
+    connect?: Prisma.TonerWhereUniqueInput;
+};
+export type TonerUpdateOneRequiredWithoutPricesNestedInput = {
+    create?: Prisma.XOR<Prisma.TonerCreateWithoutPricesInput, Prisma.TonerUncheckedCreateWithoutPricesInput>;
+    connectOrCreate?: Prisma.TonerCreateOrConnectWithoutPricesInput;
+    upsert?: Prisma.TonerUpsertWithoutPricesInput;
+    connect?: Prisma.TonerWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.TonerUpdateToOneWithWhereWithoutPricesInput, Prisma.TonerUpdateWithoutPricesInput>, Prisma.TonerUncheckedUpdateWithoutPricesInput>;
 };
 export type TonerCreateNestedOneWithoutStockInput = {
     create?: Prisma.XOR<Prisma.TonerCreateWithoutStockInput, Prisma.TonerUncheckedCreateWithoutStockInput>;
@@ -252,21 +337,151 @@ export type TonerUpdateOneRequiredWithoutOrdersNestedInput = {
     connect?: Prisma.TonerWhereUniqueInput;
     update?: Prisma.XOR<Prisma.XOR<Prisma.TonerUpdateToOneWithWhereWithoutOrdersInput, Prisma.TonerUpdateWithoutOrdersInput>, Prisma.TonerUncheckedUpdateWithoutOrdersInput>;
 };
+export type TonerCreateWithoutPrintersInput = {
+    id: string;
+    name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    stock?: Prisma.TonerStockCreateNestedOneWithoutTonerInput;
+    entries?: Prisma.TonerEntryCreateNestedManyWithoutTonerInput;
+    orders?: Prisma.TonerOrderCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceCreateNestedManyWithoutTonerInput;
+};
+export type TonerUncheckedCreateWithoutPrintersInput = {
+    id: string;
+    name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    stock?: Prisma.TonerStockUncheckedCreateNestedOneWithoutTonerInput;
+    entries?: Prisma.TonerEntryUncheckedCreateNestedManyWithoutTonerInput;
+    orders?: Prisma.TonerOrderUncheckedCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceUncheckedCreateNestedManyWithoutTonerInput;
+};
+export type TonerCreateOrConnectWithoutPrintersInput = {
+    where: Prisma.TonerWhereUniqueInput;
+    create: Prisma.XOR<Prisma.TonerCreateWithoutPrintersInput, Prisma.TonerUncheckedCreateWithoutPrintersInput>;
+};
+export type TonerUpsertWithoutPrintersInput = {
+    update: Prisma.XOR<Prisma.TonerUpdateWithoutPrintersInput, Prisma.TonerUncheckedUpdateWithoutPrintersInput>;
+    create: Prisma.XOR<Prisma.TonerCreateWithoutPrintersInput, Prisma.TonerUncheckedCreateWithoutPrintersInput>;
+    where?: Prisma.TonerWhereInput;
+};
+export type TonerUpdateToOneWithWhereWithoutPrintersInput = {
+    where?: Prisma.TonerWhereInput;
+    data: Prisma.XOR<Prisma.TonerUpdateWithoutPrintersInput, Prisma.TonerUncheckedUpdateWithoutPrintersInput>;
+};
+export type TonerUpdateWithoutPrintersInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    stock?: Prisma.TonerStockUpdateOneWithoutTonerNestedInput;
+    entries?: Prisma.TonerEntryUpdateManyWithoutTonerNestedInput;
+    orders?: Prisma.TonerOrderUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUpdateManyWithoutTonerNestedInput;
+};
+export type TonerUncheckedUpdateWithoutPrintersInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    stock?: Prisma.TonerStockUncheckedUpdateOneWithoutTonerNestedInput;
+    entries?: Prisma.TonerEntryUncheckedUpdateManyWithoutTonerNestedInput;
+    orders?: Prisma.TonerOrderUncheckedUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUncheckedUpdateManyWithoutTonerNestedInput;
+};
+export type TonerCreateWithoutPricesInput = {
+    id: string;
+    name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    stock?: Prisma.TonerStockCreateNestedOneWithoutTonerInput;
+    entries?: Prisma.TonerEntryCreateNestedManyWithoutTonerInput;
+    orders?: Prisma.TonerOrderCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterCreateNestedManyWithoutTonerInput;
+};
+export type TonerUncheckedCreateWithoutPricesInput = {
+    id: string;
+    name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    stock?: Prisma.TonerStockUncheckedCreateNestedOneWithoutTonerInput;
+    entries?: Prisma.TonerEntryUncheckedCreateNestedManyWithoutTonerInput;
+    orders?: Prisma.TonerOrderUncheckedCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutTonerInput;
+};
+export type TonerCreateOrConnectWithoutPricesInput = {
+    where: Prisma.TonerWhereUniqueInput;
+    create: Prisma.XOR<Prisma.TonerCreateWithoutPricesInput, Prisma.TonerUncheckedCreateWithoutPricesInput>;
+};
+export type TonerUpsertWithoutPricesInput = {
+    update: Prisma.XOR<Prisma.TonerUpdateWithoutPricesInput, Prisma.TonerUncheckedUpdateWithoutPricesInput>;
+    create: Prisma.XOR<Prisma.TonerCreateWithoutPricesInput, Prisma.TonerUncheckedCreateWithoutPricesInput>;
+    where?: Prisma.TonerWhereInput;
+};
+export type TonerUpdateToOneWithWhereWithoutPricesInput = {
+    where?: Prisma.TonerWhereInput;
+    data: Prisma.XOR<Prisma.TonerUpdateWithoutPricesInput, Prisma.TonerUncheckedUpdateWithoutPricesInput>;
+};
+export type TonerUpdateWithoutPricesInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    stock?: Prisma.TonerStockUpdateOneWithoutTonerNestedInput;
+    entries?: Prisma.TonerEntryUpdateManyWithoutTonerNestedInput;
+    orders?: Prisma.TonerOrderUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUpdateManyWithoutTonerNestedInput;
+};
+export type TonerUncheckedUpdateWithoutPricesInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    stock?: Prisma.TonerStockUncheckedUpdateOneWithoutTonerNestedInput;
+    entries?: Prisma.TonerEntryUncheckedUpdateManyWithoutTonerNestedInput;
+    orders?: Prisma.TonerOrderUncheckedUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUncheckedUpdateManyWithoutTonerNestedInput;
+};
 export type TonerCreateWithoutStockInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     entries?: Prisma.TonerEntryCreateNestedManyWithoutTonerInput;
     orders?: Prisma.TonerOrderCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceCreateNestedManyWithoutTonerInput;
 };
 export type TonerUncheckedCreateWithoutStockInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     entries?: Prisma.TonerEntryUncheckedCreateNestedManyWithoutTonerInput;
     orders?: Prisma.TonerOrderUncheckedCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceUncheckedCreateNestedManyWithoutTonerInput;
 };
 export type TonerCreateOrConnectWithoutStockInput = {
     where: Prisma.TonerWhereUniqueInput;
@@ -284,34 +499,50 @@ export type TonerUpdateToOneWithWhereWithoutStockInput = {
 export type TonerUpdateWithoutStockInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     entries?: Prisma.TonerEntryUpdateManyWithoutTonerNestedInput;
     orders?: Prisma.TonerOrderUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUpdateManyWithoutTonerNestedInput;
 };
 export type TonerUncheckedUpdateWithoutStockInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     entries?: Prisma.TonerEntryUncheckedUpdateManyWithoutTonerNestedInput;
     orders?: Prisma.TonerOrderUncheckedUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUncheckedUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUncheckedUpdateManyWithoutTonerNestedInput;
 };
 export type TonerCreateWithoutEntriesInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     stock?: Prisma.TonerStockCreateNestedOneWithoutTonerInput;
     orders?: Prisma.TonerOrderCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceCreateNestedManyWithoutTonerInput;
 };
 export type TonerUncheckedCreateWithoutEntriesInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     stock?: Prisma.TonerStockUncheckedCreateNestedOneWithoutTonerInput;
     orders?: Prisma.TonerOrderUncheckedCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceUncheckedCreateNestedManyWithoutTonerInput;
 };
 export type TonerCreateOrConnectWithoutEntriesInput = {
     where: Prisma.TonerWhereUniqueInput;
@@ -329,34 +560,50 @@ export type TonerUpdateToOneWithWhereWithoutEntriesInput = {
 export type TonerUpdateWithoutEntriesInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     stock?: Prisma.TonerStockUpdateOneWithoutTonerNestedInput;
     orders?: Prisma.TonerOrderUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUpdateManyWithoutTonerNestedInput;
 };
 export type TonerUncheckedUpdateWithoutEntriesInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     stock?: Prisma.TonerStockUncheckedUpdateOneWithoutTonerNestedInput;
     orders?: Prisma.TonerOrderUncheckedUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUncheckedUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUncheckedUpdateManyWithoutTonerNestedInput;
 };
 export type TonerCreateWithoutOrdersInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     stock?: Prisma.TonerStockCreateNestedOneWithoutTonerInput;
     entries?: Prisma.TonerEntryCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceCreateNestedManyWithoutTonerInput;
 };
 export type TonerUncheckedCreateWithoutOrdersInput = {
     id: string;
     name?: string | null;
+    color?: string | null;
+    recycled?: boolean;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     stock?: Prisma.TonerStockUncheckedCreateNestedOneWithoutTonerInput;
     entries?: Prisma.TonerEntryUncheckedCreateNestedManyWithoutTonerInput;
+    printers?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutTonerInput;
+    prices?: Prisma.TonerPriceUncheckedCreateNestedManyWithoutTonerInput;
 };
 export type TonerCreateOrConnectWithoutOrdersInput = {
     where: Prisma.TonerWhereUniqueInput;
@@ -374,26 +621,38 @@ export type TonerUpdateToOneWithWhereWithoutOrdersInput = {
 export type TonerUpdateWithoutOrdersInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     stock?: Prisma.TonerStockUpdateOneWithoutTonerNestedInput;
     entries?: Prisma.TonerEntryUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUpdateManyWithoutTonerNestedInput;
 };
 export type TonerUncheckedUpdateWithoutOrdersInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     stock?: Prisma.TonerStockUncheckedUpdateOneWithoutTonerNestedInput;
     entries?: Prisma.TonerEntryUncheckedUpdateManyWithoutTonerNestedInput;
+    printers?: Prisma.TonerPrinterUncheckedUpdateManyWithoutTonerNestedInput;
+    prices?: Prisma.TonerPriceUncheckedUpdateManyWithoutTonerNestedInput;
 };
 export type TonerCountOutputType = {
     entries: number;
     orders: number;
+    printers: number;
+    prices: number;
 };
 export type TonerCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     entries?: boolean | TonerCountOutputTypeCountEntriesArgs;
     orders?: boolean | TonerCountOutputTypeCountOrdersArgs;
+    printers?: boolean | TonerCountOutputTypeCountPrintersArgs;
+    prices?: boolean | TonerCountOutputTypeCountPricesArgs;
 };
 export type TonerCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     select?: Prisma.TonerCountOutputTypeSelect<ExtArgs> | null;
@@ -404,39 +663,57 @@ export type TonerCountOutputTypeCountEntriesArgs<ExtArgs extends runtime.Types.E
 export type TonerCountOutputTypeCountOrdersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     where?: Prisma.TonerOrderWhereInput;
 };
+export type TonerCountOutputTypeCountPrintersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.TonerPrinterWhereInput;
+};
+export type TonerCountOutputTypeCountPricesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.TonerPriceWhereInput;
+};
 export type TonerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     name?: boolean;
+    color?: boolean;
+    recycled?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
     stock?: boolean | Prisma.Toner$stockArgs<ExtArgs>;
     entries?: boolean | Prisma.Toner$entriesArgs<ExtArgs>;
     orders?: boolean | Prisma.Toner$ordersArgs<ExtArgs>;
+    printers?: boolean | Prisma.Toner$printersArgs<ExtArgs>;
+    prices?: boolean | Prisma.Toner$pricesArgs<ExtArgs>;
     _count?: boolean | Prisma.TonerCountOutputTypeDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["toner"]>;
 export type TonerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     name?: boolean;
+    color?: boolean;
+    recycled?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
 }, ExtArgs["result"]["toner"]>;
 export type TonerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     name?: boolean;
+    color?: boolean;
+    recycled?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
 }, ExtArgs["result"]["toner"]>;
 export type TonerSelectScalar = {
     id?: boolean;
     name?: boolean;
+    color?: boolean;
+    recycled?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
 };
-export type TonerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "createdAt" | "updatedAt", ExtArgs["result"]["toner"]>;
+export type TonerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "color" | "recycled" | "createdAt" | "updatedAt", ExtArgs["result"]["toner"]>;
 export type TonerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     stock?: boolean | Prisma.Toner$stockArgs<ExtArgs>;
     entries?: boolean | Prisma.Toner$entriesArgs<ExtArgs>;
     orders?: boolean | Prisma.Toner$ordersArgs<ExtArgs>;
+    printers?: boolean | Prisma.Toner$printersArgs<ExtArgs>;
+    prices?: boolean | Prisma.Toner$pricesArgs<ExtArgs>;
     _count?: boolean | Prisma.TonerCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type TonerIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
@@ -447,10 +724,14 @@ export type $TonerPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
         stock: Prisma.$TonerStockPayload<ExtArgs> | null;
         entries: Prisma.$TonerEntryPayload<ExtArgs>[];
         orders: Prisma.$TonerOrderPayload<ExtArgs>[];
+        printers: Prisma.$TonerPrinterPayload<ExtArgs>[];
+        prices: Prisma.$TonerPricePayload<ExtArgs>[];
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
         name: string | null;
+        color: string | null;
+        recycled: boolean;
         createdAt: Date;
         updatedAt: Date;
     }, ExtArgs["result"]["toner"]>;
@@ -508,6 +789,8 @@ export interface Prisma__TonerClient<T, Null = never, ExtArgs extends runtime.Ty
     stock<T extends Prisma.Toner$stockArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Toner$stockArgs<ExtArgs>>): Prisma.Prisma__TonerStockClient<runtime.Types.Result.GetResult<Prisma.$TonerStockPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
     entries<T extends Prisma.Toner$entriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Toner$entriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TonerEntryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     orders<T extends Prisma.Toner$ordersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Toner$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TonerOrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    printers<T extends Prisma.Toner$printersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Toner$printersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TonerPrinterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    prices<T extends Prisma.Toner$pricesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Toner$pricesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TonerPricePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): runtime.Types.Utils.JsPromise<TResult1 | TResult2>;
     catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): runtime.Types.Utils.JsPromise<T | TResult>;
     finally(onfinally?: (() => void) | undefined | null): runtime.Types.Utils.JsPromise<T>;
@@ -515,6 +798,8 @@ export interface Prisma__TonerClient<T, Null = never, ExtArgs extends runtime.Ty
 export interface TonerFieldRefs {
     readonly id: Prisma.FieldRef<"Toner", 'String'>;
     readonly name: Prisma.FieldRef<"Toner", 'String'>;
+    readonly color: Prisma.FieldRef<"Toner", 'String'>;
+    readonly recycled: Prisma.FieldRef<"Toner", 'Boolean'>;
     readonly createdAt: Prisma.FieldRef<"Toner", 'DateTime'>;
     readonly updatedAt: Prisma.FieldRef<"Toner", 'DateTime'>;
 }
@@ -643,6 +928,28 @@ export type Toner$ordersArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
     take?: number;
     skip?: number;
     distinct?: Prisma.TonerOrderScalarFieldEnum | Prisma.TonerOrderScalarFieldEnum[];
+};
+export type Toner$printersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.TonerPrinterSelect<ExtArgs> | null;
+    omit?: Prisma.TonerPrinterOmit<ExtArgs> | null;
+    include?: Prisma.TonerPrinterInclude<ExtArgs> | null;
+    where?: Prisma.TonerPrinterWhereInput;
+    orderBy?: Prisma.TonerPrinterOrderByWithRelationInput | Prisma.TonerPrinterOrderByWithRelationInput[];
+    cursor?: Prisma.TonerPrinterWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.TonerPrinterScalarFieldEnum | Prisma.TonerPrinterScalarFieldEnum[];
+};
+export type Toner$pricesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.TonerPriceSelect<ExtArgs> | null;
+    omit?: Prisma.TonerPriceOmit<ExtArgs> | null;
+    include?: Prisma.TonerPriceInclude<ExtArgs> | null;
+    where?: Prisma.TonerPriceWhereInput;
+    orderBy?: Prisma.TonerPriceOrderByWithRelationInput | Prisma.TonerPriceOrderByWithRelationInput[];
+    cursor?: Prisma.TonerPriceWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.TonerPriceScalarFieldEnum | Prisma.TonerPriceScalarFieldEnum[];
 };
 export type TonerDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     select?: Prisma.TonerSelect<ExtArgs> | null;

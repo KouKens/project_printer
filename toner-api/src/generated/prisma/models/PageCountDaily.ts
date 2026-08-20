@@ -30,7 +30,11 @@ export type PageCountDailyAvgAggregateOutputType = {
   id: number | null
   printerId: number | null
   total: number | null
+  totalMono: number | null
+  totalColor: number | null
   pages: number | null
+  monoPages: number | null
+  colorPages: number | null
   spanDays: number | null
 }
 
@@ -38,7 +42,11 @@ export type PageCountDailySumAggregateOutputType = {
   id: number | null
   printerId: number | null
   total: number | null
+  totalMono: number | null
+  totalColor: number | null
   pages: number | null
+  monoPages: number | null
+  colorPages: number | null
   spanDays: number | null
 }
 
@@ -47,7 +55,11 @@ export type PageCountDailyMinAggregateOutputType = {
   printerId: number | null
   date: Date | null
   total: number | null
+  totalMono: number | null
+  totalColor: number | null
   pages: number | null
+  monoPages: number | null
+  colorPages: number | null
   spanDays: number | null
   capturedAt: Date | null
 }
@@ -57,7 +69,11 @@ export type PageCountDailyMaxAggregateOutputType = {
   printerId: number | null
   date: Date | null
   total: number | null
+  totalMono: number | null
+  totalColor: number | null
   pages: number | null
+  monoPages: number | null
+  colorPages: number | null
   spanDays: number | null
   capturedAt: Date | null
 }
@@ -67,7 +83,11 @@ export type PageCountDailyCountAggregateOutputType = {
   printerId: number
   date: number
   total: number
+  totalMono: number
+  totalColor: number
   pages: number
+  monoPages: number
+  colorPages: number
   spanDays: number
   capturedAt: number
   _all: number
@@ -78,7 +98,11 @@ export type PageCountDailyAvgAggregateInputType = {
   id?: true
   printerId?: true
   total?: true
+  totalMono?: true
+  totalColor?: true
   pages?: true
+  monoPages?: true
+  colorPages?: true
   spanDays?: true
 }
 
@@ -86,7 +110,11 @@ export type PageCountDailySumAggregateInputType = {
   id?: true
   printerId?: true
   total?: true
+  totalMono?: true
+  totalColor?: true
   pages?: true
+  monoPages?: true
+  colorPages?: true
   spanDays?: true
 }
 
@@ -95,7 +123,11 @@ export type PageCountDailyMinAggregateInputType = {
   printerId?: true
   date?: true
   total?: true
+  totalMono?: true
+  totalColor?: true
   pages?: true
+  monoPages?: true
+  colorPages?: true
   spanDays?: true
   capturedAt?: true
 }
@@ -105,7 +137,11 @@ export type PageCountDailyMaxAggregateInputType = {
   printerId?: true
   date?: true
   total?: true
+  totalMono?: true
+  totalColor?: true
   pages?: true
+  monoPages?: true
+  colorPages?: true
   spanDays?: true
   capturedAt?: true
 }
@@ -115,7 +151,11 @@ export type PageCountDailyCountAggregateInputType = {
   printerId?: true
   date?: true
   total?: true
+  totalMono?: true
+  totalColor?: true
   pages?: true
+  monoPages?: true
+  colorPages?: true
   spanDays?: true
   capturedAt?: true
   _all?: true
@@ -212,7 +252,11 @@ export type PageCountDailyGroupByOutputType = {
   printerId: number
   date: Date
   total: number
+  totalMono: number | null
+  totalColor: number | null
   pages: number | null
+  monoPages: number | null
+  colorPages: number | null
   spanDays: number
   capturedAt: Date
   _count: PageCountDailyCountAggregateOutputType | null
@@ -245,7 +289,11 @@ export type PageCountDailyWhereInput = {
   printerId?: Prisma.IntFilter<"PageCountDaily"> | number
   date?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string
   total?: Prisma.IntFilter<"PageCountDaily"> | number
+  totalMono?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  totalColor?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
   pages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  monoPages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  colorPages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
   spanDays?: Prisma.IntFilter<"PageCountDaily"> | number
   capturedAt?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string
   printer?: Prisma.XOR<Prisma.PrinterScalarRelationFilter, Prisma.PrinterWhereInput>
@@ -256,7 +304,11 @@ export type PageCountDailyOrderByWithRelationInput = {
   printerId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalColor?: Prisma.SortOrderInput | Prisma.SortOrder
   pages?: Prisma.SortOrderInput | Prisma.SortOrder
+  monoPages?: Prisma.SortOrderInput | Prisma.SortOrder
+  colorPages?: Prisma.SortOrderInput | Prisma.SortOrder
   spanDays?: Prisma.SortOrder
   capturedAt?: Prisma.SortOrder
   printer?: Prisma.PrinterOrderByWithRelationInput
@@ -271,7 +323,11 @@ export type PageCountDailyWhereUniqueInput = Prisma.AtLeast<{
   printerId?: Prisma.IntFilter<"PageCountDaily"> | number
   date?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string
   total?: Prisma.IntFilter<"PageCountDaily"> | number
+  totalMono?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  totalColor?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
   pages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  monoPages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  colorPages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
   spanDays?: Prisma.IntFilter<"PageCountDaily"> | number
   capturedAt?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string
   printer?: Prisma.XOR<Prisma.PrinterScalarRelationFilter, Prisma.PrinterWhereInput>
@@ -282,7 +338,11 @@ export type PageCountDailyOrderByWithAggregationInput = {
   printerId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalColor?: Prisma.SortOrderInput | Prisma.SortOrder
   pages?: Prisma.SortOrderInput | Prisma.SortOrder
+  monoPages?: Prisma.SortOrderInput | Prisma.SortOrder
+  colorPages?: Prisma.SortOrderInput | Prisma.SortOrder
   spanDays?: Prisma.SortOrder
   capturedAt?: Prisma.SortOrder
   _count?: Prisma.PageCountDailyCountOrderByAggregateInput
@@ -300,7 +360,11 @@ export type PageCountDailyScalarWhereWithAggregatesInput = {
   printerId?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number
   date?: Prisma.DateTimeWithAggregatesFilter<"PageCountDaily"> | Date | string
   total?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number
+  totalMono?: Prisma.IntNullableWithAggregatesFilter<"PageCountDaily"> | number | null
+  totalColor?: Prisma.IntNullableWithAggregatesFilter<"PageCountDaily"> | number | null
   pages?: Prisma.IntNullableWithAggregatesFilter<"PageCountDaily"> | number | null
+  monoPages?: Prisma.IntNullableWithAggregatesFilter<"PageCountDaily"> | number | null
+  colorPages?: Prisma.IntNullableWithAggregatesFilter<"PageCountDaily"> | number | null
   spanDays?: Prisma.IntWithAggregatesFilter<"PageCountDaily"> | number
   capturedAt?: Prisma.DateTimeWithAggregatesFilter<"PageCountDaily"> | Date | string
 }
@@ -308,7 +372,11 @@ export type PageCountDailyScalarWhereWithAggregatesInput = {
 export type PageCountDailyCreateInput = {
   date: Date | string
   total: number
+  totalMono?: number | null
+  totalColor?: number | null
   pages?: number | null
+  monoPages?: number | null
+  colorPages?: number | null
   spanDays?: number
   capturedAt?: Date | string
   printer: Prisma.PrinterCreateNestedOneWithoutPageDaysInput
@@ -319,7 +387,11 @@ export type PageCountDailyUncheckedCreateInput = {
   printerId: number
   date: Date | string
   total: number
+  totalMono?: number | null
+  totalColor?: number | null
   pages?: number | null
+  monoPages?: number | null
+  colorPages?: number | null
   spanDays?: number
   capturedAt?: Date | string
 }
@@ -327,7 +399,11 @@ export type PageCountDailyUncheckedCreateInput = {
 export type PageCountDailyUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   printer?: Prisma.PrinterUpdateOneRequiredWithoutPageDaysNestedInput
@@ -338,7 +414,11 @@ export type PageCountDailyUncheckedUpdateInput = {
   printerId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -348,7 +428,11 @@ export type PageCountDailyCreateManyInput = {
   printerId: number
   date: Date | string
   total: number
+  totalMono?: number | null
+  totalColor?: number | null
   pages?: number | null
+  monoPages?: number | null
+  colorPages?: number | null
   spanDays?: number
   capturedAt?: Date | string
 }
@@ -356,7 +440,11 @@ export type PageCountDailyCreateManyInput = {
 export type PageCountDailyUpdateManyMutationInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -366,7 +454,11 @@ export type PageCountDailyUncheckedUpdateManyInput = {
   printerId?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -391,7 +483,11 @@ export type PageCountDailyCountOrderByAggregateInput = {
   printerId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrder
+  totalColor?: Prisma.SortOrder
   pages?: Prisma.SortOrder
+  monoPages?: Prisma.SortOrder
+  colorPages?: Prisma.SortOrder
   spanDays?: Prisma.SortOrder
   capturedAt?: Prisma.SortOrder
 }
@@ -400,7 +496,11 @@ export type PageCountDailyAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   printerId?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrder
+  totalColor?: Prisma.SortOrder
   pages?: Prisma.SortOrder
+  monoPages?: Prisma.SortOrder
+  colorPages?: Prisma.SortOrder
   spanDays?: Prisma.SortOrder
 }
 
@@ -409,7 +509,11 @@ export type PageCountDailyMaxOrderByAggregateInput = {
   printerId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrder
+  totalColor?: Prisma.SortOrder
   pages?: Prisma.SortOrder
+  monoPages?: Prisma.SortOrder
+  colorPages?: Prisma.SortOrder
   spanDays?: Prisma.SortOrder
   capturedAt?: Prisma.SortOrder
 }
@@ -419,7 +523,11 @@ export type PageCountDailyMinOrderByAggregateInput = {
   printerId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrder
+  totalColor?: Prisma.SortOrder
   pages?: Prisma.SortOrder
+  monoPages?: Prisma.SortOrder
+  colorPages?: Prisma.SortOrder
   spanDays?: Prisma.SortOrder
   capturedAt?: Prisma.SortOrder
 }
@@ -428,7 +536,11 @@ export type PageCountDailySumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   printerId?: Prisma.SortOrder
   total?: Prisma.SortOrder
+  totalMono?: Prisma.SortOrder
+  totalColor?: Prisma.SortOrder
   pages?: Prisma.SortOrder
+  monoPages?: Prisma.SortOrder
+  colorPages?: Prisma.SortOrder
   spanDays?: Prisma.SortOrder
 }
 
@@ -477,7 +589,11 @@ export type PageCountDailyUncheckedUpdateManyWithoutPrinterNestedInput = {
 export type PageCountDailyCreateWithoutPrinterInput = {
   date: Date | string
   total: number
+  totalMono?: number | null
+  totalColor?: number | null
   pages?: number | null
+  monoPages?: number | null
+  colorPages?: number | null
   spanDays?: number
   capturedAt?: Date | string
 }
@@ -486,7 +602,11 @@ export type PageCountDailyUncheckedCreateWithoutPrinterInput = {
   id?: number
   date: Date | string
   total: number
+  totalMono?: number | null
+  totalColor?: number | null
   pages?: number | null
+  monoPages?: number | null
+  colorPages?: number | null
   spanDays?: number
   capturedAt?: Date | string
 }
@@ -525,7 +645,11 @@ export type PageCountDailyScalarWhereInput = {
   printerId?: Prisma.IntFilter<"PageCountDaily"> | number
   date?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string
   total?: Prisma.IntFilter<"PageCountDaily"> | number
+  totalMono?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  totalColor?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
   pages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  monoPages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
+  colorPages?: Prisma.IntNullableFilter<"PageCountDaily"> | number | null
   spanDays?: Prisma.IntFilter<"PageCountDaily"> | number
   capturedAt?: Prisma.DateTimeFilter<"PageCountDaily"> | Date | string
 }
@@ -534,7 +658,11 @@ export type PageCountDailyCreateManyPrinterInput = {
   id?: number
   date: Date | string
   total: number
+  totalMono?: number | null
+  totalColor?: number | null
   pages?: number | null
+  monoPages?: number | null
+  colorPages?: number | null
   spanDays?: number
   capturedAt?: Date | string
 }
@@ -542,7 +670,11 @@ export type PageCountDailyCreateManyPrinterInput = {
 export type PageCountDailyUpdateWithoutPrinterInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -551,7 +683,11 @@ export type PageCountDailyUncheckedUpdateWithoutPrinterInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -560,7 +696,11 @@ export type PageCountDailyUncheckedUpdateManyWithoutPrinterInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   total?: Prisma.IntFieldUpdateOperationsInput | number
+  totalMono?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  totalColor?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   pages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  monoPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  colorPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   spanDays?: Prisma.IntFieldUpdateOperationsInput | number
   capturedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -572,7 +712,11 @@ export type PageCountDailySelect<ExtArgs extends runtime.Types.Extensions.Intern
   printerId?: boolean
   date?: boolean
   total?: boolean
+  totalMono?: boolean
+  totalColor?: boolean
   pages?: boolean
+  monoPages?: boolean
+  colorPages?: boolean
   spanDays?: boolean
   capturedAt?: boolean
   printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>
@@ -583,7 +727,11 @@ export type PageCountDailySelectCreateManyAndReturn<ExtArgs extends runtime.Type
   printerId?: boolean
   date?: boolean
   total?: boolean
+  totalMono?: boolean
+  totalColor?: boolean
   pages?: boolean
+  monoPages?: boolean
+  colorPages?: boolean
   spanDays?: boolean
   capturedAt?: boolean
   printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>
@@ -594,7 +742,11 @@ export type PageCountDailySelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   printerId?: boolean
   date?: boolean
   total?: boolean
+  totalMono?: boolean
+  totalColor?: boolean
   pages?: boolean
+  monoPages?: boolean
+  colorPages?: boolean
   spanDays?: boolean
   capturedAt?: boolean
   printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>
@@ -605,12 +757,16 @@ export type PageCountDailySelectScalar = {
   printerId?: boolean
   date?: boolean
   total?: boolean
+  totalMono?: boolean
+  totalColor?: boolean
   pages?: boolean
+  monoPages?: boolean
+  colorPages?: boolean
   spanDays?: boolean
   capturedAt?: boolean
 }
 
-export type PageCountDailyOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "printerId" | "date" | "total" | "pages" | "spanDays" | "capturedAt", ExtArgs["result"]["pageCountDaily"]>
+export type PageCountDailyOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "printerId" | "date" | "total" | "totalMono" | "totalColor" | "pages" | "monoPages" | "colorPages" | "spanDays" | "capturedAt", ExtArgs["result"]["pageCountDaily"]>
 export type PageCountDailyInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   printer?: boolean | Prisma.PrinterDefaultArgs<ExtArgs>
 }
@@ -638,10 +794,26 @@ export type $PageCountDailyPayload<ExtArgs extends runtime.Types.Extensions.Inte
      */
     total: number
     /**
+     * 同時点の累計モノクロ枚数。内訳を返さない機種は null
+     */
+    totalMono: number | null
+    /**
+     * 同時点の累計カラー枚数。内訳を返さない機種は null
+     */
+    totalColor: number | null
+    /**
      * date 当日の印刷枚数。前回値がない初回と、
      * カウンタが巻き戻った（機器交換・リセット）ときは null
      */
     pages: number | null
+    /**
+     * 同期間のモノクロ枚数。内訳を返さない機種は null
+     */
+    monoPages: number | null
+    /**
+     * 同期間のカラー枚数。内訳を返さない機種は null
+     */
+    colorPages: number | null
     /**
      * pages が何日分か。1 なら純粋に date 当日の分。
      * 取得が飛ぶと 2 以上になり、その日数分をまとめた値になる
@@ -1079,7 +1251,11 @@ export interface PageCountDailyFieldRefs {
   readonly printerId: Prisma.FieldRef<"PageCountDaily", 'Int'>
   readonly date: Prisma.FieldRef<"PageCountDaily", 'DateTime'>
   readonly total: Prisma.FieldRef<"PageCountDaily", 'Int'>
+  readonly totalMono: Prisma.FieldRef<"PageCountDaily", 'Int'>
+  readonly totalColor: Prisma.FieldRef<"PageCountDaily", 'Int'>
   readonly pages: Prisma.FieldRef<"PageCountDaily", 'Int'>
+  readonly monoPages: Prisma.FieldRef<"PageCountDaily", 'Int'>
+  readonly colorPages: Prisma.FieldRef<"PageCountDaily", 'Int'>
   readonly spanDays: Prisma.FieldRef<"PageCountDaily", 'Int'>
   readonly capturedAt: Prisma.FieldRef<"PageCountDaily", 'DateTime'>
 }

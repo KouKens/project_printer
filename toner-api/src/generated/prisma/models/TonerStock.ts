@@ -400,14 +400,6 @@ export type TonerStockUncheckedUpdateOneWithoutTonerNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.TonerStockUpdateToOneWithWhereWithoutTonerInput, Prisma.TonerStockUpdateWithoutTonerInput>, Prisma.TonerStockUncheckedUpdateWithoutTonerInput>
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type TonerStockCreateWithoutTonerInput = {
   quantity?: number
   received?: number
