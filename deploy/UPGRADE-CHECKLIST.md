@@ -11,7 +11,7 @@
 ## 前提（開発端末側で確認済み・2026-09-02）
 
 - `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate diff` で差分なし）
-- 開発側の migration は **39 本**
+- 開発側の migration は **40 本**
 - 破壊的な migration は **2 本**
   - `20260820050000_maint_vendors` → `printer_assets` の `maint_phones` / `maint_vendor` を DROP
   - `20260902010000_page_count_function_color_matrix` → `page_count_daily` の
@@ -19,6 +19,8 @@
     を DROP。**退避は不要。** これらは RICOH の拡張 MIB から誤った ID
     （A3 未満の総枚数と両面印字の面数）を読んでいた列で、残しても使えない。
     枚数そのもの（`total` / `total_mono` / `total_color`）は消えない
+- `20260902060000_disable_instead_of_delete` は列の追加だけ（破壊的ではない）。
+  `toners` と `printer_assets` に `disabled_at` が付き、既存の行は全て有効で入る
 
 ---
 
@@ -53,7 +55,7 @@ node node_modules\prisma\build\index.js migrate status
 
 控えること。
 
-- [ ] `N migrations found` の **N** = ______ 本（開発側は 39 本）
+- [ ] `N migrations found` の **N** = ______ 本（開発側は 40 本）
 - [ ] 未適用として並んだ migration 名（または `up to date`）
 
 `node` の場所が違う・上が動かない場合はこちらでも分かる。
@@ -131,7 +133,7 @@ powershell -ExecutionPolicy Bypass -File deploy\bundle-offline.ps1
 
 ## C. 本番へ適用する前の最終確認
 
-- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（39）の差＝今回入る変更の数を把握した
+- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（40）の差＝今回入る変更の数を把握した
 - [ ] A-3 の分岐を判断した（退避の要否）
 - [ ] 更新後、1 日分の機能別（プリンター・コピー）は**次の取得から**入ることを伝えた
       （累計の差で出すので、更新した当日は累計だけが埋まる）

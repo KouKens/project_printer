@@ -80,6 +80,11 @@ type SavedAsset = {
   maintFee: number | null;
   note: string | null;
   countLayout: CountLayout;
+  /**
+   * 無効にした日時。null なら有効。
+   * **削除の代わり。** 無効にした台は下の別枠に移り、他の画面の選択肢からも外れる
+   */
+  disabledAt: string | null;
   updatedAt: string;
 };
 
@@ -227,7 +232,8 @@ export default function AssetScreen() {
     try {
       // 保守企業は選択欄に出す。登録は「保守企業」の画面で行う
       const [assets, vendorRows] = await Promise.all([
-        request<SavedAsset[]>('/printer-assets'),
+        // この画面だけは無効にした台も要る。下の別枠に出して元に戻せるようにするため
+        request<SavedAsset[]>('/printer-assets?includeDisabled=1'),
         request<Vendor[]>('/maint-vendors'),
       ]);
       setSaved(assets);
@@ -241,10 +247,22 @@ export default function AssetScreen() {
     void load();
   }, [load]);
 
+  /** 有効な台だけ。無効にしたものは下の別枠に分ける */
+  const active = useMemo(() => saved.filter((row) => row.disabledAt === null), [saved]);
+
+  /** 無効にした台。止めた日の新しい順に並べる（直前に間違えた分が上に来る） */
+  const disabled = useMemo(
+    () =>
+      saved
+        .filter((row) => row.disabledAt !== null)
+        .sort((a, b) => (a.disabledAt! < b.disabledAt! ? 1 : -1)),
+    [saved],
+  );
+
   const sorted = useMemo(() => {
     const column = COLUMNS.find((c) => c.key === sort.key);
     return sortRows(
-      saved,
+      active,
       (row) =>
         sort.key === 'maintStatus'
           ? maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract)
@@ -255,19 +273,19 @@ export default function AssetScreen() {
       sort.dir,
       (row) => row.id,
     );
-  }, [saved, sort]);
+  }, [active, sort]);
 
-  /** 凡例に出す台数。行の色分けと同じ判定を使う */
+  /** 凡例に出す台数。行の色分けと同じ判定を使う。無効の台は数えない */
   const maintCounts = useMemo(() => {
     const counts = { expired: 0, none: 0, bad: 0 };
-    for (const row of saved) {
+    for (const row of active) {
       const status = maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract);
       if (status === '不整合') counts.bad++;
       else if (status === '×') counts.expired++;
       else if (status === null) counts.none++;
     }
     return counts;
-  }, [saved]);
+  }, [active]);
 
   const set = (key: keyof Asset) => (value: string) =>
     setAsset((prev) => ({ ...prev, [key]: value }));
@@ -383,17 +401,40 @@ export default function AssetScreen() {
     setNotice(null);
   };
 
-  const remove = async (row: SavedAsset) => {
+  /**
+   * 使わなくなった台を無効にする／元に戻す。**削除は用意していない。**
+   *
+   * 台帳を消すと、その機器の修理履歴まで道連れで消える。入れ替えた機器の履歴も
+   * 残しておきたいので、消さずに下の別枠へ移す。いつでも元に戻せる。
+   *
+   * 無効にすると、プリンター状況・修理履歴・トナー登録・保守登録の
+   * 選択肢からも外れる（API が既定で有効な台だけを返すため）
+   */
+  const setDisabled = async (row: SavedAsset, disable: boolean) => {
     const label = `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`;
-    if (!window.confirm(`${label} を削除します。よろしいですか。`)) return;
+
+    if (
+      disable &&
+      !window.confirm(
+        `${label} を無効にします。\n\n` +
+          '一覧の下の「無効にした機器」へ移り、修理履歴やトナー登録の選択肢からも外れます。\n' +
+          '記録は消えません。いつでも元に戻せます。',
+      )
+    ) {
+      return;
+    }
 
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      await request<{ id: number }>(`/printer-assets/${row.id}`, { method: 'DELETE' });
-      setNotice(`${label} を削除しました`);
-      if (editingId === row.id) {
+      await request<SavedAsset>(
+        `/printer-assets/${row.id}/${disable ? 'disable' : 'enable'}`,
+        { method: 'POST' },
+      );
+      setNotice(`${label} を${disable ? '無効にしました' : '元に戻しました'}`);
+      // 無効にした台を編集中だったなら、入力欄も空に戻す
+      if (disable && editingId === row.id) {
         setAsset(EMPTY);
         setEditingId(null);
       }
@@ -856,11 +897,12 @@ export default function AssetScreen() {
                       </button>
                       <button
                         className="as-del"
-                        onClick={() => void remove(row)}
+                        onClick={() => void setDisabled(row, true)}
                         disabled={busy}
                         type="button"
+                        title="一覧の下の「無効にした機器」へ移します。記録は消えません"
                       >
-                        削除
+                        無効
                       </button>
                     </td>
                   </tr>
@@ -871,6 +913,61 @@ export default function AssetScreen() {
           </div>
         )}
       </section>
+
+      {disabled.length > 0 && (
+        <section className="as-list as-disabled">
+          <h2>無効にした機器（{disabled.length} 台）</h2>
+          <p className="as-hint">
+            使わなくなった機器です。<strong>記録は消えていません。</strong>
+            プリンター状況・修理履歴・トナー登録・保守登録の一覧と選択肢からは外れています。
+            「元に戻す」を押せば、そのまま元の一覧に戻ります。
+          </p>
+
+          <div className="as-table-wrap">
+            <table className="as-table">
+              <thead>
+                <tr>
+                  <th>部署</th>
+                  <th>No.</th>
+                  <th>IP アドレス</th>
+                  <th>メーカー</th>
+                  <th>型番</th>
+                  <th>シリアル</th>
+                  <th>無効にした日時</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {disabled.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.department ?? '—'}</td>
+                    <td>{row.no ?? '—'}</td>
+                    <td className="as-mono">{row.ipAddress ?? '—'}</td>
+                    <td>{row.maker ?? '—'}</td>
+                    <td>{row.model ?? '—'}</td>
+                    <td className="as-mono">{row.serialNumber ?? '—'}</td>
+                    <td>
+                      {row.disabledAt
+                        ? new Date(row.disabledAt).toLocaleString('ja-JP')
+                        : '—'}
+                    </td>
+                    <td className="as-ops">
+                      <button
+                        onClick={() => void setDisabled(row, false)}
+                        disabled={busy}
+                        type="button"
+                        title="元の一覧に戻します"
+                      >
+                        元に戻す
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -359,9 +359,6 @@ export type TonerEntryUncheckedUpdateManyWithoutTonerNestedInput = {
 export type EnumTonerActionFieldUpdateOperationsInput = {
     set?: $Enums.TonerAction;
 };
-export type NullableDateTimeFieldUpdateOperationsInput = {
-    set?: Date | string | null;
-};
 export type TonerEntryCreateWithoutTonerInput = {
     userId: string;
     action: $Enums.TonerAction;

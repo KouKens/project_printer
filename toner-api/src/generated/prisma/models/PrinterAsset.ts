@@ -60,6 +60,7 @@ export type PrinterAssetMinAggregateOutputType = {
   maintDealOn: Date | null
   maintFee: number | null
   note: string | null
+  disabledAt: Date | null
   countLayout: $Enums.CountLayout | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -83,6 +84,7 @@ export type PrinterAssetMaxAggregateOutputType = {
   maintDealOn: Date | null
   maintFee: number | null
   note: string | null
+  disabledAt: Date | null
   countLayout: $Enums.CountLayout | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -106,6 +108,7 @@ export type PrinterAssetCountAggregateOutputType = {
   maintDealOn: number
   maintFee: number
   note: number
+  disabledAt: number
   countLayout: number
   createdAt: number
   updatedAt: number
@@ -145,6 +148,7 @@ export type PrinterAssetMinAggregateInputType = {
   maintDealOn?: true
   maintFee?: true
   note?: true
+  disabledAt?: true
   countLayout?: true
   createdAt?: true
   updatedAt?: true
@@ -168,6 +172,7 @@ export type PrinterAssetMaxAggregateInputType = {
   maintDealOn?: true
   maintFee?: true
   note?: true
+  disabledAt?: true
   countLayout?: true
   createdAt?: true
   updatedAt?: true
@@ -191,6 +196,7 @@ export type PrinterAssetCountAggregateInputType = {
   maintDealOn?: true
   maintFee?: true
   note?: true
+  disabledAt?: true
   countLayout?: true
   createdAt?: true
   updatedAt?: true
@@ -301,6 +307,7 @@ export type PrinterAssetGroupByOutputType = {
   maintDealOn: Date | null
   maintFee: number | null
   note: string | null
+  disabledAt: Date | null
   countLayout: $Enums.CountLayout
   createdAt: Date
   updatedAt: Date
@@ -347,6 +354,7 @@ export type PrinterAssetWhereInput = {
   maintDealOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   maintFee?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
   note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
@@ -373,6 +381,7 @@ export type PrinterAssetOrderByWithRelationInput = {
   maintDealOn?: Prisma.SortOrderInput | Prisma.SortOrder
   maintFee?: Prisma.SortOrderInput | Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
+  disabledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   countLayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -402,6 +411,7 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
   maintDealOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   maintFee?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
   note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
@@ -428,6 +438,7 @@ export type PrinterAssetOrderByWithAggregationInput = {
   maintDealOn?: Prisma.SortOrderInput | Prisma.SortOrder
   maintFee?: Prisma.SortOrderInput | Prisma.SortOrder
   note?: Prisma.SortOrderInput | Prisma.SortOrder
+  disabledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   countLayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -459,6 +470,7 @@ export type PrinterAssetScalarWhereWithAggregatesInput = {
   maintDealOn?: Prisma.DateTimeNullableWithAggregatesFilter<"PrinterAsset"> | Date | string | null
   maintFee?: Prisma.IntNullableWithAggregatesFilter<"PrinterAsset"> | number | null
   note?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null
+  disabledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutWithAggregatesFilter<"PrinterAsset"> | $Enums.CountLayout
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"PrinterAsset"> | Date | string
@@ -480,6 +492,7 @@ export type PrinterAssetCreateInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -506,6 +519,7 @@ export type PrinterAssetUncheckedCreateInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -529,6 +543,7 @@ export type PrinterAssetUpdateInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -555,6 +570,7 @@ export type PrinterAssetUncheckedUpdateInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -580,6 +596,7 @@ export type PrinterAssetCreateManyInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -601,6 +618,7 @@ export type PrinterAssetUpdateManyMutationInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -624,6 +642,7 @@ export type PrinterAssetUncheckedUpdateManyInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -652,6 +671,7 @@ export type PrinterAssetCountOrderByAggregateInput = {
   maintDealOn?: Prisma.SortOrder
   maintFee?: Prisma.SortOrder
   note?: Prisma.SortOrder
+  disabledAt?: Prisma.SortOrder
   countLayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -682,6 +702,7 @@ export type PrinterAssetMaxOrderByAggregateInput = {
   maintDealOn?: Prisma.SortOrder
   maintFee?: Prisma.SortOrder
   note?: Prisma.SortOrder
+  disabledAt?: Prisma.SortOrder
   countLayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -705,6 +726,7 @@ export type PrinterAssetMinOrderByAggregateInput = {
   maintDealOn?: Prisma.SortOrder
   maintFee?: Prisma.SortOrder
   note?: Prisma.SortOrder
+  disabledAt?: Prisma.SortOrder
   countLayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -817,6 +839,7 @@ export type PrinterAssetCreateWithoutTonersInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -842,6 +865,7 @@ export type PrinterAssetUncheckedCreateWithoutTonersInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -880,6 +904,7 @@ export type PrinterAssetUpdateWithoutTonersInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -905,6 +930,7 @@ export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -927,6 +953,7 @@ export type PrinterAssetCreateWithoutMaintVendorInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -951,6 +978,7 @@ export type PrinterAssetUncheckedCreateWithoutMaintVendorInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1005,6 +1033,7 @@ export type PrinterAssetScalarWhereInput = {
   maintDealOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   maintFee?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
   note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
@@ -1026,6 +1055,7 @@ export type PrinterAssetCreateWithoutRepairsInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1051,6 +1081,7 @@ export type PrinterAssetUncheckedCreateWithoutRepairsInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1089,6 +1120,7 @@ export type PrinterAssetUpdateWithoutRepairsInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1114,6 +1146,7 @@ export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1137,6 +1170,7 @@ export type PrinterAssetCreateManyMaintVendorInput = {
   maintDealOn?: Date | string | null
   maintFee?: number | null
   note?: string | null
+  disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1158,6 +1192,7 @@ export type PrinterAssetUpdateWithoutMaintVendorInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1182,6 +1217,7 @@ export type PrinterAssetUncheckedUpdateWithoutMaintVendorInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1206,6 +1242,7 @@ export type PrinterAssetUncheckedUpdateManyWithoutMaintVendorInput = {
   maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1269,6 +1306,7 @@ export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.Internal
   maintDealOn?: boolean
   maintFee?: boolean
   note?: boolean
+  disabledAt?: boolean
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1296,6 +1334,7 @@ export type PrinterAssetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   maintDealOn?: boolean
   maintFee?: boolean
   note?: boolean
+  disabledAt?: boolean
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1320,6 +1359,7 @@ export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   maintDealOn?: boolean
   maintFee?: boolean
   note?: boolean
+  disabledAt?: boolean
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1344,12 +1384,13 @@ export type PrinterAssetSelectScalar = {
   maintDealOn?: boolean
   maintFee?: boolean
   note?: boolean
+  disabledAt?: boolean
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>
+export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "disabledAt" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>
 export type PrinterAssetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
   repairs?: boolean | Prisma.PrinterAsset$repairsArgs<ExtArgs>
@@ -1426,6 +1467,15 @@ export type $PrinterAssetPayload<ExtArgs extends runtime.Types.Extensions.Intern
      * 備考。「初期」「リース」など、日付や金額の欄に入っていた数値でない値の受け皿
      */
     note: string | null
+    /**
+     * 無効にした日時。null なら有効。
+     * 
+     * **削除の代わり。** 修理履歴とトナーの紐づけがこの台帳を指しており、
+     * 行ごと消すと修理履歴も道連れで消える（onDelete: Cascade）。
+     * 入れ替えて使わなくなった機器はここに日時を入れ、一覧と選択肢から外す。
+     * いつ止めたかが分かるよう真偽値ではなく日時で持つ
+     */
+    disabledAt: Date | null
     /**
      * 枚数の集計表でこの機器が占める行。既定は合計の 1 行。
      * 
@@ -1883,6 +1933,7 @@ export interface PrinterAssetFieldRefs {
   readonly maintDealOn: Prisma.FieldRef<"PrinterAsset", 'DateTime'>
   readonly maintFee: Prisma.FieldRef<"PrinterAsset", 'Int'>
   readonly note: Prisma.FieldRef<"PrinterAsset", 'String'>
+  readonly disabledAt: Prisma.FieldRef<"PrinterAsset", 'DateTime'>
   readonly countLayout: Prisma.FieldRef<"PrinterAsset", 'CountLayout'>
   readonly createdAt: Prisma.FieldRef<"PrinterAsset", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"PrinterAsset", 'DateTime'>

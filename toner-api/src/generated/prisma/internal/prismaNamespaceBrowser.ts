@@ -90,6 +90,7 @@ export const TonerScalarFieldEnum = {
   color: 'color',
   recycled: 'recycled',
   alertThreshold: 'alertThreshold',
+  disabledAt: 'disabledAt',
   yieldPages: 'yieldPages',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -244,6 +245,7 @@ export const PrinterAssetScalarFieldEnum = {
   maintDealOn: 'maintDealOn',
   maintFee: 'maintFee',
   note: 'note',
+  disabledAt: 'disabledAt',
   countLayout: 'countLayout',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

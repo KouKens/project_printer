@@ -48,7 +48,7 @@ cd C:\toner\app
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`N migrations found` の N を控える。**配布物は 39 本。**
+`N migrations found` の N を控える。**配布物は 40 本。**
 
 今回落とす列に値が入っているか（列が無いというエラーなら失うものはゼロ）。
 
@@ -125,7 +125,7 @@ Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" C:\toner\app\ -Force
 (Get-ChildItem C:\toner\app\prisma\migrations -Directory).Count
 ```
 
-**39 と出ること。**
+**40 と出ること。**
 
 ---
 
@@ -144,7 +144,7 @@ node node_modules\prisma\build\index.js migrate deploy
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`39 migrations found` と `Database schema is up to date!` を確認する。
+`40 migrations found` と `Database schema is up to date!` を確認する。
 
 ---
 
@@ -186,6 +186,9 @@ curl.exe -X POST http://localhost:3000/api/printers/page-counts/capture
 
 **1 日分の機能別（プリンター・コピー）は翌日 12:00 の取得から入る。**
 累計の差で出すので、更新した当日は累計だけが埋まる。異常ではない。
+
+「プリンター登録」「トナー登録」の**削除ボタンが「無効」に変わっている**ことも見る。
+無効にしたものは一覧の下の別枠に移り、「元に戻す」で戻せる。既存の登録はすべて有効。
 
 ---
 

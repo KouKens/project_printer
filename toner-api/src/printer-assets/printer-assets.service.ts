@@ -230,6 +230,8 @@ type AssetRow = {
   maintFee: number | null;
   note: string | null;
   countLayout: 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
+  /** 無効にした日時。null なら有効 */
+  disabledAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -249,8 +251,16 @@ export class PrinterAssetsService {
     return this.toResponse(saved, await this.vendorsByMaker());
   }
 
-  async findAll() {
+  /**
+   * 台帳の一覧。**既定では無効にした台を返さない。**
+   *
+   * 修理履歴・トナー登録・保守登録の選択肢はどれもここから作られるので、
+   * ここで外しておけば「使っていない機器を選べてしまう」場所が残らない。
+   * 無効の分まで要るのはプリンター登録の画面だけで、そこだけ true を渡す
+   */
+  async findAll(includeDisabled = false) {
     const assets = await this.prisma.printerAsset.findMany({
+      where: includeDisabled ? {} : { disabledAt: null },
       orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
       include: { maintVendor: true },
     });
@@ -267,7 +277,9 @@ export class PrinterAssetsService {
    */
   async findOverview() {
     const [assets, printers, dailies, repairs, byMaker] = await Promise.all([
+      // 無効にした台は出さない。今動いている機器を見る画面なので
       this.prisma.printerAsset.findMany({
+        where: { disabledAt: null },
         orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
         include: { maintVendor: true },
       }),
@@ -396,7 +408,9 @@ export class PrinterAssetsService {
    */
   async findByModel() {
     const [assets, printers] = await Promise.all([
+      // 無効にした台は数えない。機種ごとの台数が実態と合わなくなる
       this.prisma.printerAsset.findMany({
+        where: { disabledAt: null },
         orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
@@ -695,10 +709,26 @@ export class PrinterAssetsService {
     return this.toResponse(saved, await this.vendorsByMaker());
   }
 
-  async remove(id: number) {
+  /**
+   * 使わなくなった台を無効にする／元に戻す。**削除の代わり。**
+   *
+   * 台帳を消すと、その機器の修理履歴が道連れで消える（onDelete: Cascade）。
+   * トナーの紐づけも同じ。入れ替えた機器の履歴は残しておきたいので、
+   * 消さずに印を付けて一覧と選択肢から外す。
+   *
+   * **止める条件は設けない。** 在庫や履歴があっても無効にしてよい。
+   * いつでも元に戻せるので、間違えても失うものが無い。
+   * 更新日は動かさない（実機を見て確かめた記録という意味を持たせているため）
+   */
+  async setDisabled(id: number, disabled: boolean) {
     await this.ensureExists(id);
-    await this.prisma.printerAsset.delete({ where: { id } });
-    return { id };
+
+    const saved = await this.prisma.printerAsset.update({
+      where: { id },
+      data: { disabledAt: disabled ? new Date() : null },
+      include: { maintVendor: true },
+    });
+    return this.toResponse(saved, await this.vendorsByMaker());
   }
 
   // ── 内部ヘルパー ──────────────────────
@@ -880,6 +910,8 @@ export class PrinterAssetsService {
       maintFee: asset.maintFee,
       note: asset.note,
       countLayout: asset.countLayout,
+      /** 無効にした日時。null なら有効。画面はこれで一覧を 2 つに分ける */
+      disabledAt: asset.disabledAt,
       createdAt: asset.createdAt,
       updatedAt: asset.updatedAt,
     };

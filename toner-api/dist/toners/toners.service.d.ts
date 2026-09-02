@@ -16,6 +16,7 @@ export declare class TonersService {
         costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
+        disabledAt: Date | null;
         stock: number;
         printers: {
             id: number;
@@ -28,7 +29,7 @@ export declare class TonersService {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    findAll(): Promise<{
+    findAll(includeDisabled?: boolean): Promise<{
         id: string;
         name: string | null;
         color: string | null;
@@ -39,6 +40,7 @@ export declare class TonersService {
         costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
+        disabledAt: Date | null;
         stock: number;
         printers: {
             id: number;
@@ -62,6 +64,7 @@ export declare class TonersService {
         costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
+        disabledAt: Date | null;
         stock: number;
         printers: {
             id: number;
@@ -85,6 +88,7 @@ export declare class TonersService {
         costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
+        disabledAt: Date | null;
         stock: number;
         printers: {
             id: number;
@@ -108,6 +112,7 @@ export declare class TonersService {
         costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
+        disabledAt: Date | null;
         stock: number;
         printers: {
             id: number;
@@ -120,8 +125,29 @@ export declare class TonersService {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    remove(id: string): Promise<{
+    setDisabled(id: string, disabled: boolean): Promise<{
         id: string;
+        name: string | null;
+        color: string | null;
+        recycled: boolean;
+        alertThreshold: number | null;
+        yieldPages: number | null;
+        price: number | null;
+        costPerPage: number | null;
+        priceFrom: string | null;
+        priceCount: number;
+        disabledAt: Date | null;
+        stock: number;
+        printers: {
+            id: number;
+            department: string | null;
+            no: string | null;
+            ipAddress: string | null;
+            maker: string | null;
+            model: string | null;
+        }[];
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findPrices(id: string): Promise<{
         id: number;

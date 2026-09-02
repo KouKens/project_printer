@@ -42,6 +42,7 @@ export type TonerMinAggregateOutputType = {
   color: string | null
   recycled: boolean | null
   alertThreshold: number | null
+  disabledAt: Date | null
   yieldPages: number | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -53,6 +54,7 @@ export type TonerMaxAggregateOutputType = {
   color: string | null
   recycled: boolean | null
   alertThreshold: number | null
+  disabledAt: Date | null
   yieldPages: number | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -64,6 +66,7 @@ export type TonerCountAggregateOutputType = {
   color: number
   recycled: number
   alertThreshold: number
+  disabledAt: number
   yieldPages: number
   createdAt: number
   updatedAt: number
@@ -87,6 +90,7 @@ export type TonerMinAggregateInputType = {
   color?: true
   recycled?: true
   alertThreshold?: true
+  disabledAt?: true
   yieldPages?: true
   createdAt?: true
   updatedAt?: true
@@ -98,6 +102,7 @@ export type TonerMaxAggregateInputType = {
   color?: true
   recycled?: true
   alertThreshold?: true
+  disabledAt?: true
   yieldPages?: true
   createdAt?: true
   updatedAt?: true
@@ -109,6 +114,7 @@ export type TonerCountAggregateInputType = {
   color?: true
   recycled?: true
   alertThreshold?: true
+  disabledAt?: true
   yieldPages?: true
   createdAt?: true
   updatedAt?: true
@@ -207,6 +213,7 @@ export type TonerGroupByOutputType = {
   color: string | null
   recycled: boolean
   alertThreshold: number | null
+  disabledAt: Date | null
   yieldPages: number | null
   createdAt: Date
   updatedAt: Date
@@ -241,6 +248,7 @@ export type TonerWhereInput = {
   color?: Prisma.StringNullableFilter<"Toner"> | string | null
   recycled?: Prisma.BoolFilter<"Toner"> | boolean
   alertThreshold?: Prisma.IntNullableFilter<"Toner"> | number | null
+  disabledAt?: Prisma.DateTimeNullableFilter<"Toner"> | Date | string | null
   yieldPages?: Prisma.IntNullableFilter<"Toner"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Toner"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Toner"> | Date | string
@@ -258,6 +266,7 @@ export type TonerOrderByWithRelationInput = {
   color?: Prisma.SortOrderInput | Prisma.SortOrder
   recycled?: Prisma.SortOrder
   alertThreshold?: Prisma.SortOrderInput | Prisma.SortOrder
+  disabledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   yieldPages?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -278,6 +287,7 @@ export type TonerWhereUniqueInput = Prisma.AtLeast<{
   color?: Prisma.StringNullableFilter<"Toner"> | string | null
   recycled?: Prisma.BoolFilter<"Toner"> | boolean
   alertThreshold?: Prisma.IntNullableFilter<"Toner"> | number | null
+  disabledAt?: Prisma.DateTimeNullableFilter<"Toner"> | Date | string | null
   yieldPages?: Prisma.IntNullableFilter<"Toner"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Toner"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Toner"> | Date | string
@@ -295,6 +305,7 @@ export type TonerOrderByWithAggregationInput = {
   color?: Prisma.SortOrderInput | Prisma.SortOrder
   recycled?: Prisma.SortOrder
   alertThreshold?: Prisma.SortOrderInput | Prisma.SortOrder
+  disabledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   yieldPages?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -314,6 +325,7 @@ export type TonerScalarWhereWithAggregatesInput = {
   color?: Prisma.StringNullableWithAggregatesFilter<"Toner"> | string | null
   recycled?: Prisma.BoolWithAggregatesFilter<"Toner"> | boolean
   alertThreshold?: Prisma.IntNullableWithAggregatesFilter<"Toner"> | number | null
+  disabledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Toner"> | Date | string | null
   yieldPages?: Prisma.IntNullableWithAggregatesFilter<"Toner"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Toner"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Toner"> | Date | string
@@ -325,6 +337,7 @@ export type TonerCreateInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -342,6 +355,7 @@ export type TonerUncheckedCreateInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -359,6 +373,7 @@ export type TonerUpdateInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -376,6 +391,7 @@ export type TonerUncheckedUpdateInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -393,6 +409,7 @@ export type TonerCreateManyInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -404,6 +421,7 @@ export type TonerUpdateManyMutationInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -415,6 +433,7 @@ export type TonerUncheckedUpdateManyInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -426,6 +445,7 @@ export type TonerCountOrderByAggregateInput = {
   color?: Prisma.SortOrder
   recycled?: Prisma.SortOrder
   alertThreshold?: Prisma.SortOrder
+  disabledAt?: Prisma.SortOrder
   yieldPages?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -442,6 +462,7 @@ export type TonerMaxOrderByAggregateInput = {
   color?: Prisma.SortOrder
   recycled?: Prisma.SortOrder
   alertThreshold?: Prisma.SortOrder
+  disabledAt?: Prisma.SortOrder
   yieldPages?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -453,6 +474,7 @@ export type TonerMinOrderByAggregateInput = {
   color?: Prisma.SortOrder
   recycled?: Prisma.SortOrder
   alertThreshold?: Prisma.SortOrder
+  disabledAt?: Prisma.SortOrder
   yieldPages?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -486,6 +508,10 @@ export type NullableIntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -582,6 +608,7 @@ export type TonerCreateWithoutPrintersInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -598,6 +625,7 @@ export type TonerUncheckedCreateWithoutPrintersInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -630,6 +658,7 @@ export type TonerUpdateWithoutPrintersInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -646,6 +675,7 @@ export type TonerUncheckedUpdateWithoutPrintersInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -662,6 +692,7 @@ export type TonerCreateWithoutPricesInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -678,6 +709,7 @@ export type TonerUncheckedCreateWithoutPricesInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -710,6 +742,7 @@ export type TonerUpdateWithoutPricesInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -726,6 +759,7 @@ export type TonerUncheckedUpdateWithoutPricesInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -742,6 +776,7 @@ export type TonerCreateWithoutStockInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -758,6 +793,7 @@ export type TonerUncheckedCreateWithoutStockInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -790,6 +826,7 @@ export type TonerUpdateWithoutStockInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -806,6 +843,7 @@ export type TonerUncheckedUpdateWithoutStockInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -822,6 +860,7 @@ export type TonerCreateWithoutEntriesInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -838,6 +877,7 @@ export type TonerUncheckedCreateWithoutEntriesInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -870,6 +910,7 @@ export type TonerUpdateWithoutEntriesInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -886,6 +927,7 @@ export type TonerUncheckedUpdateWithoutEntriesInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -902,6 +944,7 @@ export type TonerCreateWithoutOrdersInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -918,6 +961,7 @@ export type TonerUncheckedCreateWithoutOrdersInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -950,6 +994,7 @@ export type TonerUpdateWithoutOrdersInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -966,6 +1011,7 @@ export type TonerUncheckedUpdateWithoutOrdersInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -982,6 +1028,7 @@ export type TonerCreateWithoutInvoiceLinesInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -998,6 +1045,7 @@ export type TonerUncheckedCreateWithoutInvoiceLinesInput = {
   color?: string | null
   recycled?: boolean
   alertThreshold?: number | null
+  disabledAt?: Date | string | null
   yieldPages?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1030,6 +1078,7 @@ export type TonerUpdateWithoutInvoiceLinesInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1046,6 +1095,7 @@ export type TonerUncheckedUpdateWithoutInvoiceLinesInput = {
   color?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   recycled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   alertThreshold?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   yieldPages?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1129,6 +1179,7 @@ export type TonerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   color?: boolean
   recycled?: boolean
   alertThreshold?: boolean
+  disabledAt?: boolean
   yieldPages?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1147,6 +1198,7 @@ export type TonerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   color?: boolean
   recycled?: boolean
   alertThreshold?: boolean
+  disabledAt?: boolean
   yieldPages?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1158,6 +1210,7 @@ export type TonerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   color?: boolean
   recycled?: boolean
   alertThreshold?: boolean
+  disabledAt?: boolean
   yieldPages?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1169,12 +1222,13 @@ export type TonerSelectScalar = {
   color?: boolean
   recycled?: boolean
   alertThreshold?: boolean
+  disabledAt?: boolean
   yieldPages?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type TonerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "color" | "recycled" | "alertThreshold" | "yieldPages" | "createdAt" | "updatedAt", ExtArgs["result"]["toner"]>
+export type TonerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "color" | "recycled" | "alertThreshold" | "disabledAt" | "yieldPages" | "createdAt" | "updatedAt", ExtArgs["result"]["toner"]>
 export type TonerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   stock?: boolean | Prisma.Toner$stockArgs<ExtArgs>
   entries?: boolean | Prisma.Toner$entriesArgs<ExtArgs>
@@ -1215,6 +1269,15 @@ export type $TonerPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
      * 未設定なら警告しない（0 を入れると「在庫 0 で警告」の意味になる）
      */
     alertThreshold: number | null
+    /**
+     * 無効にした日時。null なら有効。
+     * 
+     * **削除の代わり。** 受付の履歴・注文・請求書がこの品番を指しているので、
+     * 行ごと消すと過去の記録の相手が居なくなる。使わなくなった品番はここに日時を入れ、
+     * 一覧と選択肢から外す。いつ止めたかが分かるよう真偽値ではなく日時で持つ。
+     * 在庫や履歴があっても無効にはできる（元に戻せるので失うものが無い）
+     */
+    disabledAt: Date | null
     /**
      * 1 本で刷れる枚数（カタログの印刷可能枚数）。
      * 
@@ -1661,6 +1724,7 @@ export interface TonerFieldRefs {
   readonly color: Prisma.FieldRef<"Toner", 'String'>
   readonly recycled: Prisma.FieldRef<"Toner", 'Boolean'>
   readonly alertThreshold: Prisma.FieldRef<"Toner", 'Int'>
+  readonly disabledAt: Prisma.FieldRef<"Toner", 'DateTime'>
   readonly yieldPages: Prisma.FieldRef<"Toner", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Toner", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Toner", 'DateTime'>

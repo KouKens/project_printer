@@ -90,8 +90,9 @@ let PrinterAssetsService = class PrinterAssetsService {
         });
         return this.toResponse(saved, await this.vendorsByMaker());
     }
-    async findAll() {
+    async findAll(includeDisabled = false) {
         const assets = await this.prisma.printerAsset.findMany({
+            where: includeDisabled ? {} : { disabledAt: null },
             orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
             include: { maintVendor: true },
         });
@@ -101,6 +102,7 @@ let PrinterAssetsService = class PrinterAssetsService {
     async findOverview() {
         const [assets, printers, dailies, repairs, byMaker] = await Promise.all([
             this.prisma.printerAsset.findMany({
+                where: { disabledAt: null },
                 orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
                 include: { maintVendor: true },
             }),
@@ -198,6 +200,7 @@ let PrinterAssetsService = class PrinterAssetsService {
     async findByModel() {
         const [assets, printers] = await Promise.all([
             this.prisma.printerAsset.findMany({
+                where: { disabledAt: null },
                 orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
                 select: {
                     id: true,
@@ -416,10 +419,14 @@ let PrinterAssetsService = class PrinterAssetsService {
         });
         return this.toResponse(saved, await this.vendorsByMaker());
     }
-    async remove(id) {
+    async setDisabled(id, disabled) {
         await this.ensureExists(id);
-        await this.prisma.printerAsset.delete({ where: { id } });
-        return { id };
+        const saved = await this.prisma.printerAsset.update({
+            where: { id },
+            data: { disabledAt: disabled ? new Date() : null },
+            include: { maintVendor: true },
+        });
+        return this.toResponse(saved, await this.vendorsByMaker());
     }
     async fillSerial(id, current, fromPrinter) {
         const serialNumber = (0, text_1.toText)(fromPrinter);
@@ -533,6 +540,7 @@ let PrinterAssetsService = class PrinterAssetsService {
             maintFee: asset.maintFee,
             note: asset.note,
             countLayout: asset.countLayout,
+            disabledAt: asset.disabledAt,
             createdAt: asset.createdAt,
             updatedAt: asset.updatedAt,
         };

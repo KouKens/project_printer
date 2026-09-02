@@ -57,8 +57,9 @@ let TonersService = class TonersService {
         });
         return this.findOne(id);
     }
-    async findAll() {
+    async findAll(includeDisabled = false) {
         const toners = await this.prisma.toner.findMany({
+            where: includeDisabled ? {} : { disabledAt: null },
             orderBy: [{ name: 'asc' }, { id: 'asc' }],
             include: {
                 stock: true,
@@ -161,32 +162,16 @@ let TonersService = class TonersService {
         });
         return this.findOne(id);
     }
-    async remove(id) {
-        const toner = await this.prisma.toner.findUnique({
-            where: { id },
-            include: {
-                stock: true,
-                _count: { select: { entries: true, orders: true } },
-            },
-        });
+    async setDisabled(id, disabled) {
+        const toner = await this.prisma.toner.findUnique({ where: { id } });
         if (!toner) {
             throw new common_1.NotFoundException(`${id} は登録されていません`);
         }
-        const blockers = [];
-        if (toner._count.entries > 0) {
-            blockers.push(`受付の履歴が ${toner._count.entries} 件`);
-        }
-        if (toner._count.orders > 0) {
-            blockers.push(`注文が ${toner._count.orders} 件`);
-        }
-        if ((toner.stock?.quantity ?? 0) !== 0) {
-            blockers.push(`在庫が ${toner.stock?.quantity} 本`);
-        }
-        if (blockers.length > 0) {
-            throw new common_1.ConflictException(`${id} は削除できません（${blockers.join(' / ')}あります）`);
-        }
-        await this.prisma.toner.delete({ where: { id } });
-        return { id };
+        await this.prisma.toner.update({
+            where: { id },
+            data: { disabledAt: disabled ? new Date() : null },
+        });
+        return this.findOne(id);
     }
     async findPrices(id) {
         const toner = await this.prisma.toner.findUnique({
@@ -244,6 +229,7 @@ let TonersService = class TonersService {
             costPerPage: current && toner.yieldPages ? current.price / toner.yieldPages : null,
             priceFrom: current ? (0, date_1.fromDate)(current.effectiveFrom) : null,
             priceCount: toner.prices.length,
+            disabledAt: toner.disabledAt,
             stock: toner.stock?.quantity ?? 0,
             printers: toner.printers.map((link) => ({
                 id: link.asset.id,

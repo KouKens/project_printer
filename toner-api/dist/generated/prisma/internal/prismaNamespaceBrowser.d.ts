@@ -41,6 +41,7 @@ export declare const TonerScalarFieldEnum: {
     readonly color: "color";
     readonly recycled: "recycled";
     readonly alertThreshold: "alertThreshold";
+    readonly disabledAt: "disabledAt";
     readonly yieldPages: "yieldPages";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
@@ -165,6 +166,7 @@ export declare const PrinterAssetScalarFieldEnum: {
     readonly maintDealOn: "maintDealOn";
     readonly maintFee: "maintFee";
     readonly note: "note";
+    readonly disabledAt: "disabledAt";
     readonly countLayout: "countLayout";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";

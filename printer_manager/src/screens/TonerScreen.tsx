@@ -38,6 +38,11 @@ type SavedToner = {
   price: number | null;
   priceFrom: string | null;
   priceCount: number;
+  /**
+   * 無効にした日時。null なら有効。
+   * **削除の代わり。** 無効にした品番は下の別枠に移り、受付や注文の候補からも外れる
+   */
+  disabledAt: string | null;
   stock: number;
   printers: Printer[];
   createdAt: string;
@@ -192,7 +197,8 @@ export default function TonerScreen() {
   const load = useCallback(async () => {
     try {
       const [tonerRows, printerRows] = await Promise.all([
-        request<SavedToner[]>('/toners'),
+        // この画面だけは無効にした品番も要る。下の別枠に出して元に戻せるようにするため
+        request<SavedToner[]>('/toners?includeDisabled=1'),
         // 実機マスタではなく端末情報。SNMP に応答しない機器も選べるようにする
         request<Printer[]>('/printer-assets'),
       ]);
@@ -216,27 +222,42 @@ export default function TonerScreen() {
   const set = <K extends keyof Form>(key: K) => (value: Form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  /** 凡例に出す件数。一覧の色分けと同じ判定を使う */
+  /** 有効な品番だけ。無効にしたものは下の別枠に分ける */
+  const active = useMemo(
+    () => toners.filter((toner) => toner.disabledAt === null),
+    [toners],
+  );
+
+  /** 無効にした品番。止めた日の新しい順に並べる（直前に間違えた分が上に来る） */
+  const disabled = useMemo(
+    () =>
+      toners
+        .filter((toner) => toner.disabledAt !== null)
+        .sort((a, b) => (a.disabledAt! < b.disabledAt! ? 1 : -1)),
+    [toners],
+  );
+
+  /** 凡例に出す件数。一覧の色分けと同じ判定を使う。無効の品番は数えない */
   const counts = useMemo(
     () => ({
-      out: toners.filter((toner) => stockState(toner) === 'out').length,
-      low: toners.filter((toner) => stockState(toner) === 'low').length,
+      out: active.filter((toner) => stockState(toner) === 'out').length,
+      low: active.filter((toner) => stockState(toner) === 'low').length,
     }),
-    [toners],
+    [active],
   );
 
   /** 見出しを押した列で並べ替えた一覧 */
   const shown = useMemo(() => {
     const column = COLUMNS.find((col) => col.key === sort.key);
     return sortRows(
-      toners,
+      active,
       (toner) => pick(toner, sort.key),
       column?.kind ?? 'text',
       sort.dir,
       // 値が並んだときは API が返した順（トナー名 → 品番）で安定させる
-      (toner) => toners.indexOf(toner),
+      (toner) => active.indexOf(toner),
     );
-  }, [toners, sort]);
+  }, [active, sort]);
 
   const shownPrinters = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -374,23 +395,47 @@ export default function TonerScreen() {
   };
 
   /**
-   * マスタから消す。取り消せないので確認を挟む。
-   * 履歴・注文・在庫が残っている品番は API 側で弾かれ、理由が文言で返る
+   * 使わなくなった品番を無効にする／元に戻す。**削除は用意していない。**
+   *
+   * 消すと受付の履歴・注文・請求書の明細から相手が居なくなり、
+   * 価格の履歴も道連れで消える。消さずに下の別枠へ移し、いつでも戻せるようにする。
+   *
+   * 無効にすると受付の検索・注文・請求書の候補からも外れる
+   * （API が既定で有効な品番だけを返すため）。
+   * 在庫が残ったまま無効にしてもよいが、廃棄したくなったら先に元に戻す
    */
-  const remove = async (toner: SavedToner) => {
+  const setDisabled = async (toner: SavedToner, disable: boolean) => {
     const label = toner.name ?? toner.id;
-    if (!window.confirm(`${label}（${toner.id}）をマスタから削除します。よろしいですか。`)) {
-      return;
+
+    if (disable) {
+      const warning =
+        toner.stock > 0
+          ? `\n\nこの品番はまだ在庫が ${toner.stock} 本あります。` +
+            '廃棄や持ち出しで処理したい場合は、先に元に戻してから受付で操作してください。'
+          : '';
+      if (
+        !window.confirm(
+          `${label}（${toner.id}）を無効にします。\n\n` +
+            '一覧の下の「無効にした品番」へ移り、受付・注文・請求書の候補からも外れます。\n' +
+            '受付の履歴・注文・価格の履歴は消えません。いつでも元に戻せます。' +
+            warning,
+        )
+      ) {
+        return;
+      }
     }
 
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      await request(`/toners/${encodeURIComponent(toner.id)}`, { method: 'DELETE' });
-      setNotice(`${label} を削除しました`);
-      // 消した品番を編集中なら、フォームも空に戻す
-      if (editingId === toner.id) {
+      await request<SavedToner>(
+        `/toners/${encodeURIComponent(toner.id)}/${disable ? 'disable' : 'enable'}`,
+        { method: 'POST' },
+      );
+      setNotice(`${label} を${disable ? '無効にしました' : '元に戻しました'}`);
+      // 無効にした品番を編集中なら、フォームも空に戻す
+      if (disable && editingId === toner.id) {
         setForm(EMPTY);
         setEditingId(null);
         setPrices([]);
@@ -718,16 +763,12 @@ export default function TonerScreen() {
                       </button>
                       <button
                         className="tn-danger"
-                        onClick={() => void remove(toner)}
+                        onClick={() => void setDisabled(toner, true)}
                         disabled={busy}
                         type="button"
-                        title={
-                          toner.stock > 0
-                            ? `在庫が ${toner.stock} 本あるので削除できません`
-                            : '受付の履歴・注文・在庫が無い品番だけ削除できます'
-                        }
+                        title="一覧の下の「無効にした品番」へ移します。記録は消えません"
                       >
-                        削除
+                        無効
                       </button>
                     </td>
                   </tr>
@@ -737,6 +778,66 @@ export default function TonerScreen() {
           </div>
         )}
       </section>
+
+      {disabled.length > 0 && (
+        <section className="tn-list tn-disabled">
+          <h2>無効にした品番（{disabled.length} 件）</h2>
+          <p className="tn-hint">
+            使わなくなった品番です。<strong>受付の履歴・注文・価格の履歴は消えていません。</strong>
+            受付の検索・注文・請求書の候補からは外れています。
+            「元に戻す」を押せば、そのまま元の一覧に戻ります。
+            在庫が残っている品番を廃棄したいときは、先に元に戻してから受付で処理してください。
+          </p>
+
+          <div className="tn-table-wrap">
+            <table className="tn-table">
+              <thead>
+                <tr>
+                  <th className="tn-plain">トナーID</th>
+                  <th className="tn-plain">トナー名</th>
+                  <th className="tn-plain">色</th>
+                  <th className="tn-plain tn-num">在庫</th>
+                  <th className="tn-plain">対応プリンター</th>
+                  <th className="tn-plain">無効にした日時</th>
+                  <th className="tn-plain">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {disabled.map((toner) => (
+                  <tr key={toner.id}>
+                    <td className="tn-mono">{toner.id}</td>
+                    <td>{toner.name ?? '—'}</td>
+                    <td>{toner.color ?? '—'}</td>
+                    <td className={toner.stock > 0 ? 'tn-num tn-stock-left' : 'tn-num'}>
+                      {toner.stock}
+                    </td>
+                    <td title={toner.printers.map(printerLabel).join('\n')}>
+                      {toner.printers.length === 0
+                        ? '—'
+                        : `${toner.printers.length} 台`}
+                    </td>
+                    <td>
+                      {toner.disabledAt
+                        ? new Date(toner.disabledAt).toLocaleString('ja-JP')
+                        : '—'}
+                    </td>
+                    <td className="tn-ops">
+                      <button
+                        onClick={() => void setDisabled(toner, false)}
+                        disabled={busy}
+                        type="button"
+                        title="元の一覧に戻します"
+                      >
+                        元に戻す
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

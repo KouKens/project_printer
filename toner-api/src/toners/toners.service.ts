@@ -65,8 +65,16 @@ export class TonersService {
     return this.findOne(id);
   }
 
-  async findAll() {
+  /**
+   * マスタの一覧。**既定では無効にした品番を返さない。**
+   *
+   * 受付の検索・注文・請求書の明細はどれもここから候補を作るので、
+   * ここで外しておけば「使っていない品番を選べてしまう」場所が残らない。
+   * 無効の分まで要るのはトナー登録の画面だけで、そこだけ true を渡す
+   */
+  async findAll(includeDisabled = false) {
     const toners = await this.prisma.toner.findMany({
+      where: includeDisabled ? {} : { disabledAt: null },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
       include: {
         stock: true,
@@ -190,47 +198,28 @@ export class TonersService {
   }
 
   /**
-   * マスタから消す。
+   * 使わなくなった品番を無効にする／元に戻す。**削除の代わり。**
    *
-   * **記録が残っているものは消せない。** 受付の履歴（搬入・持ち出し・廃棄・棚卸し）や
-   * 注文が紐づいている品番を消すと、過去の記録の相手が消えて読めなくなるため。
-   * 在庫が残っているものも消させない（数え間違いか、消す品番の取り違えのどちらか）。
+   * 消すと、受付の履歴・注文・請求書の明細から相手が居なくなる。
+   * 価格の履歴・対応プリンター・在庫の行も道連れで消える（onDelete: Cascade）。
+   * 印を付けて一覧と選択肢から外すだけにして、記録はそのまま残す。
    *
-   * 消せるのは「登録したが一度も動かしていない品番」。
-   * 価格の履歴・対応プリンター・在庫の行は道連れで消える（onDelete: Cascade）
+   * **止める条件は設けない。** 在庫が残っていても無効にしてよい。
+   * いつでも元に戻せるので、間違えても失うものが無い。
+   * 残った在庫を廃棄したくなったら、元に戻してから受付で処理する
+   * （無効のあいだは受付の検索に出てこないため）
    */
-  async remove(id: string) {
-    const toner = await this.prisma.toner.findUnique({
-      where: { id },
-      include: {
-        stock: true,
-        _count: { select: { entries: true, orders: true } },
-      },
-    });
-
+  async setDisabled(id: string, disabled: boolean) {
+    const toner = await this.prisma.toner.findUnique({ where: { id } });
     if (!toner) {
       throw new NotFoundException(`${id} は登録されていません`);
     }
 
-    const blockers: string[] = [];
-    if (toner._count.entries > 0) {
-      blockers.push(`受付の履歴が ${toner._count.entries} 件`);
-    }
-    if (toner._count.orders > 0) {
-      blockers.push(`注文が ${toner._count.orders} 件`);
-    }
-    if ((toner.stock?.quantity ?? 0) !== 0) {
-      blockers.push(`在庫が ${toner.stock?.quantity} 本`);
-    }
-
-    if (blockers.length > 0) {
-      throw new ConflictException(
-        `${id} は削除できません（${blockers.join(' / ')}あります）`,
-      );
-    }
-
-    await this.prisma.toner.delete({ where: { id } });
-    return { id };
+    await this.prisma.toner.update({
+      where: { id },
+      data: { disabledAt: disabled ? new Date() : null },
+    });
+    return this.findOne(id);
   }
 
   /** 価格の履歴。新しい順 */
@@ -305,6 +294,7 @@ export class TonersService {
     recycled: boolean;
     alertThreshold: number | null;
     yieldPages: number | null;
+    disabledAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
     stock: { quantity: number } | null;
@@ -342,6 +332,8 @@ export class TonersService {
       priceFrom: current ? fromDate(current.effectiveFrom) : null,
       /** 改定の回数が分かるように件数だけ添える */
       priceCount: toner.prices.length,
+      /** 無効にした日時。null なら有効。画面はこれで一覧を 2 つに分ける */
+      disabledAt: toner.disabledAt,
       stock: toner.stock?.quantity ?? 0,
       printers: toner.printers.map((link) => ({
         id: link.asset.id,

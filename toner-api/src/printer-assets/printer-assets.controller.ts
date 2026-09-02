@@ -1,12 +1,12 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { CreatePrinterAssetDto } from './dto/create-printer-asset.dto';
 import { PrinterAssetsService } from './printer-assets.service';
@@ -24,9 +24,13 @@ export class PrinterAssetsController {
     return this.service.create(dto);
   }
 
+  /**
+   * 台帳の一覧。**既定は有効な台だけ。**
+   * `?includeDisabled=1` を付けたときだけ無効にした台も返す（プリンター登録の画面用）
+   */
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query('includeDisabled') includeDisabled?: string) {
+    return this.service.findAll(includeDisabled === '1');
   }
 
   /**
@@ -75,8 +79,18 @@ export class PrinterAssetsController {
     return this.service.touch(id);
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  /**
+   * 使わなくなった台を無効にする。**削除は用意していない。**
+   * 消すと修理履歴が道連れで消えるため（`onDelete: Cascade`）
+   */
+  @Post(':id/disable')
+  disable(@Param('id', ParseIntPipe) id: number) {
+    return this.service.setDisabled(id, true);
+  }
+
+  /** 無効にした台を元に戻す */
+  @Post(':id/enable')
+  enable(@Param('id', ParseIntPipe) id: number) {
+    return this.service.setDisabled(id, false);
   }
 }

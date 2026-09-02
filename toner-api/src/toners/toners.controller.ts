@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -23,9 +22,13 @@ export class TonersController {
     return this.service.create(dto);
   }
 
+  /**
+   * マスタの一覧。**既定は有効な品番だけ。**
+   * `?includeDisabled=1` を付けたときだけ無効の分も返す（トナー登録の画面用）
+   */
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query('includeDisabled') includeDisabled?: string) {
+    return this.service.findAll(includeDisabled === '1');
   }
 
   @Get(':id')
@@ -39,10 +42,19 @@ export class TonersController {
     return this.service.update(id, dto);
   }
 
-  /** マスタから消す。履歴・注文・在庫が残っているものは消せない */
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  /**
+   * 使わなくなった品番を無効にする。**削除は用意していない。**
+   * 消すと受付の履歴・注文・請求書から相手が居なくなるため
+   */
+  @Post(':id/disable')
+  disable(@Param('id') id: string) {
+    return this.service.setDisabled(id, true);
+  }
+
+  /** 無効にした品番を元に戻す */
+  @Post(':id/enable')
+  enable(@Param('id') id: string) {
+    return this.service.setDisabled(id, false);
   }
 
   /** 価格の履歴。新しい順 */

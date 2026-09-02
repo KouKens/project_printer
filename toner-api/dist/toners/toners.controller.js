@@ -26,8 +26,8 @@ let TonersController = class TonersController {
     create(dto) {
         return this.service.create(dto);
     }
-    findAll() {
-        return this.service.findAll();
+    findAll(includeDisabled) {
+        return this.service.findAll(includeDisabled === '1');
     }
     findOne(id) {
         return this.service.findOne(id);
@@ -35,8 +35,11 @@ let TonersController = class TonersController {
     update(id, dto) {
         return this.service.update(id, dto);
     }
-    remove(id) {
-        return this.service.remove(id);
+    disable(id) {
+        return this.service.setDisabled(id, true);
+    }
+    enable(id) {
+        return this.service.setDisabled(id, false);
     }
     findPrices(id) {
         return this.service.findPrices(id);
@@ -60,8 +63,9 @@ __decorate([
 ], TonersController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('includeDisabled')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], TonersController.prototype, "findAll", null);
 __decorate([
@@ -80,12 +84,19 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], TonersController.prototype, "update", null);
 __decorate([
-    (0, common_1.Delete)(':id'),
+    (0, common_1.Post)(':id/disable'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
-], TonersController.prototype, "remove", null);
+], TonersController.prototype, "disable", null);
+__decorate([
+    (0, common_1.Post)(':id/enable'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], TonersController.prototype, "enable", null);
 __decorate([
     (0, common_1.Get)(':id/prices'),
     __param(0, (0, common_1.Param)('id')),

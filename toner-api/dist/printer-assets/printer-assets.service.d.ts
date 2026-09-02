@@ -69,10 +69,11 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
-    findAll(): Promise<{
+    findAll(includeDisabled?: boolean): Promise<{
         id: number;
         department: string | null;
         no: string | null;
@@ -107,6 +108,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
@@ -202,6 +204,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
@@ -263,6 +266,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -301,6 +305,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -397,11 +402,48 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
-    remove(id: number): Promise<{
+    setDisabled(id: number, disabled: boolean): Promise<{
         id: number;
+        department: string | null;
+        no: string | null;
+        ipAddress: string | null;
+        maker: string | null;
+        model: string | null;
+        serialNumber: string | null;
+        purchasedOn: string | null;
+        purchasePrice: number | null;
+        contractNo: string | null;
+        maintVendorId: number | null;
+        maintVendor: {
+            id: number;
+            name: string;
+            phones: string[];
+        } | null;
+        effectiveVendor: {
+            source: "asset";
+            id: number;
+            name: string;
+            phones: string[];
+        } | {
+            source: "maker";
+            id: number;
+            name: string;
+            phones: string[];
+        } | null;
+        maintContract: string | null;
+        maintStartOn: string | null;
+        maintEndOn: string | null;
+        maintDealOn: string | null;
+        maintFee: number | null;
+        note: string | null;
+        countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        disabledAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     private fillSerial;
     private ensureExists;

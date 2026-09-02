@@ -262,6 +262,20 @@
 .as-empty { color: var(--muted); font-size: 13px; }
 
 /*
+ * 無効にした機器の別枠。**上の一覧と地続きに見えないようにする。**
+ * 同じ見た目で続けると、今使っている機器の一覧が下まで伸びているように読める。
+ * 線で区切り、全体を淡くして「よけてある分」だと分かるようにする
+ */
+.as-disabled {
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.as-disabled h2 { color: var(--muted); }
+.as-disabled .as-table tbody td { color: #7c8b98; }
+/* 元に戻すのは危険な操作ではないので、削除の赤ではなく通常の色で出す */
+.as-disabled .as-table { background: #fbfcfd; }
+
+/*
  * 縦も箱の中でスクロールさせる。ページ全体に任せると横スクロールバーが
  * 表の最下端に付いてしまい、47 行あると掴めなくなる。見出しは sticky で残す。
  */
