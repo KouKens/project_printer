@@ -40,8 +40,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 var SnmpService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SnmpService = exports.SnmpUnreachableError = void 0;
-exports.isReplaceablePart = isReplaceablePart;
+exports.SnmpService = exports.SnmpUnreachableError = exports.COUNTER_UNIT = void 0;
+exports.isSheetUnit = isSheetUnit;
 const common_1 = require("@nestjs/common");
 const snmp = __importStar(require("net-snmp"));
 const TIMEOUT_MS = 2500;
@@ -53,7 +53,18 @@ const SCALAR = {
     hrDeviceDescr: '1.3.6.1.2.1.25.3.2.1.3.1',
     serialNumber: '1.3.6.1.2.1.43.5.1.1.17.1',
     pageCount: '1.3.6.1.2.1.43.10.2.1.4.1.1',
+    counterUnit: '1.3.6.1.2.1.43.10.2.1.3.1.1',
 };
+exports.COUNTER_UNIT = {
+    IMPRESSIONS: 7,
+    SHEETS: 8,
+    METERS: 17,
+};
+function isSheetUnit(unit) {
+    if (unit === null)
+        return true;
+    return unit === exports.COUNTER_UNIT.IMPRESSIONS || unit === exports.COUNTER_UNIT.SHEETS;
+}
 const TABLE = {
     ifPhysAddress: '1.3.6.1.2.1.2.2.1.6',
     supplyDescription: '1.3.6.1.2.1.43.11.1.1.6',
@@ -70,12 +81,6 @@ const TABLE = {
     alertDescription: '1.3.6.1.2.1.43.18.1.1.8',
     consoleText: '1.3.6.1.2.1.43.16.5.1.2',
 };
-const CONSUMABLE_TYPES = [
-    3,
-    5,
-    6,
-    21,
-];
 const COUNTER = {
     ricohId: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.2',
     ricohValue: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.9',
@@ -87,14 +92,11 @@ const RICOH_COUNTER = {
     mono: 401,
     single: 402,
     full: 403,
+    print: 1806,
+    copy: 701,
 };
 const CANON_COUNTER = { total: 101, mono: 108 };
 const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
-function isReplaceablePart(supply) {
-    if (supply.supplyType === null)
-        return false;
-    return !CONSUMABLE_TYPES.includes(supply.supplyType);
-}
 class SnmpUnreachableError extends Error {
 }
 exports.SnmpUnreachableError = SnmpUnreachableError;
@@ -170,6 +172,57 @@ let SnmpService = SnmpService_1 = class SnmpService {
         }
         throw new SnmpUnreachableError(`${ipAddress} から SNMP の応答がありません。IP アドレス・コミュニティ名・機器側の SNMP 設定を確認してください`);
     }
+    async dumpCounters(ipAddress, community, preferred = 'V1') {
+        const order = preferred === 'V1' ? ['V1', 'V2C'] : ['V2C', 'V1'];
+        for (const version of order) {
+            try {
+                return await this.dumpCountersWith(ipAddress, community, version);
+            }
+            catch (error) {
+                if (!(error instanceof SnmpUnreachableError))
+                    throw error;
+                this.logger.debug(`${ipAddress}: SNMP ${version} は応答なし`);
+            }
+        }
+        throw new SnmpUnreachableError(`${ipAddress} から SNMP の応答がありません。IP アドレス・コミュニティ名・機器側の SNMP 設定を確認してください`);
+    }
+    async dumpCountersWith(ipAddress, community, version) {
+        const session = snmp.createSession(ipAddress, community, {
+            version: version === 'V1' ? snmp.Version1 : snmp.Version2c,
+            timeout: TIMEOUT_MS,
+            retries: RETRIES,
+        });
+        session.on('error', (error) => {
+            this.logger.debug(`${ipAddress}: セッションエラー ${error.message}`);
+        });
+        try {
+            await this.get(session, SCALAR.sysName);
+            const sysDescrRaw = await this.get(session, SCALAR.sysDescr);
+            const sysDescr = sysDescrRaw ? readText(sysDescrRaw.value) : null;
+            const descr = sysDescr ?? '';
+            const vendor = /ricoh|ipsio/i.test(descr)
+                ? 'ricoh'
+                : /canon/i.test(descr)
+                    ? 'canon'
+                    : null;
+            const table = vendor === 'ricoh'
+                ? await this.readCounterTable(session, COUNTER.ricohId, COUNTER.ricohValue)
+                : vendor === 'canon'
+                    ? await this.readCounterTable(session, COUNTER.canonId, COUNTER.canonValue)
+                    : new Map();
+            return {
+                version,
+                vendor,
+                sysDescr,
+                counters: [...table.entries()]
+                    .map(([id, value]) => ({ id, value }))
+                    .sort((a, b) => a.id - b.id),
+            };
+        }
+        finally {
+            session.close();
+        }
+    }
     async pollWith(ipAddress, community, version) {
         const session = snmp.createSession(ipAddress, community, {
             version: version === 'V1' ? snmp.Version1 : snmp.Version2c,
@@ -181,11 +234,12 @@ let SnmpService = SnmpService_1 = class SnmpService {
         });
         try {
             const sysName = await this.get(session, SCALAR.sysName);
-            const [sysDescr, hrDeviceDescr, serialNumber, pageCount] = await Promise.all([
+            const [sysDescr, hrDeviceDescr, serialNumber, pageCount, counterUnit] = await Promise.all([
                 this.get(session, SCALAR.sysDescr),
                 this.get(session, SCALAR.hrDeviceDescr),
                 this.get(session, SCALAR.serialNumber),
                 this.get(session, SCALAR.pageCount),
+                this.get(session, SCALAR.counterUnit),
             ]);
             const [macs, supplies, alerts, consoleText] = await Promise.all([
                 this.walk(session, TABLE.ifPhysAddress),
@@ -208,6 +262,7 @@ let SnmpService = SnmpService_1 = class SnmpService {
                 serialNumber: serialNumber ? readText(serialNumber.value) : null,
                 macAddress,
                 pageCount: total,
+                counterUnit: counterUnit ? readNumber(counterUnit.value) : null,
                 ...counts,
                 supplies,
                 alerts,
@@ -309,7 +364,14 @@ let SnmpService = SnmpService_1 = class SnmpService {
             if (mono !== undefined) {
                 const color = (counters.get(RICOH_COUNTER.single) ?? 0) +
                     (counters.get(RICOH_COUNTER.full) ?? 0);
-                return { monoCount: mono, colorCount: color, countSource: 'vendor' };
+                return {
+                    monoCount: mono,
+                    colorCount: color,
+                    printCount: counters.get(RICOH_COUNTER.print) ?? null,
+                    copyCount: counters.get(RICOH_COUNTER.copy) ?? null,
+                    scanCount: null,
+                    countSource: 'vendor',
+                };
             }
         }
         else if (/canon/i.test(descr)) {
@@ -320,16 +382,34 @@ let SnmpService = SnmpService_1 = class SnmpService {
                 return {
                     monoCount: mono,
                     colorCount: sum - mono,
+                    printCount: null,
+                    copyCount: null,
+                    scanCount: null,
                     countSource: 'vendor',
                 };
             }
         }
         const hasColor = supplies.some((supply) => supply.colorant !== null &&
             COLOR_NAMES.includes(supply.colorant.toLowerCase()));
+        const noFunctions = {
+            printCount: null,
+            copyCount: null,
+            scanCount: null,
+        };
         if (!hasColor && supplies.length > 0 && total !== null) {
-            return { monoCount: total, colorCount: 0, countSource: 'mono-only' };
+            return {
+                monoCount: total,
+                colorCount: 0,
+                ...noFunctions,
+                countSource: 'mono-only',
+            };
         }
-        return { monoCount: null, colorCount: null, countSource: 'none' };
+        return {
+            monoCount: null,
+            colorCount: null,
+            ...noFunctions,
+            countSource: 'none',
+        };
     }
     async readCounterTable(session, idBase, valueBase) {
         const [ids, values] = await Promise.all([

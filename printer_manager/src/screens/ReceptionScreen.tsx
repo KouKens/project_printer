@@ -1,20 +1,20 @@
 import type { KeyboardEvent } from 'react'
 import {
-  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react'
-import type { EntryResult, Mode, StockRow, TonerCatalogRow } from '../api'
+import type { EntryResult, ReceptionMode, StockRow, TonerCatalogRow } from '../api'
+import TonerPickerRow from '../components/TonerPickerRow'
 import {
   fetchStock,
   fetchToners,
   submitBulkEntry,
   submitEntry,
 } from '../api'
+import { STAFF_ID_HINT, filterStaffId, staffIdError } from '../lib/staffId'
 
 type FieldKey = 'userId' | 'tonerId' | 'name' | 'quantity'
 
@@ -28,22 +28,14 @@ type FieldDef = {
   hint: string
   required?: string
   numeric?: boolean
+  /** 名前の行。数字だけを通し、桁数を確かめる */
+  staffId?: boolean
+  /** トナーを選ぶ行。入力欄ではなく専用の部品を描く */
+  picker?: boolean
   optionalTag?: string
 }
 
-const MODES: { value: Mode; label: string; note: string; submit: string }[] = [
-  {
-    value: 'REGISTER',
-    label: '登録',
-    note: '新しいトナーの品番をマスタに追加します。在庫は 0 から始まります。',
-    submit: 'マスタに登録する',
-  },
-  {
-    value: 'RECEIVE',
-    label: '搬入',
-    note: '納品されたトナーを在庫に加えます。未登録の品番は受け付けません。',
-    submit: '在庫に加える',
-  },
+const MODES: { value: ReceptionMode; label: string; note: string; submit: string }[] = [
   {
     value: 'ISSUE',
     label: '持ち出し',
@@ -60,120 +52,76 @@ const MODES: { value: Mode; label: string; note: string; submit: string }[] = [
 
 const EMPTY: FormValues = { userId: '', tonerId: '', name: '', quantity: '1' }
 
-function fieldsFor(mode: Mode): FieldDef[] {
+function fieldsFor(mode: ReceptionMode): FieldDef[] {
   const fields: FieldDef[] = [
     {
       key: 'userId',
       no: '01',
-      label: 'ユーザーID',
-      hint: '職員証のバーコードを読み取るか、キーボードで入力します',
-      required: 'ユーザーIDを読み取ってください',
+      label: '名前',
+      hint:
+        mode === 'ISSUE'
+          ? `持ち出す人の名前です。${STAFF_ID_HINT}`
+          : `廃棄した人の名前です。${STAFF_ID_HINT}`,
+      required: '名前を入力してください',
+      staffId: true,
     },
     {
       key: 'tonerId',
       no: '02',
-      label: 'トナーID',
-      hint: 'トナー箱のラベルを読み取るか、キーボードで入力します',
-      required: 'トナーIDを読み取ってください',
+      label: 'トナー',
+      hint: '',
+      required: 'トナーを選んでください',
+      picker: true,
     },
   ]
 
-  if (mode === 'REGISTER') {
-    fields.push({
-      key: 'name',
-      no: '03',
-      label: '名称',
-      hint: '空欄のままでも登録できます',
-      optionalTag: '任意',
-    })
-  }
+  const hint =
+    mode === 'ISSUE'
+      ? '持ち出す本数を入力します。既定は 1 本です'
+      : '廃棄する本数を入力します。既定は 1 本です'
 
-  if (mode === 'RECEIVE' || mode === 'ISSUE' || mode === 'DISPOSE') {
-    const hint =
-      mode === 'RECEIVE'
-        ? '納品された本数を入力します。既定は 1 本です'
-        : mode === 'ISSUE'
-          ? '持ち出す本数を入力します。既定は 1 本です'
-          : '廃棄する本数を入力します。既定は 1 本です'
-
-    fields.push({
-      key: 'quantity',
-      no: '03',
-      label: '本数',
-      hint,
-      required: '本数を入力してください',
-      numeric: true,
-    })
-  }
+  fields.push({
+    key: 'quantity',
+    no: '03',
+    label: '本数',
+    hint,
+    required: '本数を入力してください',
+    numeric: true,
+  })
 
   return fields
-}
-
-/** 検索に当てる文字列。品番・名称・色に、設置場所（部署・No.・IP・型番）を足す */
-function haystack(row: TonerCatalogRow): string {
-  const printers = row.printers
-    .map((p) =>
-      [p.no ? `No.${p.no}` : '', p.department, p.ipAddress, p.model]
-        .filter(Boolean)
-        .join(' '),
-    )
-    .join(' ')
-  return `${row.id} ${row.name ?? ''} ${row.color ?? ''} ${printers}`.toLowerCase()
-}
-
-/**
- * 空白区切りの語がすべて含まれる行を返す。
- * 「予約外来 シアン」のように場所と色を並べて絞れるようにするため。
- */
-function matchToners(rows: TonerCatalogRow[], query: string): TonerCatalogRow[] {
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return []
-  return rows.filter((row) => {
-    const text = haystack(row)
-    return words.every((word) => text.includes(word))
-  })
-}
-
-/** 候補に出す設置場所。台帳の No. と部署で示し、多いときは件数でまとめる */
-function placeOf(row: TonerCatalogRow): string {
-  if (row.printers.length === 0) return '設置場所の登録なし'
-  const heads = row.printers
-    .slice(0, 2)
-    .map((p) => [p.no ? `No.${p.no}` : null, p.department].filter(Boolean).join(' '))
-    .join('、')
-  return row.printers.length > 2
-    ? `${heads} ほか ${row.printers.length - 2} 台`
-    : heads
 }
 
 /** まとめ処理の明細 1 行 */
 type Line = { tonerId: string; name: string; quantity: string }
 
-/** まとめ処理の結果をひとことで。区分ごとに数え方が違う */
-function bulkNotice(mode: Mode, results: EntryResult[]): string {
+/** まとめ処理の結果をひとことで */
+function bulkNotice(mode: ReceptionMode, results: EntryResult[]): string {
   const bottles = results.reduce((sum, row) => sum + row.quantity, 0)
   const label = MODES.find((m) => m.value === mode)!.label
 
-  return mode === 'REGISTER'
-    ? `${results.length} 件をマスタに登録しました`
-    : `${results.length} 件・合計 ${bottles} 本を${label}しました`
+  return `${results.length} 件・合計 ${bottles} 本を${label}しました`
 }
 
 function noticeFor(result: EntryResult): string {
   switch (result.action) {
-    case 'REGISTER':
-      return `${result.tonerId} をマスタに登録しました`
-    case 'RECEIVE':
-      return `${result.tonerId} を ${result.quantity} 本 搬入しました（在庫 ${result.stock}）`
     case 'ISSUE':
       return `${result.tonerId} を ${result.quantity} 本 持ち出しました（残 ${result.stock}）`
     case 'DISPOSE':
       return `${result.tonerId} を ${result.quantity} 本 廃棄しました（廃棄累計 ${result.disposed} / 搬入 ${result.received}）`
+    default:
+      /*
+       * 搬入は「注文」の画面へ移したので、この画面からは来ない。
+       * ただし API の EntryResult は区分に RECEIVE を持ったままなので、
+       * ここで受けないと戻り値が undefined になり得る（本番ビルドが通らない）。
+       * 起きないはずの経路だが、黙って空にせず結果は出す
+       */
+      return `${result.tonerId} を ${result.quantity} 本 受け付けました（残 ${result.stock}）`
   }
 }
 
 export default function ReceptionScreen() {
-  const [mode, setMode] = useState<Mode>('ISSUE')
+  const [mode, setMode] = useState<ReceptionMode>('ISSUE')
   const [values, setValues] = useState<FormValues>(EMPTY)
   const [errors, setErrors] = useState<FormErrors>({})
   const [activeIndex, setActiveIndex] = useState(0)
@@ -227,18 +175,9 @@ export default function ReceptionScreen() {
       .catch(() => undefined)
   }, [])
 
-  const candidates = useMemo(
-    () => matchToners(catalog, search),
-    [catalog, search],
-  )
-
-  /** 1 件に絞れた時点でトナーIDへ入れる。選び直せるよう検索語は残す */
+  /** 探す欄の入力。品番が決まるのは部品の側 */
   const handleSearch = (value: string) => {
     setSearch(value)
-    const hits = matchToners(catalog, value)
-    if (hits.length !== 1) return
-    setValues((prev) => ({ ...prev, tonerId: hits[0].id }))
-    setErrors((prev) => ({ ...prev, tonerId: undefined }))
     setFailure(null)
   }
 
@@ -255,7 +194,7 @@ export default function ReceptionScreen() {
     setFailure(null)
   }
 
-  const changeMode = (next: Mode) => {
+  const changeMode = (next: ReceptionMode) => {
     if (next === mode) return
     setMode(next)
     setErrors({})
@@ -270,32 +209,28 @@ export default function ReceptionScreen() {
   }
 
   /**
-   * 明細に足す。トナーIDと本数だけを見る（ユーザーIDは送信時にまとめて確かめる）。
-   * 続けて読み取れるよう、トナーIDの欄に戻す。
+   * 明細に足す。トナーと本数だけを見る（名前は送信時にまとめて確かめる）。
+   * 続けて読み取れるよう、トナーの欄に戻す。
    */
   const addLine = useCallback((): boolean => {
     const tonerId = values.tonerId.trim()
     if (!tonerId) {
-      setErrors((prev) => ({ ...prev, tonerId: 'トナーIDを読み取ってください' }))
+      setErrors((prev) => ({ ...prev, tonerId: 'トナーを選んでください' }))
       return false
     }
 
     const quantity = values.quantity.trim()
-    if (mode !== 'REGISTER') {
-      const parsed = Number(quantity)
-      if (!Number.isInteger(parsed) || parsed < 1) {
-        setErrors((prev) => ({
-          ...prev,
-          quantity: '本数は 1 以上の整数で入力してください',
-        }))
-        return false
-      }
+    const parsed = Number(quantity)
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setErrors((prev) => ({
+        ...prev,
+        quantity: '本数は 1 以上の整数で入力してください',
+      }))
+      return false
     }
 
-    setLines((prev) => [
-      ...prev,
-      { tonerId, name: values.name.trim(), quantity: quantity || '1' },
-    ])
+    const name = catalog.find((row) => row.id === tonerId)?.name ?? ''
+    setLines((prev) => [...prev, { tonerId, name, quantity: quantity || '1' }])
     setValues((prev) => ({ ...prev, tonerId: '', name: '', quantity: '1' }))
     setSearch('')
     setErrors({})
@@ -305,7 +240,7 @@ export default function ReceptionScreen() {
     setActiveIndex(index)
     focusField(index)
     return true
-  }, [fields, focusField, mode, values])
+  }, [catalog, fields, focusField, values])
 
   const removeLine = (index: number) =>
     setLines((prev) => prev.filter((_, i) => i !== index))
@@ -331,8 +266,9 @@ export default function ReceptionScreen() {
         })
       }
 
-      if (!trimmed.userId) {
-        setErrors({ userId: 'ユーザーIDを読み取ってください' })
+      const userIdError = staffIdError(trimmed.userId, false)
+      if (userIdError) {
+        setErrors({ userId: userIdError })
         setActiveIndex(0)
         focusField(0)
         return
@@ -352,8 +288,7 @@ export default function ReceptionScreen() {
           userId: trimmed.userId,
           items: items.map((item) => ({
             tonerId: item.tonerId,
-            ...(mode === 'REGISTER' && item.name ? { name: item.name } : {}),
-            ...(mode === 'REGISTER' ? {} : { quantity: Number(item.quantity) }),
+            quantity: Number(item.quantity),
           })),
         })
 
@@ -381,6 +316,12 @@ export default function ReceptionScreen() {
     const nextErrors: FormErrors = {}
     fields.forEach((field) => {
       const value = trimmed[field.key]
+      if (field.staffId) {
+        // 持ち出し・廃棄は誰が触ったかを必ず残す。ゲストは通さない
+        const message = staffIdError(value, false)
+        if (message) nextErrors[field.key] = message
+        return
+      }
       if (field.required && !value) {
         nextErrors[field.key] = field.required
         return
@@ -406,10 +347,7 @@ export default function ReceptionScreen() {
       userId: trimmed.userId,
       tonerId: trimmed.tonerId,
     }
-    if (mode === 'REGISTER' && trimmed.name) payload.name = trimmed.name
-    if (mode === 'ISSUE' || mode === 'DISPOSE') {
-      payload.quantity = Number(trimmed.quantity)
-    }
+    payload.quantity = Number(trimmed.quantity)
 
     setSubmitting(true)
     setFailure(null)
@@ -447,8 +385,15 @@ export default function ReceptionScreen() {
 
     if (index < fields.length - 1) {
       const field = fields[index]
-      if (field.required && !values[field.key].trim()) {
-        setErrors((prev) => ({ ...prev, [field.key]: field.required }))
+      const value = values[field.key].trim()
+      // 桁が足りないまま次へ送らない。読み取り漏れをその場で気付けるようにする
+      const message = field.staffId
+        ? staffIdError(value, false)
+        : field.required && !value
+          ? field.required
+          : null
+      if (message) {
+        setErrors((prev) => ({ ...prev, [field.key]: message }))
         return
       }
       setActiveIndex(index + 1)
@@ -536,7 +481,33 @@ export default function ReceptionScreen() {
             const error = errors[field.key]
             const filled = value.trim().length > 0
 
-            const row = (
+            if (field.picker) {
+              return (
+                <TonerPickerRow
+                  active={activeIndex === index}
+                  catalog={catalog}
+                  disabled={submitting}
+                  error={error}
+                  idPrefix="rx"
+                  inputRef={(el) => {
+                    inputRefs.current[index] = el
+                  }}
+                  key={field.key}
+                  no={field.no}
+                  onEnter={(e) => handleKeyDown(e, index)}
+                  onFocus={() => setActiveIndex(index)}
+                  onPick={pick}
+                  onSearch={handleSearch}
+                  rowRef={(el) => {
+                    rowRefs.current[index] = el
+                  }}
+                  search={search}
+                  value={value}
+                />
+              )
+            }
+
+            return (
               <div
                 className={[
                   'row',
@@ -575,10 +546,17 @@ export default function ReceptionScreen() {
                     className="row__input"
                     disabled={submitting}
                     id={`rx-${field.key}`}
-                    inputMode={field.numeric ? 'numeric' : 'text'}
+                    inputMode={field.numeric || field.staffId ? 'numeric' : 'text'}
                     max={field.numeric ? 999 : undefined}
+                    maxLength={field.staffId ? 10 : undefined}
                     min={field.numeric ? 1 : undefined}
-                    onChange={(e) => handleChange(field.key, e.target.value)}
+                    onChange={(e) =>
+                      handleChange(
+                        field.key,
+                        // 数字以外は打てないようにする。貼り付けもここを通る
+                        field.staffId ? filterStaffId(e.target.value) : e.target.value,
+                      )
+                    }
                     onFocus={() => setActiveIndex(index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     placeholder="—"
@@ -602,78 +580,6 @@ export default function ReceptionScreen() {
                 </div>
               </div>
             )
-
-            // 登録は「まだマスタに無い品番」を入れる操作なので、探す欄は出さない
-            if (field.key !== 'tonerId' || mode === 'REGISTER') return row
-
-            return (
-              <Fragment key={field.key}>
-                {row}
-
-                <div className="finder">
-                  <label className="finder__label" htmlFor="rx-finder">
-                    トナーを探す
-                    <span className="row__tag">任意</span>
-                  </label>
-
-                  <input
-                    autoComplete="off"
-                    className="finder__input"
-                    disabled={submitting}
-                    id="rx-finder"
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return
-                      e.preventDefault()
-                      if (candidates.length > 0) pick(candidates[0])
-                    }}
-                    placeholder="設置場所・部署・トナー名で検索"
-                    spellCheck={false}
-                    type="text"
-                    value={search}
-                  />
-
-                  <p className="finder__hint">
-                    部署名（予約外来 など）・No.・IP・型番・トナー名で探せます。
-                    空白で区切ると絞り込めます（例: 予約外来 シアン）。
-                    1 件に絞れると上のトナーIDへ入ります。
-                  </p>
-
-                  {search.trim().length > 0 &&
-                    (candidates.length === 0 ? (
-                      <p className="finder__empty">該当するトナーがありません</p>
-                    ) : (
-                      <ul className="finder__list">
-                        {candidates.slice(0, 8).map((item) => (
-                          <li key={item.id}>
-                            <button
-                              className={`finder__item${
-                                values.tonerId === item.id ? ' finder__item--on' : ''
-                              }`}
-                              disabled={submitting}
-                              onClick={() => pick(item)}
-                              type="button"
-                            >
-                              <span className="finder__id">{item.id}</span>
-                              <span className="finder__name">
-                                {item.name ?? ''}
-                                {item.color ? `／${item.color}` : ''}
-                              </span>
-                              <span className="finder__place">{placeOf(item)}</span>
-                              <span className="finder__stock">在庫 {item.stock}</span>
-                            </button>
-                          </li>
-                        ))}
-                        {candidates.length > 8 && (
-                          <li className="finder__more">
-                            ほか {candidates.length - 8} 件。語を足すと絞れます
-                          </li>
-                        )}
-                      </ul>
-                    ))}
-                </div>
-              </Fragment>
-            )
           })}
         </div>
 
@@ -688,7 +594,7 @@ export default function ReceptionScreen() {
             <h3 className="batch__heading">
               明細
               <span className="batch__count">{lines.length} 件</span>
-              {lines.length > 0 && mode !== 'REGISTER' && (
+              {lines.length > 0 && (
                 <span className="batch__count">
                   合計 {lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0)} 本
                 </span>
@@ -705,9 +611,7 @@ export default function ReceptionScreen() {
                   <li className="batch__item" key={`${line.tonerId}-${index}`}>
                     <span className="batch__id">{line.tonerId}</span>
                     <span className="batch__name">{line.name}</span>
-                    {mode !== 'REGISTER' && (
-                      <span className="batch__qty">{line.quantity} 本</span>
-                    )}
+                    <span className="batch__qty">{line.quantity} 本</span>
                     <button
                       className="batch__remove"
                       disabled={submitting}

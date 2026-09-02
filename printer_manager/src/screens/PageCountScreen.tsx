@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isSheetUnit } from '../lib/counter';
 import { isoDaysAgo, todayIso } from '../lib/date';
-import { nextSort, sortRows } from '../lib/table';
+import { num } from '../lib/format';
+import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
 import './DataTable.css';
@@ -11,6 +13,16 @@ type DailyCount = {
   printerId: number;
   ipAddress: string;
   model: string | null;
+  /**
+   * カウンタの単位（prtMarkerCounterUnit）。7 / 8 は枚、17 はメートル。
+   * **この画面は枚の機器だけを出す。** ラベルプリンターは長さで数えるので、
+   * 混ぜて足すと枚数の合計が意味を失う（「ラベル印字状況」で別に見る）
+   */
+  counterUnit: number | null;
+  /** 台帳から引いた部署。IP が重複していて 1 台に絞れないときは null */
+  department: string | null;
+  /** 台帳の管理番号 */
+  no: string | null;
   date: string;
   /** その時点の累計 */
   total: number;
@@ -20,34 +32,138 @@ type DailyCount = {
   pages: number | null;
   monoPages: number | null;
   colorPages: number | null;
+  /**
+   * 機能ごとの枚数。**カラー・モノクロの内訳は機器が持っていないので合計だけ。**
+   * 出さない機種は null。スキャナはどの ID か特定できておらず、今は常に null
+   */
+  printPages: number | null;
+  copyPages: number | null;
+  scanPages: number | null;
+  totalPrint: number | null;
+  totalCopy: number | null;
+  totalScan: number | null;
   spanDays: number;
   capturedAt: string;
 };
 
 type SortKey =
   | 'date'
+  | 'department'
   | 'ipAddress'
   | 'model'
   | 'pages'
   | 'monoPages'
   | 'colorPages'
+  | 'printPages'
+  | 'copyPages'
+  | 'scanPages'
   | 'total'
   | 'totalMono'
   | 'totalColor'
+  | 'totalPrint'
+  | 'totalCopy'
+  | 'totalScan'
   | 'capturedAt';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
   { key: 'date', label: '日付', kind: 'date' },
+  { key: 'department', label: '部署', kind: 'text' },
   { key: 'ipAddress', label: 'IP アドレス', kind: 'ip' },
   { key: 'model', label: '機種', kind: 'text' },
   { key: 'pages', label: '印刷枚数', kind: 'number', numeric: true },
   { key: 'monoPages', label: 'モノクロ', kind: 'number', numeric: true },
   { key: 'colorPages', label: 'カラー', kind: 'number', numeric: true },
+  { key: 'printPages', label: 'プリンター', kind: 'number', numeric: true },
+  { key: 'copyPages', label: 'コピー', kind: 'number', numeric: true },
+  { key: 'scanPages', label: 'スキャナ', kind: 'number', numeric: true },
   { key: 'total', label: '累計', kind: 'number', numeric: true },
   { key: 'totalMono', label: '累計モノクロ', kind: 'number', numeric: true },
   { key: 'totalColor', label: '累計カラー', kind: 'number', numeric: true },
+  { key: 'totalPrint', label: '累計プリンター', kind: 'number', numeric: true },
+  { key: 'totalCopy', label: '累計コピー', kind: 'number', numeric: true },
+  { key: 'totalScan', label: '累計スキャナ', kind: 'number', numeric: true },
   { key: 'capturedAt', label: '取得時刻', kind: 'date' },
 ];
+
+/** 期間内を 1 台にまとめた合計 */
+type PrinterTotal = {
+  printerId: number;
+  department: string | null;
+  no: string | null;
+  ipAddress: string;
+  model: string | null;
+  /** 枚数を出せた日の合計 */
+  pages: number;
+  /** 内訳を返さない機種は null。0 枚と区別する */
+  mono: number | null;
+  color: number | null;
+  /** 枚数を足せた記録の件数 */
+  days: number;
+  /** 枚数を出せなかった記録の件数（初回・カウンタ巻き戻し） */
+  unknown: number;
+};
+
+type TotalKey =
+  | 'department'
+  | 'ipAddress'
+  | 'model'
+  | 'pages'
+  | 'mono'
+  | 'color'
+  | 'days';
+
+const TOTAL_COLUMNS: {
+  key: TotalKey;
+  label: string;
+  kind: CellKind;
+  numeric?: boolean;
+}[] = [
+  { key: 'department', label: '部署', kind: 'text' },
+  { key: 'ipAddress', label: 'IP アドレス', kind: 'ip' },
+  { key: 'model', label: '機種', kind: 'text' },
+  { key: 'pages', label: '印刷枚数', kind: 'number', numeric: true },
+  { key: 'mono', label: 'モノクロ', kind: 'number', numeric: true },
+  { key: 'color', label: 'カラー', kind: 'number', numeric: true },
+  { key: 'days', label: '記録日数', kind: 'number', numeric: true },
+];
+
+/**
+ * 期間内の記録を機器ごとに足す。
+ *
+ * 枚数を出せなかった日（初回・カウンタ巻き戻し）は足さずに件数だけ数える。
+ * モノクロ・カラーは、内訳を返さない機種では 0 枚ではなく「取れていない」なので、
+ * 1 件も無いときは null のままにして画面ではハイフンを出す。
+ */
+function totalsByPrinter(rows: DailyCount[]): PrinterTotal[] {
+  const totals = new Map<number, PrinterTotal>();
+
+  for (const row of rows) {
+    const item = totals.get(row.printerId) ?? {
+      printerId: row.printerId,
+      department: row.department,
+      no: row.no,
+      ipAddress: row.ipAddress,
+      model: row.model,
+      pages: 0,
+      mono: null,
+      color: null,
+      days: 0,
+      unknown: 0,
+    };
+
+    if (row.pages === null) item.unknown += 1;
+    else {
+      item.pages += row.pages;
+      item.days += 1;
+    }
+    if (row.monoPages !== null) item.mono = (item.mono ?? 0) + row.monoPages;
+    if (row.colorPages !== null) item.color = (item.color ?? 0) + row.colorPages;
+
+    totals.set(row.printerId, item);
+  }
+
+  return [...totals.values()];
+}
 
 const DAY_CHOICES = [7, 30, 60, 90, 365];
 
@@ -222,7 +338,6 @@ function PageCountChart({ rows, label }: { rows: DailyCount[]; label: string }) 
   );
 }
 
-const num = new Intl.NumberFormat('ja-JP');
 const show = (value: number | null) => (value === null ? '—' : num.format(value));
 
 /**
@@ -232,8 +347,10 @@ const show = (value: number | null) => (value === null ? '—' : num.format(valu
 type ExportRow = {
   department: string | null;
   no: string | null;
-  kind: 'モノクロ' | 'カラー' | '合計';
-  /** 取れていない値は null。貼り付けでは空行にする */
+  /** 貼ったものが集計表のどの機器の行か分かるように添える。台帳の型番 */
+  name: string | null;
+  kind: 'モノクロ' | 'カラー' | '両方';
+  /** 取れていない値は null。貼り付けでは空欄にする */
   value: number | null;
 };
 
@@ -241,8 +358,11 @@ type ExportRow = {
 type ExportAsset = {
   no: string | null;
   department: string | null;
+  model: string | null;
   /** 集計表でこの機器が占める行。2 行の機器は上下どちらがモノクロかも表ごとに違う */
   countLayout: 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
+  /** 単位の判定に使う。長さで数える機器は集計表に混ぜられない */
+  printer: { counterUnit: number | null } | null;
   latest: {
     total: number;
     totalMono: number | null;
@@ -258,13 +378,14 @@ type ExportAsset = {
  * 応答しなかった日は記録を作らないので、最新の記録は必ず実測値になる
  */
 function buildExportRows(assets: ExportAsset[]): ExportRow[] {
-  const sorted = [...assets].sort((a, b) =>
-    (a.no ?? '').localeCompare(b.no ?? '', 'ja', { numeric: true }),
-  );
+  const sorted = [...assets]
+    // 長さ（m）で数える機器は集計表に載せない。枚数の列に長さが混ざる
+    .filter((asset) => isSheetUnit(asset.printer?.counterUnit ?? null))
+    .sort((a, b) => (a.no ?? '').localeCompare(b.no ?? '', 'ja', { numeric: true }));
 
   const rows: ExportRow[] = [];
   for (const asset of sorted) {
-    const base = { department: asset.department, no: asset.no };
+    const base = { department: asset.department, no: asset.no, name: asset.model };
     const mono: ExportRow = {
       ...base,
       kind: 'モノクロ',
@@ -279,17 +400,70 @@ function buildExportRows(assets: ExportAsset[]): ExportRow[] {
     if (asset.countLayout === 'MONO_COLOR') rows.push(mono, color);
     // 集計表がカラーを上に置いている機器。機器の申告とは逆だが表に合わせる
     else if (asset.countLayout === 'COLOR_MONO') rows.push(color, mono);
-    else rows.push({ ...base, kind: '合計', value: asset.latest?.total ?? null });
+    else rows.push({ ...base, kind: '両方', value: asset.latest?.total ?? null });
   }
   return rows;
 }
 
+/** 出す列。**部署 / プリンター名 / カラー・モノクロ / 枚数** の 4 つ */
+const HEADER = ['部署', 'プリンター名', 'カラー/モノクロ', '枚数'];
+
 /**
- * エクセルの 1 列に貼れる形にする。
- * 区切りは改行だけ。桁区切りを入れると数値として貼れないので入れない
+ * 1 行を列に開く。貼り付けと CSV で同じ中身にするため、ここだけで作る。
+ * 枚数に桁区切りは入れない（入れると数値として読まれない）
+ */
+const cellsOf = (row: ExportRow) => [
+  row.department ?? '',
+  row.name ?? '',
+  row.kind,
+  row.value === null ? '' : String(row.value),
+];
+
+/**
+ * エクセルへ貼れる形にする。区切りはタブで、エクセルはこれをセルの区切りとして読む。
+ *
+ * 枚数だけを 1 列で貼っていたが、ずれても気付けなかった。
+ * 部署と機種を左に添えておけば、貼った先の行と突き合わせて確かめられる。
+ *
+ * 見出しは付けない。集計表の枚数欄へそのまま貼れる行数に揃えるため
  */
 const toClipboardText = (rows: ExportRow[]) =>
-  rows.map((row) => (row.value === null ? '' : String(row.value))).join('\n');
+  rows.map((row) => cellsOf(row).join('\t')).join('\n');
+
+/** カンマ・引用符・改行を含む値だけ引用符で囲む。部署名にカンマが入っても崩れない */
+const escapeCsv = (value: string) =>
+  /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+/**
+ * CSV に組み立てる。こちらは**見出し付き**。
+ * ファイルとして残すので、後から開いたときに何の列か分かるようにする。
+ * 改行は CRLF（エクセルがそのまま読む形）
+ */
+const toCsv = (rows: ExportRow[]) =>
+  [HEADER, ...rows.map(cellsOf)]
+    .map((cells) => cells.map(escapeCsv).join(','))
+    .join('\r\n');
+
+/**
+ * ファイルの先頭に置く印。**これが無いとエクセルが Shift-JIS として開き、
+ * 部署名やプリンター名が化ける。** 目に見えない文字なので定数にして名前を付ける
+ */
+const BOM = '﻿';
+
+/** CSV を保存する。押した時点で保持している行をそのまま書き出す */
+function downloadCsv(text: string, filename: string) {
+  const url = URL.createObjectURL(
+    new Blob([BOM, text], { type: 'text/csv;charset=utf-8' }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  // すぐ捨てると保存が始まらないことがあるので、少し置いてから解放する
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /**
  * クリップボードへ入れる。
@@ -336,6 +510,11 @@ export default function PageCountScreen() {
     key: 'date',
     dir: 'desc',
   });
+  /** 機器ごとの合計表の並び。よく見るのは多い順なので枚数の降順から始める */
+  const [totalSort, setTotalSort] = useState<{ key: TotalKey; dir: SortDir }>({
+    key: 'pages',
+    dir: 'desc',
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -348,7 +527,9 @@ export default function PageCountScreen() {
     const query = byDate ? `from=${from}&to=${to}` : `days=${days}`;
     try {
       setError(null);
-      setCounts(await request<DailyCount[]>(`/printers/page-counts?${query}`));
+      const rows = await request<DailyCount[]>(`/printers/page-counts?${query}`);
+      // 枚で数える機器だけ。単位を返さない機種はこれまでどおり枚として扱う
+      setCounts(rows.filter((row) => isSheetUnit(row.counterUnit)));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -375,15 +556,36 @@ export default function PageCountScreen() {
     void loadExport();
   }, [loadExport]);
 
-  /** 絞り込みの選択肢。記録のある機器だけ出す */
+  /**
+   * 絞り込みの選択肢。記録のある機器だけ出す。
+   * 探すときの手がかりは IP より部署なので、部署を先頭に置いて部署の順に並べる
+   */
   const printers = useMemo(() => {
-    const seen = new Map<number, string>();
+    const seen = new Map<number, { label: string; department: string | null; ip: string }>();
+
     counts.forEach((row) => {
-      if (!seen.has(row.printerId)) {
-        seen.set(row.printerId, `${row.ipAddress}${row.model ? ` (${row.model})` : ''}`);
-      }
+      if (seen.has(row.printerId)) return;
+      const label = [
+        row.department ?? '部署なし',
+        row.no ? `No.${row.no}` : null,
+        row.ipAddress,
+        row.model ? `(${row.model})` : null,
+      ]
+        .filter(Boolean)
+        .join(' ');
+      seen.set(row.printerId, { label, department: row.department, ip: row.ipAddress });
     });
-    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1], 'ja'));
+
+    // 部署が引けなかった機器は末尾に置く。空文字で並べると先頭を占めてしまう
+    const rank = (value: string | null) => value ?? '￿';
+
+    return [...seen.entries()]
+      .sort(
+        (a, b) =>
+          rank(a[1].department).localeCompare(rank(b[1].department), 'ja') ||
+          ipToNumber(a[1].ip) - ipToNumber(b[1].ip),
+      )
+      .map(([id, item]) => [id, item.label] as [number, string]);
   }, [counts]);
 
   /**
@@ -407,6 +609,18 @@ export default function PageCountScreen() {
 
     return sortRows(filtered, (row) => row[sort.key], column?.kind ?? 'text', sort.dir, (row) => row.id);
   }, [counts, printerId, sort]);
+
+  /** 機器ごとの合計。日ごとの表と同じ絞り込み（期間・プリンター）で足す */
+  const printerTotals = useMemo(() => {
+    const column = TOTAL_COLUMNS.find((c) => c.key === totalSort.key);
+    return sortRows(
+      totalsByPrinter(rows),
+      (row) => row[totalSort.key],
+      column?.kind ?? 'text',
+      totalSort.dir,
+      (row) => row.printerId,
+    );
+  }, [rows, totalSort]);
 
   /** グラフは 1 台分だけ描く。日付の昇順に並べ替えて渡す */
   const chartRows = useMemo(() => {
@@ -484,10 +698,26 @@ export default function PageCountScreen() {
     setCopied(true);
     setNotice(
       `${exportRows.length} 行をコピーしました（値あり ${filled} 行 / 空欄 ` +
-        `${exportRows.length - filled} 行）。集計表の先頭の枚数欄に貼り付けてください`,
+        `${exportRows.length - filled} 行）。部署・プリンター名・カラー/モノクロ・枚数の 4 列です。` +
+        '空いている場所に貼って、部署と機種が集計表の行と合っているか確かめてください',
     );
     // 押したことが分かる状態を少し残す
     window.setTimeout(() => setCopied(false), 3000);
+  };
+
+  /**
+   * 同じ中身を CSV として保存する。
+   * 貼り付けと違って手元にファイルが残るので、いつの分かが分かるよう日付を名前に入れる
+   */
+  const saveCsv = () => {
+    setError(null);
+    downloadCsv(toCsv(exportRows), `印刷枚数_${todayIso().replace(/-/g, '')}.csv`);
+
+    const filled = exportRows.filter((row) => row.value !== null).length;
+    setNotice(
+      `${exportRows.length} 行を CSV に保存しました（値あり ${filled} 行 / 空欄 ` +
+        `${exportRows.length - filled} 行）。ダウンロードした場所を確認してください`,
+    );
   };
 
   return (
@@ -571,6 +801,10 @@ export default function PageCountScreen() {
         >
           {copied ? 'コピーしました' : `集計表用にコピー（${exportRows.length} 行）`}
         </button>
+
+        <button onClick={saveCsv} disabled={exportRows.length === 0} type="button">
+          CSV で保存
+        </button>
       </div>
 
       {error && <p className="dt-msg dt-msg-error">{error}</p>}
@@ -580,7 +814,7 @@ export default function PageCountScreen() {
         <h2>日ごとの印刷枚数</h2>
         {printerId === 'all' ? (
           <p className="dt-chart-hint">
-            上の「プリンター」で IP アドレスを選ぶと、その機器の折れ線グラフが出ます。
+            上の「プリンター」で機器（部署名で並んでいます）を選ぶと、その機器の折れ線グラフが出ます。
           </p>
         ) : chartRows.length === 0 ? (
           <p className="dt-empty">{chartLabel} はこの期間の記録がありません。</p>
@@ -632,13 +866,99 @@ export default function PageCountScreen() {
         </p>
       )}
 
+      {printerTotals.length > 0 && (
+        <section className="dt-section">
+          <h2>
+            プリンターごとの合計（{periodLabel}・{printerTotals.length} 台）
+          </h2>
+          <p className="dt-hint">
+            期間内の記録を機器ごとに足した枚数です。枚数を出せなかった日（初回・カウンタの巻き戻し）は
+            足さず、「記録日数」にも数えません。その件数は記録日数の横に括弧で添えています。
+            内訳を返さない機種のモノクロ・カラーは「—」です。
+          </p>
+
+          <div className="dt-wrap dt-wrap-short">
+            <table className="dt-table">
+              <thead>
+                <tr>
+                  {TOTAL_COLUMNS.map((col) => (
+                    <th
+                      key={col.key}
+                      className={col.numeric ? 'dt-num' : undefined}
+                      aria-sort={
+                        totalSort.key === col.key
+                          ? totalSort.dir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setTotalSort(nextSort(totalSort, col.key))}
+                      >
+                        {col.label}
+                        <span className="dt-arrow" aria-hidden>
+                          {totalSort.key === col.key
+                            ? totalSort.dir === 'asc'
+                              ? '▲'
+                              : '▼'
+                            : ''}
+                        </span>
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {printerTotals.map((row) => (
+                  <tr key={row.printerId}>
+                    <td title={row.no ? `No.${row.no}` : undefined}>
+                      {row.department ?? <span className="dt-muted">—</span>}
+                    </td>
+                    <td className="dt-mono">{row.ipAddress}</td>
+                    <td>{row.model ?? '—'}</td>
+                    <td className="dt-num">{num.format(row.pages)}</td>
+                    <td className="dt-num">{show(row.mono)}</td>
+                    <td className="dt-num">{show(row.color)}</td>
+                    <td className="dt-num">
+                      {row.days}
+                      {row.unknown > 0 && (
+                        <span
+                          className="dt-muted"
+                          title={`${row.unknown} 件は枚数を出せていません`}
+                        >
+                          （+{row.unknown}）
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3}>合計（{printerTotals.length} 台）</td>
+                  <td className="dt-num">{num.format(totals.pages)}</td>
+                  <td className="dt-num">{num.format(totals.mono)}</td>
+                  <td className="dt-num">{num.format(totals.color)}</td>
+                  <td className="dt-num">
+                    {printerTotals.reduce((sum, row) => sum + row.days, 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+      )}
+
       {rows.length === 0 ? (
         <p className="dt-empty">
           この期間の記録がありません。「今すぐ取得」を押すか、12:00 の取得をお待ちください。
           なお 1 日分の枚数は 2 回目の取得から入ります。
         </p>
       ) : (
-        <>
+        <section className="dt-section">
+          <h2>日ごとの記録（{rows.length} 件）</h2>
           <p className="dt-hint">
             見出しを押すと並べ替わります。内訳を返さない機種のモノクロ・カラーは「—」です。
           </p>
@@ -674,14 +994,23 @@ export default function PageCountScreen() {
                 {rows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.date}</td>
+                    <td title={row.no ? `No.${row.no}` : undefined}>
+                      {row.department ?? <span className="dt-muted">—</span>}
+                    </td>
                     <td className="dt-mono">{row.ipAddress}</td>
                     <td>{row.model ?? '—'}</td>
                     <td className="dt-num">{show(row.pages)}</td>
                     <td className="dt-num">{show(row.monoPages)}</td>
                     <td className="dt-num">{show(row.colorPages)}</td>
+                    <td className="dt-num">{show(row.printPages)}</td>
+                    <td className="dt-num">{show(row.copyPages)}</td>
+                    <td className="dt-num">{show(row.scanPages)}</td>
                     <td className="dt-num">{num.format(row.total)}</td>
                     <td className="dt-num">{show(row.totalMono)}</td>
                     <td className="dt-num">{show(row.totalColor)}</td>
+                    <td className="dt-num">{show(row.totalPrint)}</td>
+                    <td className="dt-num">{show(row.totalCopy)}</td>
+                    <td className="dt-num">{show(row.totalScan)}</td>
                     <td>{new Date(row.capturedAt).toLocaleString('ja-JP')}</td>
                     <td>{noteOf(row)}</td>
                   </tr>
@@ -689,7 +1018,7 @@ export default function PageCountScreen() {
               </tbody>
             </table>
           </div>
-        </>
+        </section>
       )}
     </div>
   );

@@ -29,6 +29,8 @@ exports.REPAIR_CATEGORIES = [
 exports.REPAIR_HANDLERS = ['IN_HOUSE', 'VENDOR'];
 exports.REPAIR_STATUSES = [
     'INVESTIGATING',
+    'INQUIRING',
+    'AWAITING_REPLY',
     'QUOTING',
     'SETTLING',
     'SHIPPED',
@@ -42,6 +44,7 @@ class CreateRepairDto {
     category;
     handledBy;
     detail;
+    cost;
     restoredOn;
     status;
 }
@@ -77,8 +80,16 @@ __decorate([
     __metadata("design:type", Object)
 ], CreateRepairDto.prototype, "detail", void 0);
 __decorate([
-    (0, class_validator_1.Matches)(DATE_ONLY, { message: `復旧日を${DATE_MESSAGE}` }),
-    __metadata("design:type", String)
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)({ message: '費用は整数で入力してください' }),
+    (0, class_validator_1.Min)(0, { message: '費用は 0 以上で入力してください' }),
+    (0, class_validator_1.Max)(999_999_999),
+    __metadata("design:type", Object)
+], CreateRepairDto.prototype, "cost", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Matches)(DATE_ONLY, { message: `復旧日は${DATE_MESSAGE}` }),
+    __metadata("design:type", Object)
 ], CreateRepairDto.prototype, "restoredOn", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),

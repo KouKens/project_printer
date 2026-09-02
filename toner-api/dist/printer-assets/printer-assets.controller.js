@@ -30,11 +30,17 @@ let PrinterAssetsController = class PrinterAssetsController {
     findOverview() {
         return this.service.findOverview();
     }
+    findByModel() {
+        return this.service.findByModel();
+    }
     findOne(id) {
         return this.service.findOne(id);
     }
     update(id, dto) {
         return this.service.update(id, dto);
+    }
+    refresh(id) {
+        return this.service.refresh(id);
     }
     touch(id) {
         return this.service.touch(id);
@@ -64,6 +70,12 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PrinterAssetsController.prototype, "findOverview", null);
 __decorate([
+    (0, common_1.Get)('by-model'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PrinterAssetsController.prototype, "findByModel", null);
+__decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
@@ -78,6 +90,13 @@ __decorate([
     __metadata("design:paramtypes", [Number, create_printer_asset_dto_1.CreatePrinterAssetDto]),
     __metadata("design:returntype", void 0)
 ], PrinterAssetsController.prototype, "update", null);
+__decorate([
+    (0, common_1.Post)(':id/refresh'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], PrinterAssetsController.prototype, "refresh", null);
 __decorate([
     (0, common_1.Post)(':id/touch'),
     __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),

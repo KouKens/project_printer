@@ -1,0 +1,256 @@
+/* 保守企業。修理履歴の画面と同じ組み方に揃えてある */
+.mv {
+  --ink: #16202b;
+  --muted: #64748b;
+  --line: #dbe2ea;
+  --panel: #ffffff;
+  --accent: #1f6f8b;
+  --danger: #b23a3a;
+
+  width: 100%;
+  min-width: 0;
+  padding: 32px 20px 64px;
+  box-sizing: border-box;
+  color: var(--ink);
+}
+
+.mv-head h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+.mv-head p {
+  /* 説明文まで画面幅いっぱいに伸びると読みにくい */
+  max-width: 78ch;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mv h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+/* --- 入力 --- */
+.mv-form {
+  max-width: 900px;
+  padding: 18px 20px 16px;
+  margin-bottom: 26px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.mv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+.mv-wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .mv-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.mv-grid label,
+.mv-phones {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mv-grid input,
+.mv-grid textarea {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.mv-grid textarea { resize: vertical; line-height: 1.5; }
+.mv :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 必須の印。会社名だけ */
+.mv-req {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: #fdf1f1;
+  border-radius: 3px;
+}
+
+/* メーカーの既定。印を付けた分だけこの業者に落ちる */
+.mv-makers {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mv-makers-hint { margin: 0; font-size: 11px; line-height: 1.5; }
+.mv-makers-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 8px 10px;
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.mv-makers-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* カードに出す既定のメーカー */
+.mv-maker-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  font-size: 11.5px;
+}
+.mv-chip {
+  padding: 1px 7px;
+  color: var(--accent);
+  background: #eef3f7;
+  border-radius: 999px;
+}
+
+.mv-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.mv-actions button {
+  padding: 9px 22px;
+  font: inherit;
+  font-size: 13px;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mv-actions button.mv-plain {
+  color: var(--accent);
+  background: transparent;
+  border-color: var(--line);
+}
+.mv-actions button:disabled {
+  color: #ffffff;
+  background: #a7b3bd;
+  border-color: #a7b3bd;
+  cursor: not-allowed;
+}
+.mv-actions button.mv-plain:disabled { color: #a7b3bd; background: transparent; }
+
+/* --- メッセージ --- */
+.mv-msg {
+  margin: 14px 0 0;
+  padding: 10px 13px;
+  font-size: 13px;
+  border-radius: 4px;
+  border-left: 3px solid;
+}
+.mv-msg-error { color: var(--danger); background: #fdf1f1; border-color: var(--danger); }
+.mv-msg-ok { color: #1d6b48; background: #eef8f2; border-color: #1d6b48; }
+
+/* --- 一覧 --- */
+.mv-empty { color: var(--muted); font-size: 13px; }
+
+/*
+ * 1 社ぶんが電話番号 3 件と担当機器を持つので、表よりカードのほうが読める。
+ * 数社しか無い想定なので、幅に合わせて並べる
+ */
+.mv-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mv-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.mv-card-on { border-color: var(--accent); background: #f2f8fb; }
+
+.mv-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.mv-card-head h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.mv-count {
+  flex: none;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  color: var(--accent);
+  background: #eef3f7;
+  border-radius: 999px;
+}
+
+.mv-phone-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.mv-phone-list li + li { margin-top: 2px; }
+
+.mv-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.mv-muted { margin: 0; font-size: 12px; color: var(--muted); }
+
+.mv-assets-sum { margin: 0; font-size: 11.5px; color: var(--muted); }
+
+/* 担当機器は多いので 1 行に収め、続きはツールチップで見せる */
+.mv-assets {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-ops { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+.mv-ops button {
+  padding: 4px 11px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mv-ops button.mv-del { color: var(--danger); }
+.mv-ops button:disabled { color: #a7b3bd; cursor: not-allowed; }

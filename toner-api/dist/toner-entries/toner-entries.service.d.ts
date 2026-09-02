@@ -41,19 +41,46 @@ export declare class TonerEntriesService {
         disposed: number;
         updatedAt: Date;
     }[]>;
+    remove(id: number): Promise<{
+        id: number;
+        tonerId: string;
+        name: string | null;
+        action: "REGISTER" | "RECEIVE" | "ISSUE" | "DISPOSE";
+        quantity: number;
+        stock: number;
+        received: number;
+        disposed: number;
+    }>;
     findRecent(): import("../generated/prisma/internal/prismaNamespace").PrismaPromise<({
         toner: {
             name: string | null;
         };
     } & {
-        createdAt: Date;
         id: number;
-        action: import("../generated/prisma/enums").TonerAction;
-        userId: string;
+        createdAt: Date;
         tonerId: string;
         quantity: number;
+        userId: string;
+        action: import("../generated/prisma/enums").TonerAction;
         balance: number;
+        receivedOn: Date | null;
     })[]>;
+    findHistory(params: {
+        days?: number;
+        action?: string;
+        tonerId?: string;
+    }): Promise<{
+        id: number;
+        userId: string;
+        tonerId: string;
+        name: string | null;
+        color: string | null;
+        action: import("../generated/prisma/enums").TonerAction;
+        quantity: number;
+        balance: number;
+        receivedOn: string | null;
+        createdAt: Date;
+    }[]>;
     private requireToner;
     private toResult;
 }

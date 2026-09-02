@@ -7,3 +7,8 @@ printer_manager/dist/
 
 # tsc -b の中間ファイル
 *.tsbuildinfo
+
+# オフライン移行用に組み立てた配布物（bundle-offline.ps1 の出力）。
+# node_modules ごと入るので 400MB を超える。USB へ渡すためのもので、
+# 中身はすべてビルドし直せるためコミットしない。DB のダンプも含まれる
+deploy/out/

@@ -1,0 +1,13 @@
+/* ラベル印字状況。表まわりは DataTable.css に乗り、ここは数字の見せ方だけ */
+
+/* 印字長。この画面の主役なので、他の数字より強く出す */
+.lm-meters {
+  font-weight: 600;
+}
+
+.lm tfoot th,
+.lm tfoot td {
+  font-weight: 600;
+  background: var(--bg);
+  border-top: 2px solid var(--line);
+}

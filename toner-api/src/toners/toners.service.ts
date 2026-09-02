@@ -4,39 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { fromDate, toDate, today } from '../common/date';
+import { toText } from '../common/text';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTonerPriceDto } from './dto/create-toner-price.dto';
 import { CreateTonerDto } from './dto/create-toner.dto';
 import { UpdateTonerDto } from './dto/update-toner.dto';
-
-/**
- * @db.Date の列にローカル 0 時の Date を渡すと JST では前日にずれる。
- * UTC 成分しか見られないので、UTC の 0 時で作る。
- */
-function toDate(value: string): Date {
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-/** 読むときも UTC 成分で取り出す。画面の <input type="date"> にそのまま入る形 */
-function fromDate(value: Date): string {
-  const month = `${value.getUTCMonth() + 1}`.padStart(2, '0');
-  const day = `${value.getUTCDate()}`.padStart(2, '0');
-  return `${value.getUTCFullYear()}-${month}-${day}`;
-}
-
-/** 今日をローカルの暦日で。UTC 0 時に揃えて @db.Date と比べられる形にする */
-function today(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-}
-
-/** 空文字は未入力として扱う。画面から '' が来ても null で揃える */
-function toText(value: string | null | undefined): string | null {
-  if (value === undefined || value === null) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
 
 type PriceRow = { price: number; effectiveFrom: Date; note: string | null };
 
@@ -65,6 +38,8 @@ export class TonersService {
           name: toText(dto.name),
           color: toText(dto.color),
           recycled: dto.recycled ?? false,
+          alertThreshold: dto.alertThreshold ?? null,
+          yieldPages: dto.yieldPages ?? null,
           stock: { create: {} },
           printers: {
             create: (dto.printerAssetIds ?? []).map((printerAssetId) => ({
@@ -163,6 +138,9 @@ export class TonersService {
           name: dto.name === undefined ? undefined : toText(dto.name),
           color: dto.color === undefined ? undefined : toText(dto.color),
           recycled: dto.recycled,
+          alertThreshold:
+            dto.alertThreshold === undefined ? undefined : dto.alertThreshold,
+          yieldPages: dto.yieldPages === undefined ? undefined : dto.yieldPages,
         },
       });
 
@@ -209,6 +187,50 @@ export class TonersService {
     });
 
     return this.findOne(id);
+  }
+
+  /**
+   * マスタから消す。
+   *
+   * **記録が残っているものは消せない。** 受付の履歴（搬入・持ち出し・廃棄・棚卸し）や
+   * 注文が紐づいている品番を消すと、過去の記録の相手が消えて読めなくなるため。
+   * 在庫が残っているものも消させない（数え間違いか、消す品番の取り違えのどちらか）。
+   *
+   * 消せるのは「登録したが一度も動かしていない品番」。
+   * 価格の履歴・対応プリンター・在庫の行は道連れで消える（onDelete: Cascade）
+   */
+  async remove(id: string) {
+    const toner = await this.prisma.toner.findUnique({
+      where: { id },
+      include: {
+        stock: true,
+        _count: { select: { entries: true, orders: true } },
+      },
+    });
+
+    if (!toner) {
+      throw new NotFoundException(`${id} は登録されていません`);
+    }
+
+    const blockers: string[] = [];
+    if (toner._count.entries > 0) {
+      blockers.push(`受付の履歴が ${toner._count.entries} 件`);
+    }
+    if (toner._count.orders > 0) {
+      blockers.push(`注文が ${toner._count.orders} 件`);
+    }
+    if ((toner.stock?.quantity ?? 0) !== 0) {
+      blockers.push(`在庫が ${toner.stock?.quantity} 本`);
+    }
+
+    if (blockers.length > 0) {
+      throw new ConflictException(
+        `${id} は削除できません（${blockers.join(' / ')}あります）`,
+      );
+    }
+
+    await this.prisma.toner.delete({ where: { id } });
+    return { id };
   }
 
   /** 価格の履歴。新しい順 */
@@ -261,9 +283,8 @@ export class TonersService {
       select: { id: true },
     });
 
-    const missing = assetIds.filter(
-      (id) => !found.some((asset) => asset.id === id),
-    );
+    const registered = new Set(found.map((asset) => asset.id));
+    const missing = assetIds.filter((id) => !registered.has(id));
     if (missing.length > 0) {
       throw new BadRequestException(
         `端末情報に無いプリンターが指定されています（ID ${missing.join(', ')}）`,
@@ -282,6 +303,8 @@ export class TonersService {
     name: string | null;
     color: string | null;
     recycled: boolean;
+    alertThreshold: number | null;
+    yieldPages: number | null;
     createdAt: Date;
     updatedAt: Date;
     stock: { quantity: number } | null;
@@ -304,8 +327,18 @@ export class TonersService {
       name: toner.name,
       color: toner.color,
       recycled: toner.recycled,
+      /** 在庫がこの本数以下なら画面で警告する。未設定は null */
+      alertThreshold: toner.alertThreshold,
+      /** 1 本で刷れる枚数（カタログ値）。未設定は null */
+      yieldPages: toner.yieldPages,
       /** 今日の時点の税別価格。まだ登録が無ければ null */
       price: current?.price ?? null,
+      /**
+       * 1 枚あたりのトナー代（税別）。価格と印刷可能枚数の両方があるときだけ出す。
+       * 円未満を切らずに返し、丸め方は画面に任せる
+       */
+      costPerPage:
+        current && toner.yieldPages ? current.price / toner.yieldPages : null,
       priceFrom: current ? fromDate(current.effectiveFrom) : null,
       /** 改定の回数が分かるように件数だけ添える */
       priceCount: toner.prices.length,

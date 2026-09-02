@@ -1,0 +1,90 @@
+/*
+ * 運用コスト。表の骨格は DataTable.css をそのまま使い、
+ * この画面だけの飾り（差の横棒・単価の強調）をここに置く
+ */
+
+.cs .dt-tools input[type='date'] { min-width: 9.5em; }
+
+/* --- 1 枚あたり --- */
+/* 判断の主役なので、金額より目立たせる */
+.cs-cpp {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* うちカラー何枚か。全枚数のあとに小さく添える */
+.cs-color-pages { font-size: 11px; color: var(--muted); }
+/* 値が欠けていて、その列が過小になっている印 */
+.cs-warn { color: #a86a12; font-weight: 700; }
+
+/* --- 差 --- */
+.cs-over { color: var(--danger); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cs-under { color: #1d6b48; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.cs-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+/*
+ * 0 を中心に左右へ伸びる棒。数字だけだと大小を追えないので、
+ * 高い側（右・赤）と安い側（左・緑）を幅で見せる
+ */
+.cs-diff-bar {
+  position: relative;
+  display: inline-block;
+  width: 96px;
+  height: 10px;
+  background: #eef2f5;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.cs-diff-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.cs-diff-over { background: #d98a8a; }
+.cs-diff-under { background: #86bb9e; }
+/* 中心の目印 */
+.cs-diff-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #b0bdc8;
+}
+
+/* 実績がまだ無いところ */
+.cs-empty { color: var(--muted); }
+/* 実績の本数。金額のあとに小さく添える */
+.cs-units { font-size: 11px; color: var(--muted); }
+
+.cs-msg-note {
+  color: #1d5b8b;
+  background: #eef4f9;
+  border-color: #1d5b8b;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* トナー名は長いので幅を切って、続きはツールチップで見せる */
+.cs-name {
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 列が多いので、この画面だけ横の余白を詰める。
+ * 見出しは中のボタン（並べ替え）と dt-plain（並べ替えのない列）の両方に効かせないと、
+ * 列の文字が左右にずれて隣とぶつかる。縦の余白は触らない
+ * （見出し 2 段目の sticky が 33px を前提にしているため）
+ */
+.cs-table td,
+.cs-table th.dt-plain,
+.cs-table th button { padding-left: 9px; padding-right: 9px; }
+
+.cs .dt-summary dd { font-size: 16px; }

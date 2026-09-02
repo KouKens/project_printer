@@ -10,7 +10,10 @@ export declare class TonersService {
         name: string | null;
         color: string | null;
         recycled: boolean;
+        alertThreshold: number | null;
+        yieldPages: number | null;
         price: number | null;
+        costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
         stock: number;
@@ -30,7 +33,10 @@ export declare class TonersService {
         name: string | null;
         color: string | null;
         recycled: boolean;
+        alertThreshold: number | null;
+        yieldPages: number | null;
         price: number | null;
+        costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
         stock: number;
@@ -50,7 +56,10 @@ export declare class TonersService {
         name: string | null;
         color: string | null;
         recycled: boolean;
+        alertThreshold: number | null;
+        yieldPages: number | null;
         price: number | null;
+        costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
         stock: number;
@@ -70,7 +79,10 @@ export declare class TonersService {
         name: string | null;
         color: string | null;
         recycled: boolean;
+        alertThreshold: number | null;
+        yieldPages: number | null;
         price: number | null;
+        costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
         stock: number;
@@ -90,7 +102,10 @@ export declare class TonersService {
         name: string | null;
         color: string | null;
         recycled: boolean;
+        alertThreshold: number | null;
+        yieldPages: number | null;
         price: number | null;
+        costPerPage: number | null;
         priceFrom: string | null;
         priceCount: number;
         stock: number;
@@ -104,6 +119,9 @@ export declare class TonersService {
         }[];
         createdAt: Date;
         updatedAt: Date;
+    }>;
+    remove(id: string): Promise<{
+        id: string;
     }>;
     findPrices(id: string): Promise<{
         id: number;

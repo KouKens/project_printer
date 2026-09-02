@@ -12,14 +12,27 @@ export declare class TonerEntriesController {
             name: string | null;
         };
     } & {
-        createdAt: Date;
         id: number;
-        action: import("../generated/prisma/enums").TonerAction;
-        userId: string;
+        createdAt: Date;
         tonerId: string;
         quantity: number;
+        userId: string;
+        action: import("../generated/prisma/enums").TonerAction;
         balance: number;
+        receivedOn: Date | null;
     })[]>;
+    findHistory(days: number, action?: string, tonerId?: string): Promise<{
+        id: number;
+        userId: string;
+        tonerId: string;
+        name: string | null;
+        color: string | null;
+        action: import("../generated/prisma/enums").TonerAction;
+        quantity: number;
+        balance: number;
+        receivedOn: string | null;
+        createdAt: Date;
+    }[]>;
     findStock(): Promise<{
         id: string;
         name: string | null;
@@ -29,5 +42,15 @@ export declare class TonerEntriesController {
         disposed: number;
         updatedAt: Date;
     }[]>;
+    remove(id: number): Promise<{
+        id: number;
+        tonerId: string;
+        name: string | null;
+        action: "REGISTER" | "RECEIVE" | "ISSUE" | "DISPOSE";
+        quantity: number;
+        stock: number;
+        received: number;
+        disposed: number;
+    }>;
     stockTake(dto: StockTakeDto): Promise<import("./toner-entries.service").StockTakeRow[]>;
 }

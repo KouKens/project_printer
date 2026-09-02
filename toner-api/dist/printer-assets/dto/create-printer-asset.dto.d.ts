@@ -6,8 +6,10 @@ export declare class CreatePrinterAssetDto {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
     countLayout?: 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
+    maintVendorId?: number | null;
     maintContract?: string | null;
     maintStartOn?: string | null;
     maintEndOn?: string | null;

@@ -14,14 +14,22 @@ const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 class CreateTonerOrderDto {
     orderedAt;
+    userId;
     tonerId;
     quantity;
+    deliveryOn;
 }
 exports.CreateTonerOrderDto = CreateTonerOrderDto;
 __decorate([
     (0, class_validator_1.IsISO8601)({}, { message: '注文日時を入力してください' }),
     __metadata("design:type", String)
 ], CreateTonerOrderDto.prototype, "orderedAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(64),
+    __metadata("design:type", String)
+], CreateTonerOrderDto.prototype, "userId", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)({ message: 'トナーIDを入力してください' }),
@@ -35,4 +43,11 @@ __decorate([
     (0, class_validator_1.Max)(999, { message: '本数は 999 以下で入力してください' }),
     __metadata("design:type", Number)
 ], CreateTonerOrderDto.prototype, "quantity", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Matches)(/^\d{4}-\d{2}-\d{2}$/, {
+        message: '次回搬入日は YYYY-MM-DD の形式で入力してください',
+    }),
+    __metadata("design:type", String)
+], CreateTonerOrderDto.prototype, "deliveryOn", void 0);
 //# sourceMappingURL=create-toner-order.dto.js.map

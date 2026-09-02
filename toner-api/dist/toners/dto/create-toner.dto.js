@@ -18,6 +18,8 @@ class CreateTonerDto {
     name;
     color;
     recycled;
+    alertThreshold;
+    yieldPages;
     printerAssetIds;
     price;
     effectiveFrom;
@@ -48,6 +50,20 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], CreateTonerDto.prototype, "recycled", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '警告する本数は整数で入力してください' }),
+    (0, class_validator_1.Min)(0, { message: '警告する本数は 0 以上で入力してください' }),
+    __metadata("design:type", Object)
+], CreateTonerDto.prototype, "alertThreshold", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '印刷可能枚数は整数で入力してください' }),
+    (0, class_validator_1.Min)(1, { message: '印刷可能枚数は 1 以上で入力してください' }),
+    __metadata("design:type", Object)
+], CreateTonerDto.prototype, "yieldPages", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),

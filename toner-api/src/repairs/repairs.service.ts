@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { fromDate, toDate } from '../common/date';
+import { toText } from '../common/text';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateRepairDto,
@@ -10,30 +12,6 @@ import {
   RepairHandlerInput,
   RepairStatusInput,
 } from './dto/create-repair.dto';
-
-/**
- * @db.Date の列にローカル 0 時の Date を渡すと JST では前日にずれる。
- * UTC 成分しか見られないので、UTC の 0 時で作る。
- */
-function toDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const [year, month, day] = value.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-/** 空文字・空白だけの入力は未入力と同じ扱いにして null に寄せる */
-function trimmed(value: string | null | undefined): string | null {
-  const text = value?.trim() ?? '';
-  return text === '' ? null : text;
-}
-
-/** 読むときも UTC 成分で取り出す。画面の <input type="date"> にそのまま入る形 */
-function fromDate(value: Date | null): string | null {
-  if (!value) return null;
-  const month = `${value.getUTCMonth() + 1}`.padStart(2, '0');
-  const day = `${value.getUTCDate()}`.padStart(2, '0');
-  return `${value.getUTCFullYear()}-${month}-${day}`;
-}
 
 type RepairRow = {
   id: number;
@@ -43,7 +21,8 @@ type RepairRow = {
   category: RepairCategoryInput | null;
   handledBy: RepairHandlerInput;
   detail: string | null;
-  restoredOn: Date;
+  cost: number | null;
+  restoredOn: Date | null;
   status: RepairStatusInput;
   createdAt: Date;
   updatedAt: Date;
@@ -97,7 +76,7 @@ export class RepairsService {
   }
 
   async update(id: number, dto: CreateRepairDto) {
-    await this.findOne(id);
+    await this.ensureExists(id);
     await this.ensureAsset(dto.printerAssetId);
     this.ensureDateOrder(dto);
 
@@ -110,16 +89,28 @@ export class RepairsService {
   }
 
   async remove(id: number) {
-    await this.findOne(id);
+    await this.ensureExists(id);
     await this.prisma.repairRecord.delete({ where: { id } });
     return { id };
   }
 
   // ── 内部ヘルパー ──────────────────────
 
+  /** 履歴があることだけ確かめる。更新・削除の前置きなので 1 件を組み立て直さない */
+  private async ensureExists(id: number) {
+    const found = await this.prisma.repairRecord.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!found) {
+      throw new NotFoundException(`ID ${id} の修理履歴は登録されていません`);
+    }
+  }
+
   private async ensureAsset(printerAssetId: number) {
     const asset = await this.prisma.printerAsset.findUnique({
       where: { id: printerAssetId },
+      select: { id: true },
     });
     if (!asset) {
       throw new BadRequestException(
@@ -130,10 +121,10 @@ export class RepairsService {
 
   /**
    * 復旧が発生より前になっていたら弾く。入力の誤りをそのまま残さない。
-   * 発生日は任意なので、入っているときだけ見る
+   * どちらも任意なので、両方入っているときだけ見る
    */
   private ensureDateOrder(dto: CreateRepairDto) {
-    if (dto.occurredOn && dto.restoredOn < dto.occurredOn) {
+    if (dto.occurredOn && dto.restoredOn && dto.restoredOn < dto.occurredOn) {
       throw new BadRequestException(
         '復旧日が発生日より前になっています。日付を確認してください',
       );
@@ -143,13 +134,14 @@ export class RepairsService {
   private toData(dto: CreateRepairDto) {
     return {
       // 空白だけの入力は未入力と同じ扱いにする
-      assignee: trimmed(dto.assignee),
+      assignee: toText(dto.assignee),
       printerAssetId: dto.printerAssetId,
       occurredOn: toDate(dto.occurredOn),
       category: dto.category ?? null,
       handledBy: dto.handledBy,
-      detail: trimmed(dto.detail),
-      restoredOn: toDate(dto.restoredOn) as Date,
+      detail: toText(dto.detail),
+      cost: dto.cost ?? null,
+      restoredOn: toDate(dto.restoredOn),
       status: dto.status ?? 'INVESTIGATING',
     };
   }
@@ -168,6 +160,7 @@ export class RepairsService {
       category: row.category,
       handledBy: row.handledBy,
       detail: row.detail,
+      cost: row.cost,
       restoredOn: fromDate(row.restoredOn),
       status: row.status,
       createdAt: row.createdAt,

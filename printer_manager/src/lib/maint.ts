@@ -40,6 +40,39 @@ export function maintStatus(
   return maintEndOn >= todayIso() ? '有' : '×';
 }
 
+/** ここから先を「まもなく切れる」として扱う日数。おおよそ半年 */
+export const MAINT_SOON_DAYS = 180;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * 保守終了日まであと何日か。終了日が無ければ null。
+ * 過ぎているときは負の数を返す。
+ *
+ * 日付は文字列（YYYY-MM-DD）なので、UTC の 0 時どうしで引く。
+ * ローカル時刻で作ると夏時間や時差で 1 日ずれる
+ */
+export function maintDaysLeft(maintEndOn: string | null): number | null {
+  if (!maintEndOn) return null;
+  const end = Date.parse(`${maintEndOn}T00:00:00Z`);
+  const today = Date.parse(`${todayIso()}T00:00:00Z`);
+  if (Number.isNaN(end)) return null;
+  return Math.round((end - today) / MS_PER_DAY);
+}
+
+/**
+ * 残りの表示。日が近いほど細かく出す。
+ * 「あと 210 日」と言われても長さが掴めないので、月に丸めて添える
+ */
+export function maintLeftLabel(maintEndOn: string | null): string | null {
+  const days = maintDaysLeft(maintEndOn);
+  if (days === null) return null;
+  if (days < 0) return `${-days} 日超過`;
+  if (days === 0) return '今日まで';
+  if (days < 60) return `あと ${days} 日`;
+  return `あと ${Math.floor(days / 30)} か月`;
+}
+
 /** 期限切れか。終了日が過ぎているものだけを指し、不整合は含めない */
 export function isMaintExpired(
   maintEndOn: string | null,

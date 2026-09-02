@@ -21,8 +21,10 @@ class CreatePrinterAssetDto {
     model;
     serialNumber;
     purchasedOn;
+    purchasePrice;
     contractNo;
     countLayout;
+    maintVendorId;
     maintContract;
     maintStartOn;
     maintEndOn;
@@ -73,6 +75,13 @@ __decorate([
 ], CreatePrinterAssetDto.prototype, "purchasedOn", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)({ message: '購入金額は整数で入力してください' }),
+    (0, class_validator_1.Min)(0, { message: '購入金額は 0 以上で入力してください' }),
+    (0, class_validator_1.Max)(999_999_999),
+    __metadata("design:type", Object)
+], CreatePrinterAssetDto.prototype, "purchasePrice", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(120),
     __metadata("design:type", Object)
@@ -84,6 +93,11 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], CreatePrinterAssetDto.prototype, "countLayout", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)({ message: '保守業者の指定が不正です' }),
+    __metadata("design:type", Object)
+], CreatePrinterAssetDto.prototype, "maintVendorId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsIn)(['有', '×'], {

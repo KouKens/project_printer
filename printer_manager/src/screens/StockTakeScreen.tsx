@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { nextSort, sortRows } from '../lib/table';
+import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
 import './StockTakeScreen.css';
 
@@ -26,6 +28,31 @@ type TakeResult = {
 
 type Mode = 'all' | 'entered' | 'diff';
 
+/**
+ * 一覧の列。並べ替えの鍵も兼ねる。
+ * counted（実数）と diff（差）は保存値ではなく、入力欄から出した値で並べる
+ */
+type SortKey =
+  | 'id'
+  | 'name'
+  | 'color'
+  | 'quantity'
+  | 'counted'
+  | 'diff'
+  | 'received'
+  | 'disposed';
+
+const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
+  { key: 'id', label: 'トナーID', kind: 'text' },
+  { key: 'name', label: 'トナー名', kind: 'text' },
+  { key: 'color', label: '色', kind: 'text' },
+  { key: 'quantity', label: 'データ上の在庫', kind: 'number', numeric: true },
+  { key: 'counted', label: '実数', kind: 'number', numeric: true },
+  { key: 'diff', label: '差', kind: 'number', numeric: true },
+  { key: 'received', label: '搬入累計', kind: 'number', numeric: true },
+  { key: 'disposed', label: '廃棄累計', kind: 'number', numeric: true },
+];
+
 export default function StockTakeScreen() {
   const [rows, setRows] = useState<StockRow[]>([]);
   /** 数えた本数。キーはトナーID、値は入力欄の文字列。未入力の行は持たない */
@@ -33,6 +60,10 @@ export default function StockTakeScreen() {
   const [userId, setUserId] = useState('');
   const [filter, setFilter] = useState('');
   const [mode, setMode] = useState<Mode>('all');
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+    key: 'id',
+    dir: 'asc',
+  });
   const [results, setResults] = useState<TakeResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +101,24 @@ export default function StockTakeScreen() {
     [entered],
   );
 
+  /** 並べ替えの鍵。入力欄から出す値（実数・差）はここで拾う */
+  const pick = useCallback(
+    (row: StockRow, key: SortKey): unknown => {
+      switch (key) {
+        case 'counted':
+          return entered.get(row.id) ?? null;
+        case 'diff':
+          return diffOf(row);
+        default:
+          return row[key];
+      }
+    },
+    [entered, diffOf],
+  );
+
   const shown = useMemo(() => {
     const needle = filter.trim().toLowerCase();
-    return rows.filter((row) => {
+    const filtered = rows.filter((row) => {
       if (needle && !`${row.id} ${row.name ?? ''} ${row.color ?? ''}`.toLowerCase().includes(needle)) {
         return false;
       }
@@ -83,7 +129,17 @@ export default function StockTakeScreen() {
       }
       return true;
     });
-  }, [rows, filter, mode, entered, diffOf]);
+
+    const column = COLUMNS.find((col) => col.key === sort.key);
+    return sortRows(
+      filtered,
+      (row) => pick(row, sort.key),
+      column?.kind ?? 'text',
+      sort.dir,
+      // 値が並んだときは API が返した順（品番順）で安定させる
+      (row) => rows.indexOf(row),
+    );
+  }, [rows, filter, mode, entered, diffOf, sort, pick]);
 
   const summary = useMemo(() => {
     let diffRows = 0;
@@ -251,14 +307,26 @@ export default function StockTakeScreen() {
           <table className="st-table">
             <thead>
               <tr>
-                <th>トナーID</th>
-                <th>トナー名</th>
-                <th>色</th>
-                <th className="st-num">データ上の在庫</th>
-                <th className="st-num">実数</th>
-                <th className="st-num">差</th>
-                <th className="st-num">搬入累計</th>
-                <th className="st-num">廃棄累計</th>
+                {COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    className={col.numeric ? 'st-num' : undefined}
+                    aria-sort={
+                      sort.key === col.key
+                        ? sort.dir === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                    }
+                  >
+                    <button type="button" onClick={() => setSort(nextSort(sort, col.key))}>
+                      {col.label}
+                      <span className="st-arrow" aria-hidden>
+                        {sort.key === col.key ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
+                      </span>
+                    </button>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>

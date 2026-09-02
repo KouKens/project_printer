@@ -8,10 +8,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var PrintersService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrintersService = void 0;
 const common_1 = require("@nestjs/common");
+const schedule_1 = require("@nestjs/schedule");
 const prisma_service_1 = require("../prisma/prisma.service");
+const sato_status_service_1 = require("./sato-status.service");
 const snmp_service_1 = require("./snmp.service");
 const BULK_CONCURRENCY = 6;
 function toVersionKey(input) {
@@ -20,12 +23,45 @@ function toVersionKey(input) {
 function toVersionInput(key) {
     return key === 'V2C' ? '2c' : '1';
 }
-let PrintersService = class PrintersService {
+let PrintersService = PrintersService_1 = class PrintersService {
     prisma;
     snmp;
-    constructor(prisma, snmp) {
+    sato;
+    logger = new common_1.Logger(PrintersService_1.name);
+    constructor(prisma, snmp, sato) {
         this.prisma = prisma;
         this.snmp = snmp;
+        this.sato = sato;
+    }
+    async pollScheduled() {
+        this.logger.log('全機器の残量を取り直します');
+        const rows = await this.pollAll();
+        const ok = rows.filter((r) => r.status === 'polled').length;
+        this.logger.log(`取得 ${ok} 台 / 応答なし ${rows.length - ok} 台`);
+    }
+    async pollAll() {
+        const printers = await this.prisma.printer.findMany({
+            where: { protocol: 'SNMP' },
+            orderBy: { ipAddress: 'asc' },
+            select: { id: true, ipAddress: true },
+        });
+        const results = await this.runPool(printers, async (printer) => {
+            try {
+                await this.poll(printer.id);
+                return { ...printer, status: 'polled' };
+            }
+            catch (error) {
+                return {
+                    ...printer,
+                    status: 'unreachable',
+                    message: error instanceof common_1.HttpException
+                        ? error.message
+                        : String(error.message ?? error),
+                };
+            }
+        });
+        results.sort((a, b) => a.ipAddress.localeCompare(b.ipAddress));
+        return results;
     }
     async create(dto) {
         const ipAddress = dto.ipAddress.trim();
@@ -55,15 +91,7 @@ let PrintersService = class PrintersService {
     }
     async createMany(dto) {
         const ledger = dto.fillLocationFromLedger === false ? null : await this.ledgerBySerial();
-        const results = [];
-        let cursor = 0;
-        const worker = async () => {
-            while (cursor < dto.printers.length) {
-                const entry = dto.printers[cursor++];
-                results.push(await this.createOneForBulk(entry, dto.community, ledger));
-            }
-        };
-        await Promise.all(Array.from({ length: Math.min(BULK_CONCURRENCY, dto.printers.length) }, worker));
+        const results = await this.runPool(dto.printers, (entry) => this.createOneForBulk(entry, dto.community, ledger));
         const order = new Map(dto.printers.map((entry, index) => [entry.ipAddress, index]));
         results.sort((a, b) => (order.get(a.ipAddress) ?? 0) - (order.get(b.ipAddress) ?? 0));
         return results;
@@ -84,6 +112,26 @@ let PrintersService = class PrintersService {
             polledAt: new Date(),
             supplies: snapshot.supplies,
         };
+    }
+    async dumpCounters(id) {
+        const printer = await this.prisma.printer.findUnique({ where: { id } });
+        if (!printer) {
+            throw new common_1.NotFoundException(`ID ${id} のプリンターは登録されていません`);
+        }
+        try {
+            return {
+                printerId: printer.id,
+                ipAddress: printer.ipAddress,
+                model: printer.model,
+                ...(await this.snmp.dumpCounters(printer.ipAddress, printer.community, printer.version)),
+            };
+        }
+        catch (error) {
+            if (error instanceof snmp_service_1.SnmpUnreachableError) {
+                throw new common_1.ServiceUnavailableException(error.message);
+            }
+            throw error;
+        }
     }
     async poll(id) {
         const printer = await this.prisma.printer.findUnique({ where: { id } });
@@ -117,6 +165,26 @@ let PrintersService = class PrintersService {
         });
         return this.findOne(id);
     }
+    async readSato(ipAddress) {
+        try {
+            const status = await this.sato.poll(ipAddress);
+            await this.saveSato(ipAddress, status);
+            return status;
+        }
+        catch (error) {
+            if (error instanceof sato_status_service_1.SatoUnreachableError) {
+                await this.prisma.printer.updateMany({
+                    where: { ipAddress, protocol: 'SATO_ENQ' },
+                    data: {
+                        reachable: false,
+                        lastError: error.message,
+                        lastPolledAt: new Date(),
+                    },
+                });
+            }
+            throw error;
+        }
+    }
     async findAll() {
         const printers = await this.prisma.printer.findMany({
             orderBy: { ipAddress: 'asc' },
@@ -139,6 +207,53 @@ let PrintersService = class PrintersService {
             throw new common_1.NotFoundException(`ID ${id} のプリンターは登録されていません`);
         }
         return this.toResponse(printer);
+    }
+    async saveSato(ipAddress, status) {
+        const now = new Date();
+        await this.prisma.$transaction(async (tx) => {
+            const saved = await tx.printer.upsert({
+                where: { ipAddress },
+                create: {
+                    ipAddress,
+                    protocol: 'SATO_ENQ',
+                    consoleText: status.label,
+                    reachable: true,
+                    lastError: null,
+                    lastPolledAt: now,
+                    lastSuccessAt: now,
+                },
+                update: {
+                    protocol: 'SATO_ENQ',
+                    consoleText: status.label,
+                    reachable: true,
+                    lastError: null,
+                    lastPolledAt: now,
+                    lastSuccessAt: now,
+                },
+            });
+            await tx.printerAlert.deleteMany({ where: { printerId: saved.id } });
+            if (status.kind === 'ok')
+                return;
+            await tx.printerAlert.create({
+                data: {
+                    printerId: saved.id,
+                    alertIndex: 1,
+                    severity: status.kind === 'error' ? 3 : 4,
+                    description: status.label,
+                },
+            });
+        });
+    }
+    async runPool(items, run) {
+        const results = [];
+        let cursor = 0;
+        const worker = async () => {
+            while (cursor < items.length) {
+                results.push(await run(items[cursor++]));
+            }
+        };
+        await Promise.all(Array.from({ length: Math.min(BULK_CONCURRENCY, items.length) }, worker));
+        return results;
     }
     async createOneForBulk(entry, community, ledger) {
         const ipAddress = entry.ipAddress.trim();
@@ -235,6 +350,9 @@ let PrintersService = class PrintersService {
                 ? {}
                 : { macAddress: snapshot.macAddress }),
             ...(snapshot.pageCount === null ? {} : { pageCount: snapshot.pageCount }),
+            ...(snapshot.counterUnit === null
+                ? {}
+                : { counterUnit: snapshot.counterUnit }),
             reachable: true,
             lastError: null,
             lastPolledAt: now,
@@ -300,9 +418,16 @@ let PrintersService = class PrintersService {
     }
 };
 exports.PrintersService = PrintersService;
-exports.PrintersService = PrintersService = __decorate([
+__decorate([
+    (0, schedule_1.Cron)('0 12 * * *', { name: 'poll-printers' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], PrintersService.prototype, "pollScheduled", null);
+exports.PrintersService = PrintersService = PrintersService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        snmp_service_1.SnmpService])
+        snmp_service_1.SnmpService,
+        sato_status_service_1.SatoStatusService])
 ], PrintersService);
 //# sourceMappingURL=printers.service.js.map

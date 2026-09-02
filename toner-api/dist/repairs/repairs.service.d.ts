@@ -15,8 +15,9 @@ export declare class RepairsService {
         category: "PART_REPLACEMENT" | "SENSOR_DIRT" | "PAPER_JAM" | "PRINT_QUALITY" | "SERVICE_CALL" | "FEED_FAILURE" | "FUSING_FAILURE" | "NETWORK" | "NOISE_SMELL" | "NO_POWER" | "OTHER" | null;
         handledBy: "IN_HOUSE" | "VENDOR";
         detail: string | null;
+        cost: number | null;
         restoredOn: string | null;
-        status: "INVESTIGATING" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
+        status: "INVESTIGATING" | "INQUIRING" | "AWAITING_REPLY" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -32,8 +33,9 @@ export declare class RepairsService {
         category: "PART_REPLACEMENT" | "SENSOR_DIRT" | "PAPER_JAM" | "PRINT_QUALITY" | "SERVICE_CALL" | "FEED_FAILURE" | "FUSING_FAILURE" | "NETWORK" | "NOISE_SMELL" | "NO_POWER" | "OTHER" | null;
         handledBy: "IN_HOUSE" | "VENDOR";
         detail: string | null;
+        cost: number | null;
         restoredOn: string | null;
-        status: "INVESTIGATING" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
+        status: "INVESTIGATING" | "INQUIRING" | "AWAITING_REPLY" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
         createdAt: Date;
         updatedAt: Date;
     }[]>;
@@ -49,8 +51,9 @@ export declare class RepairsService {
         category: "PART_REPLACEMENT" | "SENSOR_DIRT" | "PAPER_JAM" | "PRINT_QUALITY" | "SERVICE_CALL" | "FEED_FAILURE" | "FUSING_FAILURE" | "NETWORK" | "NOISE_SMELL" | "NO_POWER" | "OTHER" | null;
         handledBy: "IN_HOUSE" | "VENDOR";
         detail: string | null;
+        cost: number | null;
         restoredOn: string | null;
-        status: "INVESTIGATING" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
+        status: "INVESTIGATING" | "INQUIRING" | "AWAITING_REPLY" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -66,14 +69,16 @@ export declare class RepairsService {
         category: "PART_REPLACEMENT" | "SENSOR_DIRT" | "PAPER_JAM" | "PRINT_QUALITY" | "SERVICE_CALL" | "FEED_FAILURE" | "FUSING_FAILURE" | "NETWORK" | "NOISE_SMELL" | "NO_POWER" | "OTHER" | null;
         handledBy: "IN_HOUSE" | "VENDOR";
         detail: string | null;
+        cost: number | null;
         restoredOn: string | null;
-        status: "INVESTIGATING" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
+        status: "INVESTIGATING" | "INQUIRING" | "AWAITING_REPLY" | "QUOTING" | "SETTLING" | "SHIPPED" | "RECEIVED" | "DONE";
         createdAt: Date;
         updatedAt: Date;
     }>;
     remove(id: number): Promise<{
         id: number;
     }>;
+    private ensureExists;
     private ensureAsset;
     private ensureDateOrder;
     private toData;

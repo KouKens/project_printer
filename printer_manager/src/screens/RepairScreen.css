@@ -257,6 +257,9 @@
 .rp-arrow { margin-left: 4px; font-size: 9px; }
 .rp-table tbody tr:last-child td { border-bottom: 0; }
 
+/* 金額は桁を揃えて右に寄せる */
+.rp-num { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* 修理内容は長いので折り返して読ませる */
 .rp-detail {
   white-space: normal;

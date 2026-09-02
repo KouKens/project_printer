@@ -3,10 +3,13 @@ import { CreatePrinterDto } from './dto/create-printer.dto';
 import { ProbePrinterDto } from './dto/probe-printer.dto';
 import { PageCountsService } from './page-counts.service';
 import { PrintersService } from './printers.service';
+import { SatoStatusService } from './sato-status.service';
 export declare class PrintersController {
     private readonly service;
     private readonly pageCounts;
-    constructor(service: PrintersService, pageCounts: PageCountsService);
+    private readonly sato;
+    constructor(service: PrintersService, pageCounts: PageCountsService, sato: SatoStatusService);
+    satoStatus(dto: ProbePrinterDto): Promise<import("./sato-status.service").SatoStatusSnapshot>;
     create(dto: CreatePrinterDto): Promise<{
         id: number;
         ipAddress: string;
@@ -93,20 +96,42 @@ export declare class PrintersController {
         polledAt: Date;
         supplies: import("./snmp.service").SupplySnapshot[];
     }>;
+    dumpCounters(id: number): Promise<{
+        version: import("./snmp.service").SnmpVersionKey;
+        vendor: "ricoh" | "canon" | null;
+        sysDescr: string | null;
+        counters: {
+            id: number;
+            value: number;
+        }[];
+        printerId: number;
+        ipAddress: string;
+        model: string | null;
+    }>;
     createMany(dto: BulkCreatePrintersDto): Promise<import("./printers.service").BulkResultRow[]>;
+    pollAll(): Promise<import("./printers.service").PollResultRow[]>;
     capture(): Promise<import("./page-counts.service").CaptureRow[]>;
     findAllDaily(days: number, from?: string, to?: string): Promise<{
         id: number;
         printerId: number;
         ipAddress: string;
         model: string | null;
+        counterUnit: number | null;
+        department: string | null;
+        no: string | null;
         date: string;
         total: number;
         totalMono: number | null;
         totalColor: number | null;
+        totalPrint: number | null;
+        totalCopy: number | null;
+        totalScan: number | null;
         pages: number | null;
         monoPages: number | null;
         colorPages: number | null;
+        printPages: number | null;
+        copyPages: number | null;
+        scanPages: number | null;
         spanDays: number;
         capturedAt: Date;
     }[]>;
@@ -189,9 +214,15 @@ export declare class PrintersController {
         pages: number | null;
         monoPages: number | null;
         colorPages: number | null;
+        printPages: number | null;
+        copyPages: number | null;
+        scanPages: number | null;
         total: number;
         totalMono: number | null;
         totalColor: number | null;
+        totalPrint: number | null;
+        totalCopy: number | null;
+        totalScan: number | null;
         spanDays: number;
         capturedAt: Date;
     }[]>;

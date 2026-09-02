@@ -4,13 +4,11 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { fromDate, toDate, today } from '../common/date';
+import { PrismaService, Tx } from '../prisma/prisma.service';
 import { BulkTonerEntryDto } from './dto/bulk-toner-entry.dto';
 import { CreateTonerEntryDto } from './dto/create-toner-entry.dto';
 import { StockTakeDto } from './dto/stock-take.dto';
-
-/** $transaction のコールバックが受け取るクライアント */
-type Tx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
 
 export type TonerAction =
   'REGISTER' | 'RECEIVE' | 'ISSUE' | 'DISPOSE' | 'ADJUST';
@@ -74,6 +72,8 @@ export class TonerEntriesService {
             tonerId: item.tonerId,
             name: item.name,
             quantity: item.quantity,
+            // 搬入日はまとめ単位で 1 つ。行ごとには持たない
+            receivedOn: dto.receivedOn,
           }),
         );
       }
@@ -161,6 +161,8 @@ export class TonerEntriesService {
         action: 'RECEIVE',
         quantity: count,
         balance: stock.quantity,
+        // 入力が無ければ受け付けた日。注文の次回搬入日と突き合わせる鍵になる
+        receivedOn: toDate(dto.receivedOn) ?? today(),
       },
     });
 
@@ -256,13 +258,25 @@ export class TonerEntriesService {
     const userId = dto.userId?.trim() || GUEST_USER;
 
     return this.prisma.$transaction(async (tx) => {
+      /*
+       * 数えた品番を先にまとめて引く。**棚卸しは在庫の全品番が一度に来る**ので、
+       * 1 行ずつ問い合わせるとその本数だけ往復し、そのあいだトランザクションを
+       * 開けたままにすることになる
+       */
+      const toners = await tx.toner.findMany({
+        where: { id: { in: dto.counts.map((count) => count.tonerId) } },
+        include: { stock: true },
+      });
+      const known = new Map(toners.map((toner) => [toner.id, toner]));
+      /** 書き換えたあとの在庫。同じ品番が 2 行来ても直前の結果から続けて数える */
+      const quantities = new Map(
+        toners.map((toner) => [toner.id, toner.stock?.quantity ?? 0]),
+      );
+
       const rows: StockTakeRow[] = [];
 
       for (const count of dto.counts) {
-        const toner = await tx.toner.findUnique({
-          where: { id: count.tonerId },
-          include: { stock: true },
-        });
+        const toner = known.get(count.tonerId);
 
         // 一覧を開いたあとに消えた品番。ここで止めず、他の行は通す
         if (!toner) {
@@ -277,7 +291,7 @@ export class TonerEntriesService {
           continue;
         }
 
-        const before = toner.stock?.quantity ?? 0;
+        const before = quantities.get(toner.id) ?? 0;
         const diff = count.counted - before;
 
         if (diff === 0) {
@@ -297,6 +311,7 @@ export class TonerEntriesService {
           create: { tonerId: toner.id, quantity: count.counted },
           update: { quantity: count.counted },
         });
+        quantities.set(toner.id, count.counted);
 
         await tx.tonerEntry.create({
           data: {
@@ -342,6 +357,95 @@ export class TonerEntriesService {
     }));
   }
 
+  /**
+   * 受付の記録を取り消す。**在庫は操作の逆を当てて戻す。**
+   *
+   * 搬入 → 在庫と搬入累計を減らす／持ち出し → 在庫を戻す／
+   * 廃棄 → 廃棄累計を減らす。棚卸し調整は「調整前の本数」を持っていないので戻せない。
+   *
+   * 打ち間違いを消すためのもので、戻した結果が筋の通らない状態になるなら断る
+   * （在庫より多い搬入を消す、廃棄済みより搬入累計が少なくなる、など）。
+   *
+   * 過去の行に残る balance（操作直後の在庫）は取り直さない。
+   * あれはその時点の記録なので、後から書き換えると履歴の意味が変わってしまう
+   */
+  async remove(id: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const entry = await tx.tonerEntry.findUnique({
+        where: { id },
+        include: { toner: { select: { name: true } } },
+      });
+
+      if (!entry) {
+        throw new NotFoundException(`ID ${id} の記録はありません`);
+      }
+
+      if (entry.action === 'ADJUST') {
+        throw new UnprocessableEntityException(
+          '棚卸しの調整は取り消せません。数え直して棚卸しをやり直してください',
+        );
+      }
+
+      const stock = await tx.tonerStock.findUnique({
+        where: { tonerId: entry.tonerId },
+      });
+      const quantity = stock?.quantity ?? 0;
+      const received = stock?.received ?? 0;
+      const disposed = stock?.disposed ?? 0;
+      const count = entry.quantity;
+
+      if (entry.action === 'RECEIVE') {
+        if (quantity < count) {
+          throw new UnprocessableEntityException(
+            `取り消せません。搬入した ${count} 本のうち ${count - quantity} 本は` +
+              `すでに持ち出されています（在庫 ${quantity} 本）`,
+          );
+        }
+        if (received - count < disposed) {
+          throw new UnprocessableEntityException(
+            `取り消せません。廃棄済み ${disposed} 本が搬入累計を上回ります`,
+          );
+        }
+        await tx.tonerStock.update({
+          where: { tonerId: entry.tonerId },
+          data: {
+            quantity: { decrement: count },
+            received: { decrement: count },
+          },
+        });
+      } else if (entry.action === 'ISSUE') {
+        await tx.tonerStock.update({
+          where: { tonerId: entry.tonerId },
+          data: { quantity: { increment: count } },
+        });
+      } else if (entry.action === 'DISPOSE') {
+        await tx.tonerStock.update({
+          where: { tonerId: entry.tonerId },
+          data: { disposed: { decrement: Math.min(count, disposed) } },
+        });
+      }
+      // REGISTER は在庫を動かしていないので、行を消すだけ
+
+      await tx.tonerEntry.delete({ where: { id } });
+
+      const after = await tx.tonerStock.findUnique({
+        where: { tonerId: entry.tonerId },
+      });
+
+      return {
+        id,
+        tonerId: entry.tonerId,
+        name: entry.toner.name,
+        action: entry.action,
+        quantity: count,
+        /** 取り消したあとの在庫 */
+        stock: after?.quantity ?? 0,
+        received: after?.received ?? 0,
+        disposed: after?.disposed ?? 0,
+      };
+    });
+  }
+
   /** 履歴（直近 20 件） */
   findRecent() {
     return this.prisma.tonerEntry.findMany({
@@ -349,6 +453,47 @@ export class TonerEntriesService {
       take: 20,
       include: { toner: { select: { name: true } } },
     });
+  }
+
+  /**
+   * 受付の履歴。入出庫の画面で使う。
+   * 既定は直近 60 日。区分・品番で絞れる。
+   * 搬入日（receivedOn）は搬入の行だけに入る
+   */
+  async findHistory(params: {
+    days?: number;
+    action?: string;
+    tonerId?: string;
+  }) {
+    const days = params.days && params.days > 0 ? params.days : 60;
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+
+    const rows = await this.prisma.tonerEntry.findMany({
+      where: {
+        createdAt: { gte: from },
+        ...(params.action ? { action: params.action as TonerAction } : {}),
+        ...(params.tonerId ? { tonerId: params.tonerId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+      include: { toner: { select: { name: true, color: true } } },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      tonerId: row.tonerId,
+      name: row.toner.name,
+      color: row.toner.color,
+      action: row.action,
+      quantity: row.quantity,
+      /** 操作直後の在庫 */
+      balance: row.balance,
+      /** 搬入日。搬入以外は null */
+      receivedOn: fromDate(row.receivedOn),
+      createdAt: row.createdAt,
+    }));
   }
 
   // ── 内部ヘルパー ──────────────────────

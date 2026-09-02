@@ -18,6 +18,7 @@ class CreateTonerEntryDto {
     tonerId;
     name;
     quantity;
+    receivedOn;
 }
 exports.CreateTonerEntryDto = CreateTonerEntryDto;
 __decorate([
@@ -52,4 +53,11 @@ __decorate([
     (0, class_validator_1.Max)(999, { message: '本数は 999 以下で入力してください' }),
     __metadata("design:type", Number)
 ], CreateTonerEntryDto.prototype, "quantity", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Matches)(/^\d{4}-\d{2}-\d{2}$/, {
+        message: '搬入日は YYYY-MM-DD の形式で入力してください',
+    }),
+    __metadata("design:type", String)
+], CreateTonerEntryDto.prototype, "receivedOn", void 0);
 //# sourceMappingURL=create-toner-entry.dto.js.map

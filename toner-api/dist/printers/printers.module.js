@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const page_counts_service_1 = require("./page-counts.service");
 const printers_controller_1 = require("./printers.controller");
 const printers_service_1 = require("./printers.service");
+const sato_status_service_1 = require("./sato-status.service");
 const snmp_service_1 = require("./snmp.service");
 let PrintersModule = class PrintersModule {
 };
@@ -18,7 +19,13 @@ exports.PrintersModule = PrintersModule;
 exports.PrintersModule = PrintersModule = __decorate([
     (0, common_1.Module)({
         controllers: [printers_controller_1.PrintersController],
-        providers: [printers_service_1.PrintersService, snmp_service_1.SnmpService, page_counts_service_1.PageCountsService],
+        providers: [
+            printers_service_1.PrintersService,
+            snmp_service_1.SnmpService,
+            page_counts_service_1.PageCountsService,
+            sato_status_service_1.SatoStatusService,
+        ],
+        exports: [printers_service_1.PrintersService],
     })
 ], PrintersModule);
 //# sourceMappingURL=printers.module.js.map

@@ -2,6 +2,8 @@ import {
   IsIn,
   IsInt,
   IsOptional,
+  Max,
+  Min,
   IsString,
   Matches,
   MaxLength,
@@ -29,6 +31,8 @@ export const REPAIR_HANDLERS = ['IN_HOUSE', 'VENDOR'] as const;
 
 export const REPAIR_STATUSES = [
   'INVESTIGATING',
+  'INQUIRING',
+  'AWAITING_REPLY',
   'QUOTING',
   'SETTLING',
   'SHIPPED',
@@ -41,7 +45,7 @@ export type RepairHandlerInput = (typeof REPAIR_HANDLERS)[number];
 export type RepairStatusInput = (typeof REPAIR_STATUSES)[number];
 
 /**
- * 必須はプリンター名・対応区分・復旧日の 3 つだけ。
+ * 必須はプリンター名と対応区分の 2 つだけ。
  * 残りは分かる範囲で埋める欄なので、未入力で通す。
  * 未入力は null で送る（@IsOptional は null / undefined のとき検証を飛ばす）
  */
@@ -70,9 +74,17 @@ export class CreateRepairDto {
   @MaxLength(2000)
   detail?: string | null;
 
-  /** 必須。未入力でも形式違いでも同じ欄を直してもらうので、文言をまとめる */
-  @Matches(DATE_ONLY, { message: `復旧日を${DATE_MESSAGE}` })
-  restoredOn!: string;
+  /** かかった費用（円・税別）。保守で無償なら 0、分からないうちは未入力 */
+  @IsOptional()
+  @IsInt({ message: '費用は整数で入力してください' })
+  @Min(0, { message: '費用は 0 以上で入力してください' })
+  @Max(999_999_999)
+  cost?: number | null;
+
+  /** まだ直っていない・日付が分からないこともあるので任意 */
+  @IsOptional()
+  @Matches(DATE_ONLY, { message: `復旧日は${DATE_MESSAGE}` })
+  restoredOn?: string | null;
 
   /** 選び直さなければ調査中から始まる。画面の選択欄は常に値を持つ */
   @IsOptional()

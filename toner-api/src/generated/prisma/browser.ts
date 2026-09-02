@@ -57,6 +57,23 @@ export type TonerEntry = Prisma.TonerEntryModel
  */
 export type TonerOrder = Prisma.TonerOrderModel
 /**
+ * Model TonerInvoice
+ * 業者から月に 1 通届く請求書。書かれている内容をそのまま持つ。
+ * 
+ * **これは「請求された内容」で、搬入の記録とは別物。**
+ * 突き合わせて初めて食い違いが分かるので、片方をもう片方から作ることはしない。
+ * 金額はすべて税別（マスタの TonerPrice と揃えてある）
+ */
+export type TonerInvoice = Prisma.TonerInvoiceModel
+/**
+ * Model TonerInvoiceLine
+ * 請求書の明細 1 行。
+ * 
+ * 品番は画面で検索して選ぶので、マスタに無い消耗品は先にトナー登録が要る。
+ * 金額は「単価 × 個数」で出すため持たない（請求書の数字を写すのは単価まで）
+ */
+export type TonerInvoiceLine = Prisma.TonerInvoiceLineModel
+/**
  * Model Printer
  * プリンター。IP アドレスで一意に管理する
  */
@@ -74,6 +91,15 @@ export type PrinterAlert = Prisma.PrinterAlertModel
  * あちらは実機の今の状態で、こちらは人が管理する台帳なので寿命が違う
  */
 export type PrinterAsset = Prisma.PrinterAssetModel
+/**
+ * Model MaintVendor
+ * 保守を頼んでいる業者。
+ * 
+ * 台帳に会社名と電話番号を直接持たせると、同じ業者を見ている機器のぶんだけ
+ * 同じ番号を writing することになり、番号が変わったときに直し漏れる。
+ * マスタにして台帳から参照する。
+ */
+export type MaintVendor = Prisma.MaintVendorModel
 /**
  * Model PageCountDaily
  * 日次の印刷枚数。累計カウンタのスナップショットと、そこから出した 1 日分

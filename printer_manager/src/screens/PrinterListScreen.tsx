@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { maintStatus } from '../lib/maint';
+import {
+  MAINT_SOON_DAYS,
+  maintDaysLeft,
+  maintLeftLabel,
+  maintStatus,
+} from '../lib/maint';
+import { num } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
+import { refreshAsset } from '../lib/refresh';
 import './DataTable.css';
 
 type SupplyReading = {
@@ -36,16 +43,24 @@ const SUPPLY_TYPE_NAME: Record<number, string> = {
   4: '廃トナー',
   5: 'インク',
   6: 'インクカートリッジ',
+  7: 'リボン',
   9: 'ドラム',
   10: '現像剤',
+  13: 'ワックスリボン',
   15: '定着',
   18: 'クリーナー',
   20: '転写',
   21: 'トナーカートリッジ',
 };
 
-/** 印刷に使う消耗品。今回の色付けの対象から外す */
-const CONSUMABLE_TYPES = [3, 5, 6, 21];
+/**
+ * 印刷に使う消耗品。今回の色付けの対象から外す。
+ *
+ * リボン（7・13）はラベルプリンターの消耗品で、トナーと同じ扱いにする。
+ * **API 側の printers/supply-types.ts と同じ内容にすること。**
+ * 別のバンドルなので import できず、写しになっている
+ */
+const CONSUMABLE_TYPES = [3, 5, 6, 7, 13, 21];
 
 /** 色の並び順。機種によって返る順がばらつくので、表示は必ずこの順に揃える */
 const COLOR_ORDER = ['black', 'cyan', 'magenta', 'yellow'];
@@ -162,12 +177,28 @@ type Row = {
   /** 保守の期間。端末情報の画面で入力したもの */
   maintStartOn: string | null;
   maintEndOn: string | null;
+  /** 保守金額（円）。修理費用と並べて契約の損得を見る */
+  maintFee: number | null;
+  /**
+   * 実際に頼む先。台帳で指定していればそれ、無ければメーカーの既定。
+   * 保守が「有」の行にだけ出す（切れている機器の連絡先を出しても掛け直せない）
+   */
+  effectiveVendor: {
+    id: number;
+    name: string;
+    phones: string[];
+    source: 'asset' | 'maker';
+  } | null;
   /** 修理履歴の集計。回数は復旧日が保守期間に入っているものだけ */
   repairs: {
     /** 保守期間が入力されているか。無い台帳は回数を出さずハイフンにする */
     hasMaint: boolean;
     inHouse: number;
     vendor: number;
+    /** 保守期間内に復旧した履歴の費用合計（円） */
+    cost: number;
+    /** そのうち費用が入力されている件数。0 なら合計は「未入力」の意味 */
+    costKnown: number;
     /** 完了していない履歴の件数。期間に関わらず数える */
     open: number;
     total: number;
@@ -188,6 +219,8 @@ type Row = {
     lastSuccessAt: string | null;
     /** 操作パネルの表示文字 */
     consoleText: string | null;
+    /** 読み方。SATO_ENQ は自動では更新されず、画面から押したときだけ読む */
+    protocol: 'SNMP' | 'SATO_ENQ';
     readings: SupplyReading[];
     alerts: Alert[];
   } | null;
@@ -212,9 +245,14 @@ type SortKey =
   | 'maintStatus'
   | 'maintStartOn'
   | 'maintEndOn'
+  | 'maintLeft'
+  | 'maintFee'
+  | 'maintVendor'
+  | 'maintPhones'
   | 'repairOpen'
   | 'repairInHouse'
   | 'repairVendor'
+  | 'repairCost'
   | 'state'
   | 'liveModel'
   | 'pageCount'
@@ -240,6 +278,10 @@ const COLUMNS: {
   { key: 'maintStatus', label: '保守', kind: 'text', group: '台帳' },
   { key: 'maintStartOn', label: '保守開始', kind: 'date', group: '台帳' },
   { key: 'maintEndOn', label: '保守終了', kind: 'date', group: '台帳' },
+  { key: 'maintLeft', label: '残り', kind: 'number', numeric: true, group: '台帳' },
+  { key: 'maintFee', label: '保守金額', kind: 'number', numeric: true, group: '台帳' },
+  { key: 'maintVendor', label: '保守企業', kind: 'text', group: '台帳' },
+  { key: 'maintPhones', label: '電話番号', kind: 'text', group: '台帳' },
   { key: 'repairOpen', label: '修理', kind: 'text', group: '修理' },
   {
     key: 'repairInHouse',
@@ -251,6 +293,13 @@ const COLUMNS: {
   {
     key: 'repairVendor',
     label: '保守内・業者',
+    kind: 'number',
+    numeric: true,
+    group: '修理',
+  },
+  {
+    key: 'repairCost',
+    label: '保守内・費用',
     kind: 'number',
     numeric: true,
     group: '修理',
@@ -281,8 +330,6 @@ const COLORANT_HEX: Record<string, string> = {
 /** まとまり見出しの列数。列を足しても見出しがずれないように数える */
 const span = (group: (typeof COLUMNS)[number]['group']) =>
   COLUMNS.filter((c) => c.group === group).length;
-
-const num = new Intl.NumberFormat('ja-JP');
 
 /** 取れていない値は空欄にする。0 と区別したいので null だけを空にする */
 const show = (value: number | null | undefined) =>
@@ -326,12 +373,30 @@ function levelText(supply: SupplyReading): string {
   return supply.level === -3 ? 'あり' : '不明';
 }
 
-/** 残量に付ける色。数値を返さない部品は付けない */
+/** 残量が数値で取れなかった項目か（不明・あり） */
+const isUnknownLevel = (supply: SupplyReading) => supply.percent === null;
+
+/**
+ * 残量に付ける色。
+ * 数値で取れなかった項目は、残量の値ではないと分かるよう控えめに出す。
+ * 消してしまうと、その部品が無いのか読めていないのかが付かない
+ */
 function levelClass(supply: SupplyReading): string | undefined {
-  if (supply.percent === null) return undefined;
+  if (supply.percent === null) return 'dt-muted';
   if (supply.percent <= DUE_PERCENT) return 'dt-low';
   if (supply.percent <= SOON_PERCENT) return 'dt-soon';
   return undefined;
+}
+
+/**
+ * 残量の説明。**取れなかった項目にも他と同じ形で出す。**
+ * 「不明」は機器が残量を返さないという意味で、部品が無いわけではない
+ */
+function levelTitle(supply: SupplyReading): string {
+  const text = `${supply.name}: ${levelText(supply)}`;
+  return isUnknownLevel(supply) && supply.level !== -3
+    ? `${text}\nこの機器はこの項目の残量を返していません（部品が無いという意味ではありません）`
+    : text;
 }
 
 function SupplyCell({ readings }: { readings: SupplyReading[] }) {
@@ -347,7 +412,7 @@ function SupplyCell({ readings }: { readings: SupplyReading[] }) {
   return (
     <span className="dt-supplies">
       {ordered.map((supply) => (
-        <span className="dt-supply" key={supply.id} title={supply.name}>
+        <span className="dt-supply" key={supply.id} title={levelTitle(supply)}>
           <span
             className="dt-dot"
             style={{
@@ -356,17 +421,23 @@ function SupplyCell({ readings }: { readings: SupplyReading[] }) {
             aria-hidden
           />
           {shortName(supply)}
-          <span className={supply.percent !== null && supply.percent <= 20 ? 'dt-low' : undefined}>
+          <span
+            className={
+              // 取れなかった項目は交換部品の欄と同じ扱いにする（値ではないので控えめに）
+              isUnknownLevel(supply)
+                ? 'dt-muted'
+                : supply.percent !== null && supply.percent <= 20
+                  ? 'dt-low'
+                  : undefined
+            }
+          >
             {levelText(supply)}
           </span>
         </span>
       ))}
 
       {rest.length > 0 && (
-        <span
-          className="dt-supply"
-          title={rest.map((s) => `${s.name}: ${levelText(s)}`).join('\n')}
-        >
+        <span className="dt-supply" title={rest.map(levelTitle).join('\n')}>
           他 {rest.length} 件
         </span>
       )}
@@ -379,8 +450,23 @@ type PartGroup = {
   type: number;
   label: string;
   items: SupplyReading[];
-  /** その種別でいちばん少ない残量。数値を返さない種別は null */
-  worst: number | null;
+};
+
+/**
+ * 交換部品の並び。**残量ではなく種別で固定する。**
+ *
+ * 残量の少ない順に並べていたため、同じ機種でも機器ごとに列の並びが変わり、
+ * 台を並べて見比べられなかった（iR-ADV C3520F と C3530F で 8 台 5 通り）。
+ * さらに残量を返さない部品は最後に回っていたので、**その部品だけ「不明」で
+ * 返す機器では並びが 1 つずれる**。どの機器でも同じ位置に同じ種別が出るように、
+ * 残量に関わらずこの順で出す。少ない部品は文字の色と行の色で分かる。
+ * ここに無い種別は末尾へ、その中では種別の番号順に置く
+ */
+const PART_TYPE_ORDER = [9, 15, 20, 10, 18, 4, 1];
+
+const partRank = (type: number) => {
+  const index = PART_TYPE_ORDER.indexOf(type);
+  return index < 0 ? PART_TYPE_ORDER.length : index;
 };
 
 /**
@@ -397,12 +483,8 @@ function groupParts(readings: SupplyReading[]): PartGroup[] {
       type,
       label: SUPPLY_TYPE_NAME[type] ?? '部品',
       items: [],
-      worst: null,
     };
     group.items.push(part);
-    if (part.percent !== null && (group.worst === null || part.percent < group.worst)) {
-      group.worst = part.percent;
-    }
     groups.set(type, group);
   }
 
@@ -410,8 +492,9 @@ function groupParts(readings: SupplyReading[]): PartGroup[] {
     group.items.sort((a, b) => colorRank(a) - colorRank(b) || a.supplyIndex - b.supplyIndex);
   }
 
-  // 残量の少ない種別を上に。数値を返さない種別は下に回す
-  return [...groups.values()].sort((a, b) => (a.worst ?? 999) - (b.worst ?? 999));
+  return [...groups.values()].sort(
+    (a, b) => partRank(a.type) - partRank(b.type) || a.type - b.type,
+  );
 }
 
 /**
@@ -440,7 +523,7 @@ function partChips(group: PartGroup) {
     const color = group.items.length > 1 ? colorantOf(item) : null;
 
     return (
-      <span className="dt-supply" key={item.id} title={`${item.name}: ${levelText(item)}`}>
+      <span className="dt-supply" key={item.id} title={levelTitle(item)}>
         {color && (
           <span
             className="dt-dot"
@@ -505,8 +588,72 @@ function AlertCell({
   );
 }
 
+/**
+ * 一覧に出す保守業者。**保守が「有」の行にだけ出す。**
+ * 切れている契約の連絡先を並べても掛ける先が違うため
+ */
+const maintVendorOf = (row: Row) =>
+  maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract) === '有'
+    ? row.effectiveVendor
+    : null;
+
 /** 完了していない修理があるか。状態が空のものも「完了していない」とみなす */
 const underRepair = (row: Row) => row.repairs.open > 0;
+
+/**
+ * SATO のラベルプリンターか。
+ * この機種だけ SNMP を持たず、ENQ でしか状態を読めないので分けて扱う
+ */
+const isSato = (row: Row) => (row.maker ?? '').trim().toLowerCase() === 'sato';
+
+/**
+ * SNMP を持たず、**個別にしか読めない**機種の型番。
+ *
+ * レスプリは公式マニュアルに SNMP の記載が無く、実機も応答しない。
+ * 一括取得（SNMP）に混ぜても待ち時間が伸びるだけなので対象から外し、
+ * 行ごとの「状態を読む」（ENQ）だけで読む。
+ * 台帳にあるのは R408v-exSTD だが、レスプリはシリーズごと SNMP を持たないので
+ * シリーズ名で見る。同じ SATO でも HC4-LX は SNMP で応答するため対象外
+ */
+const ENQ_ONLY_MODEL = /レスプリ|l'?esprit/i;
+
+/** 一括取得から外したことを知らせるときの呼び名 */
+const ENQ_ONLY_LABEL = 'レスプリ';
+
+const isEnqOnly = (row: Row) => ENQ_ONLY_MODEL.test(row.model ?? '');
+
+/**
+ * 状態を ENQ で読む行か。
+ *
+ * すでに読んで保存してある行は実機側の protocol で分かる。
+ * まだ一度も読んでいない行は実機が無いので、台帳のメーカーで見る
+ */
+const isEnqRow = (row: Row) =>
+  row.printer?.protocol === 'SATO_ENQ' ||
+  (row.printer === null && isSato(row) && row.ipAddress !== null);
+
+/**
+ * 行ごとの「取得」（SNMP）を投げてよい行か。**一括取得と同じ条件にする。**
+ * 押せる行と一括で当たる行が食い違うと、どちらで取れるのか分からなくなる。
+ *
+ * SNMP を持たない機種（レスプリ）と、ENQ で読むと分かっている機器は外す。
+ * 投げても待ち時間が伸びるだけで何も取れない。あちらは「状態」の欄から読む
+ */
+const canPoll = (row: Row) =>
+  row.ipAddress !== null &&
+  !isEnqOnly(row) &&
+  row.printer?.protocol !== 'SATO_ENQ';
+
+/** ENQ で読んだ状態。画面に出すだけで保存しない */
+type SatoStatus = {
+  code: string;
+  label: string;
+  kind: 'ok' | 'warn' | 'error';
+  nearEnd: boolean;
+  remaining: number;
+};
+
+type SatoCell = { busy: boolean; status?: SatoStatus; error?: string };
 
 /** 並べ替えの鍵。台帳と実機で入れ子が違うので、ここで平らにする */
 function pick(row: Row, key: SortKey): unknown {
@@ -519,6 +666,16 @@ function pick(row: Row, key: SortKey): unknown {
       return row.repairs.hasMaint ? row.repairs.inHouse : null;
     case 'repairVendor':
       return row.repairs.hasMaint ? row.repairs.vendor : null;
+    case 'repairCost':
+      // 費用が 1 件も入っていない機器は 0 円ではないので末尾に置く
+      return row.repairs.costKnown > 0 ? row.repairs.cost : null;
+    case 'maintLeft':
+      // 残りの少ない順に並べたいので日数で。終了日が無い行は末尾
+      return maintDaysLeft(row.maintEndOn);
+    case 'maintVendor':
+      return maintVendorOf(row)?.name ?? null;
+    case 'maintPhones':
+      return maintVendorOf(row)?.phones[0] ?? null;
     case 'maintStatus':
       // 保存された値ではなく、保守開始日・終了日から出した判定で並べる
       return maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract);
@@ -555,10 +712,19 @@ export default function PrinterListScreen() {
     key: 'department',
     dir: 'asc',
   });
-  const [filter, setFilter] = useState<'all' | 'due' | 'live' | 'blank'>('all');
+  const [filter, setFilter] = useState<'all' | 'due' | 'maint' | 'live' | 'blank'>(
+    'all',
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** SATO の状態。台帳 ID ごとに、押して読んだ結果を持つ */
+  const [sato, setSato] = useState<Record<number, SatoCell>>({});
+  /**
+   * 行ごとの取得中。**画面全体の busy とは分けている。**
+   * 応答しない機器は待ち時間ぶん止まるので、その間も他の行を押せるようにする
+   */
+  const [fetching, setFetching] = useState<Record<number, boolean>>({});
 
   const load = useCallback(async () => {
     try {
@@ -572,10 +738,31 @@ export default function PrinterListScreen() {
     void load();
   }, [load]);
 
+  /*
+   * 別の画面で修理履歴や台帳を直しても、この一覧は開いたときの内容のまま。
+   * 窓に戻ってきたときと、隠れていたタブが表に出たときに読み直す。
+   * 開きっぱなしの表を見て「直したのに反映されない」となるのを防ぐ
+   */
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
+
   const shown = useMemo(() => {
     const filtered = rows.filter((row) => {
       if (filter === 'due') {
         return row.printer !== null && partState(row.printer.readings, row.printer.alerts) !== null;
+      }
+      if (filter === 'maint') {
+        const days = maintDaysLeft(row.maintEndOn);
+        return days !== null && days <= MAINT_SOON_DAYS;
       }
       if (filter === 'live') return row.printer !== null && row.printer.reachable;
       if (filter === 'blank') return row.printer === null;
@@ -598,10 +785,26 @@ export default function PrinterListScreen() {
       live: rows.filter((r) => r.printer !== null && r.printer.reachable).length,
       blank: rows.filter((r) => r.printer === null).length,
       repairing: rows.filter(underRepair).length,
+      // 期限切れも含む。どちらも「手を打つ必要がある」ものとしてまとめて出す
+      maintSoon: rows.filter((r) => {
+        const days = maintDaysLeft(r.maintEndOn);
+        return days !== null && days <= MAINT_SOON_DAYS;
+      }).length,
+      maintExpired: rows.filter((r) => {
+        const days = maintDaysLeft(r.maintEndOn);
+        return days !== null && days < 0;
+      }).length,
       due: rows.filter((r) => r.printer && partState(r.printer.readings, r.printer.alerts) === 'due').length,
       soon: rows.filter((r) => r.printer && partState(r.printer.readings, r.printer.alerts) === 'soon').length,
-      // 問い合わせ先の数。同じ IP の台帳が複数あるので重複を除く
-      withIp: new Set(rows.map((r) => r.ipAddress).filter((ip) => ip !== null)).size,
+      /*
+       * 一括で問い合わせる先の数。ボタンに出すので、実際に投げる数と揃える。
+       * 同じ IP の台帳が複数あるので重複を除き、ENQ でしか読めない機種は数えない
+       */
+      withIp: new Set(
+        rows
+          .filter((r) => r.ipAddress !== null && !isEnqOnly(r))
+          .map((r) => r.ipAddress),
+      ).size,
     }),
     [rows],
   );
@@ -609,11 +812,23 @@ export default function PrinterListScreen() {
   /**
    * 台帳の IP をまとめて問い合わせ、取れたものだけ機器として登録する。
    * 同じ IP を持つ台帳が複数あるので（No.041 と No.051）、重複は除いて 1 回にする。
+   *
+   * **ENQ でしか読めない機種はここに含めない**（下の ENQ_ONLY 参照）。
+   * まとめて問い合わせるのは SNMP なので、持っていない機種に投げても
+   * 待ち時間が伸びるだけで何も取れない。あちらは行ごとの「状態を読む」で読む。
    */
   const fetchFromLedger = async () => {
+    const addressed = rows.filter(
+      (row): row is Row & { ipAddress: string } => row.ipAddress !== null,
+    );
     const targets = [
-      ...new Set(rows.map((row) => row.ipAddress).filter((ip): ip is string => ip !== null)),
+      ...new Set(
+        addressed.filter((row) => !isEnqOnly(row)).map((row) => row.ipAddress),
+      ),
     ];
+    const skipped = new Set(
+      addressed.filter((row) => isEnqOnly(row)).map((row) => row.ipAddress),
+    );
 
     if (targets.length === 0) {
       setError('IP アドレスを持つ台帳がありません');
@@ -635,7 +850,11 @@ export default function PrinterListScreen() {
       const ok = results.filter((r) => r.status === 'registered').length;
       setNotice(
         `${targets.length} 件の IP に問い合わせ、${ok} 台から取得できました` +
-          `（応答なし ${results.length - ok} 台）`,
+          `（応答なし ${results.length - ok} 台）` +
+          // 黙って外すと「いつまでも出てこない」と見えるので、外した数を必ず添える
+          (skipped.size > 0
+            ? `。${ENQ_ONLY_LABEL} ${skipped.size} 台は一括の対象外です（行の「状態を読む」から個別に読んでください）`
+            : ''),
       );
       await load();
     } catch (err) {
@@ -643,6 +862,181 @@ export default function PrinterListScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * その行の機器を 1 台だけ問い合わせ直す。
+   *
+   * 端末情報の画面の「更新」と同じ入口（/printer-assets/:id/refresh）を使う。
+   * 台帳の IP へ SNMP で当たり、取れた内容で実機マスタを作り直したうえで、
+   * 台帳の更新日も進める（実機を見て確かめた記録になる）。
+   * 台帳のシリアルが空なら、読めたシリアルがそのまま入る。
+   *
+   * 一括取得と違って結果を 1 行ぶん詳しく出す。1 台を狙って押すときは、
+   * 何が取れたのか（機種・シリアル・消耗品の数）まで見たいため
+   */
+  const fetchOne = async (row: Row) => {
+    const label = `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`;
+
+    setFetching((prev) => ({ ...prev, [row.id]: true }));
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await refreshAsset(row.id);
+
+      if (result.status === 'ok') {
+        const printer = result.printer;
+        const supplies = printer?.readings?.length ?? 0;
+        setNotice(
+          `${label}（${result.ipAddress}）を取得しました` +
+            `${printer?.model ? ` / ${printer.model}` : ''}` +
+            `${printer?.serialNumber ? ` / ${printer.serialNumber}` : ''}` +
+            `${supplies > 0 ? ` / 消耗品 ${supplies} 件` : ''}` +
+            `${result.serial?.status === 'filled' ? ' / シリアルを台帳に登録しました' : ''}`,
+        );
+
+        // 取得自体は成功しているので、書けなかったことは警告として別に出す
+        if (result.serial?.status === 'taken') {
+          const owner = `${result.serial.department ?? '部署未設定'} No.${
+            result.serial.no ?? '—'
+          }`;
+          setError(
+            `シリアル ${result.serial.serialNumber} は ${owner} が既に持っているため、` +
+              `${label} には登録しませんでした。どちらの台帳の機器か確かめてください`,
+          );
+        }
+      } else if (result.status === 'no-ip') {
+        setError(`${label} は IP アドレスが未入力なので問い合わせできません`);
+      } else {
+        setError(
+          `${label}（${result.ipAddress}）から応答がありません` +
+            `${result.message ? `（${result.message}）` : ''}。` +
+            '表示中の情報は前回取得できたときのものです',
+        );
+      }
+
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setFetching((prev) => ({ ...prev, [row.id]: false }));
+    }
+  };
+
+  /**
+   * SATO ラベルプリンターの状態を 1 台読む。**押したときだけ動く。**
+   *
+   * この機種は SNMP を持たず、印刷用のポートへ ENQ を送って状態を返させる。
+   * 相手は稼働中の機器なので、定期実行や一括取得には入れていない。
+   * 結果は画面に出すだけで保存しない（実機マスタに載せると毎日の SNMP 巡回で
+   * 「応答なし」として上書きされてしまうため）
+   */
+  const readSato = async (row: Row) => {
+    if (!row.ipAddress) return;
+    setSato((prev) => ({ ...prev, [row.id]: { busy: true } }));
+    try {
+      const found = await request<SatoStatus>('/printers/sato-status', {
+        method: 'POST',
+        body: JSON.stringify({ ipAddress: row.ipAddress }),
+      });
+      setSato((prev) => ({ ...prev, [row.id]: { busy: false, status: found } }));
+    } catch (err) {
+      setSato((prev) => ({
+        ...prev,
+        [row.id]: { busy: false, error: (err as Error).message },
+      }));
+    }
+  };
+
+  /**
+   * 状態の欄（ENQ で読む機器）。
+   *
+   * **押した直後は手元の結果を、それ以外は保存済みの値を出す。**
+   * 保存してあるので画面を開き直しても消えず、「取得できた時刻」も埋まる。
+   * ただし定期実行では更新されないので、いつ読んだ値なのかが分かることが大事
+   */
+  const satoCell = (row: Row) => {
+    if (!row.ipAddress) return '';
+
+    const state = sato[row.id];
+    if (state?.busy) return <span className="dt-muted">取得中…</span>;
+
+    const reread = '\n押すと読み直します';
+
+    // 押した直後の結果
+    if (state?.error) {
+      return (
+        <button
+          className="pl-sato pl-sato-ng"
+          onClick={() => void readSato(row)}
+          title={`${state.error}${reread}`}
+          type="button"
+        >
+          応答なし
+        </button>
+      );
+    }
+    if (state?.status) {
+      const { kind, label, code } = state.status;
+      return (
+        <button
+          className={`pl-sato pl-sato-${kind}`}
+          onClick={() => void readSato(row)}
+          title={`${label}（コード ${code}）${reread}`}
+          type="button"
+        >
+          {label}
+        </button>
+      );
+    }
+
+    // 保存してある、最後に読んだときの状態
+    const saved = row.printer;
+    if (saved) {
+      const when = saved.lastPolledAt
+        ? new Date(saved.lastPolledAt).toLocaleString('ja-JP')
+        : null;
+      return (
+        <button
+          className={`pl-sato ${saved.reachable ? 'pl-sato-saved' : 'pl-sato-ng'}`}
+          onClick={() => void readSato(row)}
+          title={
+            [
+              saved.reachable ? saved.consoleText : saved.lastError,
+              when ? `${when} に読んだ値です` : null,
+              '自動では更新されません' + reread,
+            ]
+              .filter(Boolean)
+              .join('\n') as string
+          }
+          type="button"
+        >
+          {saved.reachable ? (saved.consoleText ?? '応答あり') : '応答なし'}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        className="pl-sato"
+        onClick={() => void readSato(row)}
+        title="このラベルプリンターは SNMP を持たないので、押したときだけ状態を読みます"
+        type="button"
+      >
+        状態を読む
+      </button>
+    );
+  };
+
+  /** 「取得」ボタンの説明。押せない行は、なぜ押せないのかを出す */
+  const fetchTitle = (row: Row) => {
+    if (!row.ipAddress) return 'IP アドレスが未入力なので問い合わせできません';
+    if (canPoll(row)) {
+      return `${row.ipAddress} に問い合わせて、この機器の情報を取り直します`;
+    }
+    return `${
+      isEnqOnly(row) ? ENQ_ONLY_LABEL : 'この機器'
+    }は SNMP を持たないので、「状態」の欄から読んでください`;
   };
 
   const cellOf = (row: Row, key: SortKey) => {
@@ -658,6 +1052,65 @@ export default function PrinterListScreen() {
         ) : (
           <span className="dt-muted">—</span>
         );
+      case 'maintLeft': {
+        const days = maintDaysLeft(row.maintEndOn);
+        if (days === null) return <span className="dt-muted">—</span>;
+        return (
+          <span
+            className={days < 0 ? 'dt-low' : days <= MAINT_SOON_DAYS ? 'dt-soon' : undefined}
+            title={`保守終了 ${row.maintEndOn}`}
+          >
+            {maintLeftLabel(row.maintEndOn)}
+          </span>
+        );
+      }
+      case 'maintFee':
+        return row.maintFee === null ? (
+          <span className="dt-muted">—</span>
+        ) : (
+          `${num.format(row.maintFee)} 円`
+        );
+      case 'maintVendor': {
+        const vendor = maintVendorOf(row);
+        if (!vendor) return <span className="dt-muted">—</span>;
+        return (
+          <span
+            title={
+              vendor.source === 'asset'
+                ? 'この機器だけ指定しています（メーカーの既定より優先）'
+                : 'メーカーの既定です'
+            }
+          >
+            {vendor.name}
+          </span>
+        );
+      }
+      case 'maintPhones': {
+        const vendor = maintVendorOf(row);
+        if (!vendor || vendor.phones.length === 0) {
+          return <span className="dt-muted">—</span>;
+        }
+        // 代表・担当・夜間を縦に並べる。横に繋げると行が伸びて読めない
+        return (
+          <span className="dt-phones">
+            {vendor.phones.map((phone, index) => (
+              <span key={index}>{phone}</span>
+            ))}
+          </span>
+        );
+      }
+      case 'repairCost': {
+        if (!row.repairs.hasMaint) return <span className="dt-muted">—</span>;
+        // 1 件も入力が無いときは 0 円と書かない。無償だったのか未入力なのか分からない
+        if (row.repairs.costKnown === 0) {
+          return <span className="dt-muted">—</span>;
+        }
+        return (
+          <span title={`費用が入力されている履歴 ${row.repairs.costKnown} 件の合計`}>
+            {num.format(row.repairs.cost)} 円
+          </span>
+        );
+      }
       case 'repairInHouse':
       case 'repairVendor': {
         // 保守期間が入っていない台帳は「保守内」を決められない
@@ -669,7 +1122,10 @@ export default function PrinterListScreen() {
       case 'maintStatus':
         return maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract) ?? '—';
       case 'state': {
+        // SNMP を持たない SATO は、押したときだけ ENQ で状態を読む
+        if (isEnqRow(row)) return satoCell(row);
         if (row.printer === null) return '';
+
         const { reachable, lastPolledAt, lastError } = row.printer;
         // 応答なしでも前回の情報は残すので、いつ何で失敗したかを添える
         const title = reachable
@@ -752,6 +1208,9 @@ export default function PrinterListScreen() {
             <option value="due">
               交換部品に注意（{counts.due + counts.soon} 台）
             </option>
+            <option value="maint">
+              保守が切れる・切れている（{counts.maintSoon} 台）
+            </option>
             <option value="live">実機の情報あり（{counts.live} 台）</option>
             <option value="blank">機器情報が空欄（{counts.blank} 台）</option>
           </select>
@@ -774,8 +1233,12 @@ export default function PrinterListScreen() {
         修理中（{counts.repairing} 台）
         <span className="dt-legend-note">
           修理履歴に、状態が「完了」になっていないものが残っている機器です。
-          「保守内・自分で対応」「保守内・業者」は、復旧日が保守開始日〜保守終了日に
-          入っている履歴だけを数えます。保守期間が入力されていない台帳はハイフンにします。
+          「保守内」の 3 列は、復旧日（未入力なら発生日）が保守開始日〜保守終了日に
+          入っている履歴だけを数えます（どちらの日付も無い履歴は数えません）。
+          費用は入力されているものだけを足すので、1 件も入っていなければ
+          0 円ではなくハイフンにします。
+          「残り」は保守終了日までの日数で、{MAINT_SOON_DAYS} 日を切ると色が付き、
+          過ぎていれば超過日数を赤で出します（期限切れ {counts.maintExpired} 台）。
         </span>
       </p>
 
@@ -789,7 +1252,10 @@ export default function PrinterListScreen() {
           残量 {DUE_PERCENT}% で交換時期、{SOON_PERCENT}% 以下でまもなく交換。
           残量を数値で返さない機種は、機器が出している交換案内から判定します。
           カラー機はドラムを色ごとに 1 本持つので、交換部品の欄では種別ごとに 1 行へまとめ、
-          K（黒）C M Y の順に並べます。
+          K（黒）C M Y の順に並べます。種別の並びは残量によらず
+          ドラム・定着・転写・現像剤・クリーナー・廃トナー・その他で固定なので、
+          機器が違っても同じ位置に同じ種別が出ます。機器が残量を返さない項目は
+          「不明」と薄く出し、位置は動かしません（部品が無いという意味ではありません）。
         </span>
       </p>
 
@@ -811,6 +1277,10 @@ export default function PrinterListScreen() {
           <table className="dt-table">
             <thead>
               <tr className="dt-group-row">
+                {/* 行ごとの取得。並べ替えの対象ではないので COLUMNS の外に置く */}
+                <th className="dt-plain" rowSpan={2}>
+                  取得
+                </th>
                 <th className="dt-plain" colSpan={span('台帳')}>
                   台帳
                 </th>
@@ -878,6 +1348,16 @@ export default function PrinterListScreen() {
                             : undefined
                   }
                 >
+                  <td className="pl-ops">
+                    <button
+                      onClick={() => void fetchOne(row)}
+                      disabled={busy || fetching[row.id] || !canPoll(row)}
+                      title={fetchTitle(row)}
+                      type="button"
+                    >
+                      {fetching[row.id] ? '取得中…' : '取得'}
+                    </button>
+                  </td>
                   {COLUMNS.map((col, index) => (
                     <td
                       key={col.key}

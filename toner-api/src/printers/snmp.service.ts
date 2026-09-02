@@ -19,9 +19,33 @@ const SCALAR = {
   hrDeviceDescr: '1.3.6.1.2.1.25.3.2.1.3.1',
   /** prtGeneralSerialNumber */
   serialNumber: '1.3.6.1.2.1.43.5.1.1.17.1',
-  /** prtMarkerLifeCount：累計印刷枚数 */
+  /** prtMarkerLifeCount：累計カウンタ。単位は counterUnit を見ること */
   pageCount: '1.3.6.1.2.1.43.10.2.1.4.1.1',
+  /**
+   * prtMarkerCounterUnit：上のカウンタの単位。
+   *
+   * **枚数とは限らない。** 一般のプリンターは 7（インプレッション＝枚）だが、
+   * SATO のラベルプリンターは 17（メートル）で、印字した長さを返してくる。
+   * 単位を見ずに足すと、長さと枚数を混ぜて集計してしまう
+   */
+  counterUnit: '1.3.6.1.2.1.43.10.2.1.3.1.1',
 } as const;
+
+/** prtMarkerCounterUnit の値。集計の可否はここで判断する */
+export const COUNTER_UNIT = {
+  /** インプレッション。一般のプリンターの「枚」 */
+  IMPRESSIONS: 7,
+  SHEETS: 8,
+  /** メートル。SATO のラベルプリンター */
+  METERS: 17,
+} as const;
+
+/** その単位が「枚数」か。枚として数えてよいものだけ true */
+export function isSheetUnit(unit: number | null): boolean {
+  // 単位を返さない機種は、これまでどおり枚として扱う（一般のプリンターしかない）
+  if (unit === null) return true;
+  return unit === COUNTER_UNIT.IMPRESSIONS || unit === COUNTER_UNIT.SHEETS;
+}
 
 /** 表として歩いて取る値 */
 const TABLE = {
@@ -45,17 +69,6 @@ const TABLE = {
 } as const;
 
 /**
- * prtMarkerSuppliesType のうち、印刷に使う消耗品（トナー・インク）。
- * これ以外は交換部品として扱う。
- */
-const CONSUMABLE_TYPES = [
-  3, // toner
-  5, // ink
-  6, // inkCartridge
-  21, // tonerCartridge
-];
-
-/**
  * モノクロ・カラー別の枚数はメーカー拡張 MIB にしかない。
  * 標準の prtMarkerTable はどの機種もマーカー 1 本で、内訳を持っていない。
  * どちらの表も「ID の列」と「値の列」を行番号で突き合わせて読む。
@@ -69,12 +82,24 @@ const COUNTER = {
   canonValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
 } as const;
 
-/** RICOH のカウンタ ID。401 + 402 + 403 = 400 になる */
+/**
+ * RICOH のカウンタ ID。401 + 402 + 403 = 400 になる。
+ *
+ * **400 は「トータル」で、コピー分も含む。** 実機 3 台（SP C341 ×2 / SP C342）で
+ * ID 10（トータル）と 400 が完全に一致することを確認した。
+ *
+ * 機能別は合計だけを持つ。プリンター(1806) + コピー(701) ≒ 400 になる
+ * （読んでいる最中も機器が動くので数十ずれる）。
+ * **機能別のカラー・モノクロ内訳は機器が出していない。**
+ * スキャナは手元の機器がいずれも 0 を返し、どの ID か特定できていない
+ */
 const RICOH_COUNTER = {
   total: 400,
   mono: 401,
   single: 402,
   full: 403,
+  print: 1806,
+  copy: 701,
 } as const;
 
 /** Canon のカウンタ ID。カラーは合計から引いて出す */
@@ -106,15 +131,6 @@ export type AlertSnapshot = {
   description: string | null;
 };
 
-/** トナー・インク以外の交換部品か */
-export function isReplaceablePart(supply: {
-  supplyType: number | null;
-}): boolean {
-  // 種別を返さない機種は判断できないので、部品扱いにはしない
-  if (supply.supplyType === null) return false;
-  return !CONSUMABLE_TYPES.includes(supply.supplyType);
-}
-
 /** モノクロ・カラーの内訳をどこから得たか */
 export type CountSource =
   /** メーカー拡張 MIB がそのまま返した */
@@ -132,15 +148,44 @@ export type PrinterSnapshot = {
   serialNumber: string | null;
   macAddress: string | null;
   pageCount: number | null;
+  /**
+   * pageCount の単位（prtMarkerCounterUnit）。
+   * 7 / 8 なら枚、17 ならメートル。返さない機種は null
+   */
+  counterUnit: number | null;
   /** 累計のモノクロ枚数。取れない機種は null */
   monoCount: number | null;
   /** 累計のカラー枚数。取れない機種は null */
   colorCount: number | null;
+  /**
+   * 機能ごとの累計。合計だけで、カラー・モノクロの内訳は機器が持っていない。
+   * 取れない機種・メーカーは null（0 と区別する）
+   */
+  printCount: number | null;
+  copyCount: number | null;
+  /** どの ID がスキャナか特定できていないため、今は常に null */
+  scanCount: number | null;
   countSource: CountSource;
   supplies: SupplySnapshot[];
   alerts: AlertSnapshot[];
   /** 操作パネルの表示文字 */
   consoleText: string | null;
+};
+
+/**
+ * メーカー拡張 MIB のカウンタ表を、そのまま 1 行ずつ返したもの。
+ *
+ * **どのカウンタ ID がコピー・プリンター・ファクスなのかは機種ごとに違い、
+ * 公開されている一覧も無い。** 実機の表を見て決めるしかないので、
+ * その材料を出すための読み取り専用の口。集計には使わない
+ */
+export type CounterDump = {
+  version: SnmpVersionKey;
+  /** 拡張 MIB を持つメーカー。判定できなければ null（表は空になる） */
+  vendor: 'ricoh' | 'canon' | null;
+  sysDescr: string | null;
+  /** カウンタ ID の昇順 */
+  counters: { id: number; value: number }[];
 };
 
 /** 応答がなかった。バージョン違い・コミュニティ名違い・そもそも不在のいずれか */
@@ -254,6 +299,87 @@ export class SnmpService {
     );
   }
 
+  /**
+   * メーカー拡張 MIB のカウンタ表をそのまま読む。**調べるための口。**
+   * poll と同じくバージョンを順に試す
+   */
+  async dumpCounters(
+    ipAddress: string,
+    community: string,
+    preferred: SnmpVersionKey = 'V1',
+  ): Promise<CounterDump> {
+    const order: SnmpVersionKey[] =
+      preferred === 'V1' ? ['V1', 'V2C'] : ['V2C', 'V1'];
+
+    for (const version of order) {
+      try {
+        return await this.dumpCountersWith(ipAddress, community, version);
+      } catch (error) {
+        if (!(error instanceof SnmpUnreachableError)) throw error;
+        this.logger.debug(`${ipAddress}: SNMP ${version} は応答なし`);
+      }
+    }
+
+    throw new SnmpUnreachableError(
+      `${ipAddress} から SNMP の応答がありません。IP アドレス・コミュニティ名・機器側の SNMP 設定を確認してください`,
+    );
+  }
+
+  private async dumpCountersWith(
+    ipAddress: string,
+    community: string,
+    version: SnmpVersionKey,
+  ): Promise<CounterDump> {
+    const session = snmp.createSession(ipAddress, community, {
+      version: version === 'V1' ? snmp.Version1 : snmp.Version2c,
+      timeout: TIMEOUT_MS,
+      retries: RETRIES,
+    });
+    session.on('error', (error) => {
+      this.logger.debug(`${ipAddress}: セッションエラー ${error.message}`);
+    });
+
+    try {
+      // 生存確認を兼ねる。ここが無反応ならこのバージョンでは話せない
+      await this.get(session, SCALAR.sysName);
+      const sysDescrRaw = await this.get(session, SCALAR.sysDescr);
+      const sysDescr = sysDescrRaw ? readText(sysDescrRaw.value) : null;
+      const descr = sysDescr ?? '';
+
+      const vendor: CounterDump['vendor'] = /ricoh|ipsio/i.test(descr)
+        ? 'ricoh'
+        : /canon/i.test(descr)
+          ? 'canon'
+          : null;
+
+      const table =
+        vendor === 'ricoh'
+          ? await this.readCounterTable(
+              session,
+              COUNTER.ricohId,
+              COUNTER.ricohValue,
+            )
+          : vendor === 'canon'
+            ? await this.readCounterTable(
+                session,
+                COUNTER.canonId,
+                COUNTER.canonValue,
+              )
+            : new Map<number, number>();
+
+      return {
+        version,
+        vendor,
+        sysDescr,
+        counters: [...table.entries()]
+          .map(([id, value]) => ({ id, value }))
+          .sort((a, b) => a.id - b.id),
+      };
+    } finally {
+      session.close();
+    }
+  }
+
   private async pollWith(
     ipAddress: string,
     community: string,
@@ -274,12 +400,13 @@ export class SnmpService {
       // 生存確認を兼ねる。ここが無反応ならこのバージョンでは話せない
       const sysName = await this.get(session, SCALAR.sysName);
 
-      const [sysDescr, hrDeviceDescr, serialNumber, pageCount] =
+      const [sysDescr, hrDeviceDescr, serialNumber, pageCount, counterUnit] =
         await Promise.all([
           this.get(session, SCALAR.sysDescr),
           this.get(session, SCALAR.hrDeviceDescr),
           this.get(session, SCALAR.serialNumber),
           this.get(session, SCALAR.pageCount),
+          this.get(session, SCALAR.counterUnit),
         ]);
 
       const [macs, supplies, alerts, consoleText] = await Promise.all([
@@ -308,6 +435,7 @@ export class SnmpService {
         serialNumber: serialNumber ? readText(serialNumber.value) : null,
         macAddress,
         pageCount: total,
+        counterUnit: counterUnit ? readNumber(counterUnit.value) : null,
         ...counts,
         supplies,
         alerts,
@@ -452,7 +580,15 @@ export class SnmpService {
     total: number | null,
     supplies: SupplySnapshot[],
   ): Promise<
-    Pick<PrinterSnapshot, 'monoCount' | 'colorCount' | 'countSource'>
+    Pick<
+      PrinterSnapshot,
+      | 'monoCount'
+      | 'colorCount'
+      | 'printCount'
+      | 'copyCount'
+      | 'scanCount'
+      | 'countSource'
+    >
   > {
     const descr = sysDescr ?? '';
 
@@ -469,7 +605,15 @@ export class SnmpService {
         const color =
           (counters.get(RICOH_COUNTER.single) ?? 0) +
           (counters.get(RICOH_COUNTER.full) ?? 0);
-        return { monoCount: mono, colorCount: color, countSource: 'vendor' };
+        return {
+          monoCount: mono,
+          colorCount: color,
+          // 出していない機種は 0 ではなく「取れていない」なので null に倒す
+          printCount: counters.get(RICOH_COUNTER.print) ?? null,
+          copyCount: counters.get(RICOH_COUNTER.copy) ?? null,
+          scanCount: null,
+          countSource: 'vendor',
+        };
       }
     } else if (/canon/i.test(descr)) {
       const counters = await this.readCounterTable(
@@ -484,6 +628,10 @@ export class SnmpService {
         return {
           monoCount: mono,
           colorCount: sum - mono,
+          // iR-ADV が返すのは 4 つだけで、機能別のカウンタは公開していない
+          printCount: null,
+          copyCount: null,
+          scanCount: null,
           countSource: 'vendor',
         };
       }
@@ -496,11 +644,28 @@ export class SnmpService {
         COLOR_NAMES.includes(supply.colorant.toLowerCase()),
     );
 
+    // 機能別は拡張 MIB からしか取れないので、ここから先は常に null
+    const noFunctions = {
+      printCount: null,
+      copyCount: null,
+      scanCount: null,
+    };
+
     if (!hasColor && supplies.length > 0 && total !== null) {
-      return { monoCount: total, colorCount: 0, countSource: 'mono-only' };
+      return {
+        monoCount: total,
+        colorCount: 0,
+        ...noFunctions,
+        countSource: 'mono-only',
+      };
     }
 
-    return { monoCount: null, colorCount: null, countSource: 'none' };
+    return {
+      monoCount: null,
+      colorCount: null,
+      ...noFunctions,
+      countSource: 'none',
+    };
   }
 
   /** ID の列と値の列を行番号で突き合わせて、カウンタ ID から値を引けるようにする */

@@ -19,12 +19,26 @@ const create_printer_dto_1 = require("./dto/create-printer.dto");
 const probe_printer_dto_1 = require("./dto/probe-printer.dto");
 const page_counts_service_1 = require("./page-counts.service");
 const printers_service_1 = require("./printers.service");
+const sato_status_service_1 = require("./sato-status.service");
 let PrintersController = class PrintersController {
     service;
     pageCounts;
-    constructor(service, pageCounts) {
+    sato;
+    constructor(service, pageCounts, sato) {
         this.service = service;
         this.pageCounts = pageCounts;
+        this.sato = sato;
+    }
+    async satoStatus(dto) {
+        try {
+            return await this.service.readSato(dto.ipAddress.trim());
+        }
+        catch (error) {
+            if (error instanceof sato_status_service_1.SatoUnreachableError) {
+                throw new common_1.ServiceUnavailableException(error.message);
+            }
+            throw error;
+        }
     }
     create(dto) {
         return this.service.create(dto);
@@ -35,8 +49,14 @@ let PrintersController = class PrintersController {
     probe(dto) {
         return this.service.probe(dto);
     }
+    dumpCounters(id) {
+        return this.service.dumpCounters(id);
+    }
     createMany(dto) {
         return this.service.createMany(dto);
+    }
+    pollAll() {
+        return this.service.pollAll();
     }
     capture() {
         return this.pageCounts.captureAll();
@@ -59,6 +79,13 @@ let PrintersController = class PrintersController {
 };
 exports.PrintersController = PrintersController;
 __decorate([
+    (0, common_1.Post)('sato-status'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [probe_printer_dto_1.ProbePrinterDto]),
+    __metadata("design:returntype", Promise)
+], PrintersController.prototype, "satoStatus", null);
+__decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -79,12 +106,25 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], PrintersController.prototype, "probe", null);
 __decorate([
+    (0, common_1.Get)(':id/counters'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], PrintersController.prototype, "dumpCounters", null);
+__decorate([
     (0, common_1.Post)('bulk'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [bulk_create_printers_dto_1.BulkCreatePrintersDto]),
     __metadata("design:returntype", void 0)
 ], PrintersController.prototype, "createMany", null);
+__decorate([
+    (0, common_1.Post)('poll'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], PrintersController.prototype, "pollAll", null);
 __decorate([
     (0, common_1.Post)('page-counts/capture'),
     __metadata("design:type", Function),
@@ -134,6 +174,7 @@ __decorate([
 exports.PrintersController = PrintersController = __decorate([
     (0, common_1.Controller)('printers'),
     __metadata("design:paramtypes", [printers_service_1.PrintersService,
-        page_counts_service_1.PageCountsService])
+        page_counts_service_1.PageCountsService,
+        sato_status_service_1.SatoStatusService])
 ], PrintersController);
 //# sourceMappingURL=printers.controller.js.map

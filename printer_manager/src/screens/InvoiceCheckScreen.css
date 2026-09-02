@@ -1,0 +1,44 @@
+/* 請求書突合せ。表まわりは DataTable.css に乗り、ここは状態の色だけを持つ */
+
+.ic-ok {
+  color: #1d6b48;
+}
+
+/* 本数の違い。金額より先に見てほしいので、いちばん強い色にする */
+.ic-qty {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.ic-price {
+  color: #a5620a;
+  font-weight: 600;
+}
+
+.ic-none {
+  color: var(--danger);
+}
+
+.ic-unknown {
+  color: var(--muted);
+}
+
+/* 期ずれの手がかり。不一致そのものではないので控えめに出す */
+.ic-nearby {
+  color: #a5620a;
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+.ic-color {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ic tfoot th,
+.ic tfoot td {
+  font-weight: 600;
+  background: var(--bg);
+  border-top: 2px solid var(--line);
+}

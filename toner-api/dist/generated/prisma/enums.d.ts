@@ -11,6 +11,11 @@ export declare const SnmpVersion: {
     readonly V2C: "V2C";
 };
 export type SnmpVersion = (typeof SnmpVersion)[keyof typeof SnmpVersion];
+export declare const PrinterProtocol: {
+    readonly SNMP: "SNMP";
+    readonly SATO_ENQ: "SATO_ENQ";
+};
+export type PrinterProtocol = (typeof PrinterProtocol)[keyof typeof PrinterProtocol];
 export declare const RepairCategory: {
     readonly PART_REPLACEMENT: "PART_REPLACEMENT";
     readonly SENSOR_DIRT: "SENSOR_DIRT";
@@ -32,6 +37,8 @@ export declare const RepairHandler: {
 export type RepairHandler = (typeof RepairHandler)[keyof typeof RepairHandler];
 export declare const RepairStatus: {
     readonly INVESTIGATING: "INVESTIGATING";
+    readonly INQUIRING: "INQUIRING";
+    readonly AWAITING_REPLY: "AWAITING_REPLY";
     readonly QUOTING: "QUOTING";
     readonly SETTLING: "SETTLING";
     readonly SHIPPED: "SHIPPED";

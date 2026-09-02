@@ -33,11 +33,13 @@ export type AggregateRepairRecord = {
 export type RepairRecordAvgAggregateOutputType = {
   id: number | null
   printerAssetId: number | null
+  cost: number | null
 }
 
 export type RepairRecordSumAggregateOutputType = {
   id: number | null
   printerAssetId: number | null
+  cost: number | null
 }
 
 export type RepairRecordMinAggregateOutputType = {
@@ -48,6 +50,7 @@ export type RepairRecordMinAggregateOutputType = {
   category: $Enums.RepairCategory | null
   handledBy: $Enums.RepairHandler | null
   detail: string | null
+  cost: number | null
   restoredOn: Date | null
   status: $Enums.RepairStatus | null
   createdAt: Date | null
@@ -62,6 +65,7 @@ export type RepairRecordMaxAggregateOutputType = {
   category: $Enums.RepairCategory | null
   handledBy: $Enums.RepairHandler | null
   detail: string | null
+  cost: number | null
   restoredOn: Date | null
   status: $Enums.RepairStatus | null
   createdAt: Date | null
@@ -76,6 +80,7 @@ export type RepairRecordCountAggregateOutputType = {
   category: number
   handledBy: number
   detail: number
+  cost: number
   restoredOn: number
   status: number
   createdAt: number
@@ -87,11 +92,13 @@ export type RepairRecordCountAggregateOutputType = {
 export type RepairRecordAvgAggregateInputType = {
   id?: true
   printerAssetId?: true
+  cost?: true
 }
 
 export type RepairRecordSumAggregateInputType = {
   id?: true
   printerAssetId?: true
+  cost?: true
 }
 
 export type RepairRecordMinAggregateInputType = {
@@ -102,6 +109,7 @@ export type RepairRecordMinAggregateInputType = {
   category?: true
   handledBy?: true
   detail?: true
+  cost?: true
   restoredOn?: true
   status?: true
   createdAt?: true
@@ -116,6 +124,7 @@ export type RepairRecordMaxAggregateInputType = {
   category?: true
   handledBy?: true
   detail?: true
+  cost?: true
   restoredOn?: true
   status?: true
   createdAt?: true
@@ -130,6 +139,7 @@ export type RepairRecordCountAggregateInputType = {
   category?: true
   handledBy?: true
   detail?: true
+  cost?: true
   restoredOn?: true
   status?: true
   createdAt?: true
@@ -231,7 +241,8 @@ export type RepairRecordGroupByOutputType = {
   category: $Enums.RepairCategory | null
   handledBy: $Enums.RepairHandler
   detail: string | null
-  restoredOn: Date
+  cost: number | null
+  restoredOn: Date | null
   status: $Enums.RepairStatus
   createdAt: Date
   updatedAt: Date
@@ -268,7 +279,8 @@ export type RepairRecordWhereInput = {
   category?: Prisma.EnumRepairCategoryNullableFilter<"RepairRecord"> | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFilter<"RepairRecord"> | $Enums.RepairHandler
   detail?: Prisma.StringNullableFilter<"RepairRecord"> | string | null
-  restoredOn?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
+  cost?: Prisma.IntNullableFilter<"RepairRecord"> | number | null
+  restoredOn?: Prisma.DateTimeNullableFilter<"RepairRecord"> | Date | string | null
   status?: Prisma.EnumRepairStatusFilter<"RepairRecord"> | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
@@ -283,7 +295,8 @@ export type RepairRecordOrderByWithRelationInput = {
   category?: Prisma.SortOrderInput | Prisma.SortOrder
   handledBy?: Prisma.SortOrder
   detail?: Prisma.SortOrderInput | Prisma.SortOrder
-  restoredOn?: Prisma.SortOrder
+  cost?: Prisma.SortOrderInput | Prisma.SortOrder
+  restoredOn?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -301,7 +314,8 @@ export type RepairRecordWhereUniqueInput = Prisma.AtLeast<{
   category?: Prisma.EnumRepairCategoryNullableFilter<"RepairRecord"> | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFilter<"RepairRecord"> | $Enums.RepairHandler
   detail?: Prisma.StringNullableFilter<"RepairRecord"> | string | null
-  restoredOn?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
+  cost?: Prisma.IntNullableFilter<"RepairRecord"> | number | null
+  restoredOn?: Prisma.DateTimeNullableFilter<"RepairRecord"> | Date | string | null
   status?: Prisma.EnumRepairStatusFilter<"RepairRecord"> | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
@@ -316,7 +330,8 @@ export type RepairRecordOrderByWithAggregationInput = {
   category?: Prisma.SortOrderInput | Prisma.SortOrder
   handledBy?: Prisma.SortOrder
   detail?: Prisma.SortOrderInput | Prisma.SortOrder
-  restoredOn?: Prisma.SortOrder
+  cost?: Prisma.SortOrderInput | Prisma.SortOrder
+  restoredOn?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -338,7 +353,8 @@ export type RepairRecordScalarWhereWithAggregatesInput = {
   category?: Prisma.EnumRepairCategoryNullableWithAggregatesFilter<"RepairRecord"> | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerWithAggregatesFilter<"RepairRecord"> | $Enums.RepairHandler
   detail?: Prisma.StringNullableWithAggregatesFilter<"RepairRecord"> | string | null
-  restoredOn?: Prisma.DateTimeWithAggregatesFilter<"RepairRecord"> | Date | string
+  cost?: Prisma.IntNullableWithAggregatesFilter<"RepairRecord"> | number | null
+  restoredOn?: Prisma.DateTimeNullableWithAggregatesFilter<"RepairRecord"> | Date | string | null
   status?: Prisma.EnumRepairStatusWithAggregatesFilter<"RepairRecord"> | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"RepairRecord"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"RepairRecord"> | Date | string
@@ -350,7 +366,8 @@ export type RepairRecordCreateInput = {
   category?: $Enums.RepairCategory | null
   handledBy?: $Enums.RepairHandler
   detail?: string | null
-  restoredOn: Date | string
+  cost?: number | null
+  restoredOn?: Date | string | null
   status?: $Enums.RepairStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -365,7 +382,8 @@ export type RepairRecordUncheckedCreateInput = {
   category?: $Enums.RepairCategory | null
   handledBy?: $Enums.RepairHandler
   detail?: string | null
-  restoredOn: Date | string
+  cost?: number | null
+  restoredOn?: Date | string | null
   status?: $Enums.RepairStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -377,7 +395,8 @@ export type RepairRecordUpdateInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -392,7 +411,8 @@ export type RepairRecordUncheckedUpdateInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -406,7 +426,8 @@ export type RepairRecordCreateManyInput = {
   category?: $Enums.RepairCategory | null
   handledBy?: $Enums.RepairHandler
   detail?: string | null
-  restoredOn: Date | string
+  cost?: number | null
+  restoredOn?: Date | string | null
   status?: $Enums.RepairStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -418,7 +439,8 @@ export type RepairRecordUpdateManyMutationInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -432,7 +454,8 @@ export type RepairRecordUncheckedUpdateManyInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -456,6 +479,7 @@ export type RepairRecordCountOrderByAggregateInput = {
   category?: Prisma.SortOrder
   handledBy?: Prisma.SortOrder
   detail?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
   restoredOn?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -465,6 +489,7 @@ export type RepairRecordCountOrderByAggregateInput = {
 export type RepairRecordAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   printerAssetId?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
 }
 
 export type RepairRecordMaxOrderByAggregateInput = {
@@ -475,6 +500,7 @@ export type RepairRecordMaxOrderByAggregateInput = {
   category?: Prisma.SortOrder
   handledBy?: Prisma.SortOrder
   detail?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
   restoredOn?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -489,6 +515,7 @@ export type RepairRecordMinOrderByAggregateInput = {
   category?: Prisma.SortOrder
   handledBy?: Prisma.SortOrder
   detail?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
   restoredOn?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -498,6 +525,7 @@ export type RepairRecordMinOrderByAggregateInput = {
 export type RepairRecordSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   printerAssetId?: Prisma.SortOrder
+  cost?: Prisma.SortOrder
 }
 
 export type RepairRecordCreateNestedManyWithoutAssetInput = {
@@ -560,7 +588,8 @@ export type RepairRecordCreateWithoutAssetInput = {
   category?: $Enums.RepairCategory | null
   handledBy?: $Enums.RepairHandler
   detail?: string | null
-  restoredOn: Date | string
+  cost?: number | null
+  restoredOn?: Date | string | null
   status?: $Enums.RepairStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -573,7 +602,8 @@ export type RepairRecordUncheckedCreateWithoutAssetInput = {
   category?: $Enums.RepairCategory | null
   handledBy?: $Enums.RepairHandler
   detail?: string | null
-  restoredOn: Date | string
+  cost?: number | null
+  restoredOn?: Date | string | null
   status?: $Enums.RepairStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -616,7 +646,8 @@ export type RepairRecordScalarWhereInput = {
   category?: Prisma.EnumRepairCategoryNullableFilter<"RepairRecord"> | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFilter<"RepairRecord"> | $Enums.RepairHandler
   detail?: Prisma.StringNullableFilter<"RepairRecord"> | string | null
-  restoredOn?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
+  cost?: Prisma.IntNullableFilter<"RepairRecord"> | number | null
+  restoredOn?: Prisma.DateTimeNullableFilter<"RepairRecord"> | Date | string | null
   status?: Prisma.EnumRepairStatusFilter<"RepairRecord"> | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"RepairRecord"> | Date | string
@@ -629,7 +660,8 @@ export type RepairRecordCreateManyAssetInput = {
   category?: $Enums.RepairCategory | null
   handledBy?: $Enums.RepairHandler
   detail?: string | null
-  restoredOn: Date | string
+  cost?: number | null
+  restoredOn?: Date | string | null
   status?: $Enums.RepairStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -641,7 +673,8 @@ export type RepairRecordUpdateWithoutAssetInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -654,7 +687,8 @@ export type RepairRecordUncheckedUpdateWithoutAssetInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -667,7 +701,8 @@ export type RepairRecordUncheckedUpdateManyWithoutAssetInput = {
   category?: Prisma.NullableEnumRepairCategoryFieldUpdateOperationsInput | $Enums.RepairCategory | null
   handledBy?: Prisma.EnumRepairHandlerFieldUpdateOperationsInput | $Enums.RepairHandler
   detail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  restoredOn?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  cost?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  restoredOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   status?: Prisma.EnumRepairStatusFieldUpdateOperationsInput | $Enums.RepairStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -683,6 +718,7 @@ export type RepairRecordSelect<ExtArgs extends runtime.Types.Extensions.Internal
   category?: boolean
   handledBy?: boolean
   detail?: boolean
+  cost?: boolean
   restoredOn?: boolean
   status?: boolean
   createdAt?: boolean
@@ -698,6 +734,7 @@ export type RepairRecordSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   category?: boolean
   handledBy?: boolean
   detail?: boolean
+  cost?: boolean
   restoredOn?: boolean
   status?: boolean
   createdAt?: boolean
@@ -713,6 +750,7 @@ export type RepairRecordSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   category?: boolean
   handledBy?: boolean
   detail?: boolean
+  cost?: boolean
   restoredOn?: boolean
   status?: boolean
   createdAt?: boolean
@@ -728,13 +766,14 @@ export type RepairRecordSelectScalar = {
   category?: boolean
   handledBy?: boolean
   detail?: boolean
+  cost?: boolean
   restoredOn?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type RepairRecordOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "assignee" | "printerAssetId" | "occurredOn" | "category" | "handledBy" | "detail" | "restoredOn" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["repairRecord"]>
+export type RepairRecordOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "assignee" | "printerAssetId" | "occurredOn" | "category" | "handledBy" | "detail" | "cost" | "restoredOn" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["repairRecord"]>
 export type RepairRecordInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   asset?: boolean | Prisma.PrinterAssetDefaultArgs<ExtArgs>
 }
@@ -778,9 +817,15 @@ export type $RepairRecordPayload<ExtArgs extends runtime.Types.Extensions.Intern
      */
     detail: string | null
     /**
-     * 復旧日。必須
+     * かかった費用（円・税別）。円未満を扱わないので整数。
+     * 保守で無償だったものは 0、金額が分からないうちは未入力にする。
+     * 保守金額（printer_assets.maint_fee）と並べて契約の損得を見るために持つ
      */
-    restoredOn: Date
+    cost: number | null
+    /**
+     * 復旧日。まだ直っていない、日付が分からないこともあるので任意
+     */
+    restoredOn: Date | null
     status: $Enums.RepairStatus
     createdAt: Date
     updatedAt: Date
@@ -1215,6 +1260,7 @@ export interface RepairRecordFieldRefs {
   readonly category: Prisma.FieldRef<"RepairRecord", 'RepairCategory'>
   readonly handledBy: Prisma.FieldRef<"RepairRecord", 'RepairHandler'>
   readonly detail: Prisma.FieldRef<"RepairRecord", 'String'>
+  readonly cost: Prisma.FieldRef<"RepairRecord", 'Int'>
   readonly restoredOn: Prisma.FieldRef<"RepairRecord", 'DateTime'>
   readonly status: Prisma.FieldRef<"RepairRecord", 'RepairStatus'>
   readonly createdAt: Prisma.FieldRef<"RepairRecord", 'DateTime'>

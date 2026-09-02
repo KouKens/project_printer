@@ -38,6 +38,15 @@ export class PrinterAssetsController {
     return this.service.findOverview();
   }
 
+  /**
+   * 台帳を機種でまとめ、その機種で使うトナーを添えた一覧。
+   * これも ':id' より前に置く。
+   */
+  @Get('by-model')
+  findByModel() {
+    return this.service.findByModel();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.service.findOne(id);
@@ -49,6 +58,15 @@ export class PrinterAssetsController {
     @Body() dto: CreatePrinterAssetDto,
   ) {
     return this.service.update(id, dto);
+  }
+
+  /**
+   * その台帳の IP に問い合わせて実機の情報を取り直し、台帳の更新日も進める。
+   * 一覧の「更新」ボタンから呼ぶ
+   */
+  @Post(':id/refresh')
+  refresh(@Param('id', ParseIntPipe) id: number) {
+    return this.service.refresh(id);
   }
 
   /** 中身は変えず、更新日だけ現在時刻に進める */

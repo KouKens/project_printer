@@ -54,6 +54,13 @@ export class CreatePrinterAssetDto {
   @Matches(DATE_ONLY, { message: `購入日は${DATE_MESSAGE}` })
   purchasedOn?: string | null;
 
+  /** 購入金額（円）。保守金額と同じく整数で受ける */
+  @IsOptional()
+  @IsInt({ message: '購入金額は整数で入力してください' })
+  @Min(0, { message: '購入金額は 0 以上で入力してください' })
+  @Max(999_999_999)
+  purchasePrice?: number | null;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -66,6 +73,14 @@ export class CreatePrinterAssetDto {
       '集計表の行は TOTAL / MONO_COLOR / COLOR_MONO のいずれかで指定してください',
   })
   countLayout?: 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
+
+  /**
+   * 保守を頼んでいる業者。会社名と連絡先は業者マスタが持つので、
+   * 台帳は ID だけを指す。未設定なら null
+   */
+  @IsOptional()
+  @IsInt({ message: '保守業者の指定が不正です' })
+  maintVendorId?: number | null;
 
   /**
    * 保守契約の有無の手入力。

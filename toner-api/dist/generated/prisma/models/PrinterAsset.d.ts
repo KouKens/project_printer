@@ -11,10 +11,14 @@ export type AggregatePrinterAsset = {
 };
 export type PrinterAssetAvgAggregateOutputType = {
     id: number | null;
+    purchasePrice: number | null;
+    maintVendorId: number | null;
     maintFee: number | null;
 };
 export type PrinterAssetSumAggregateOutputType = {
     id: number | null;
+    purchasePrice: number | null;
+    maintVendorId: number | null;
     maintFee: number | null;
 };
 export type PrinterAssetMinAggregateOutputType = {
@@ -26,7 +30,9 @@ export type PrinterAssetMinAggregateOutputType = {
     model: string | null;
     serialNumber: string | null;
     purchasedOn: Date | null;
+    purchasePrice: number | null;
     contractNo: string | null;
+    maintVendorId: number | null;
     maintContract: string | null;
     maintStartOn: Date | null;
     maintEndOn: Date | null;
@@ -46,7 +52,9 @@ export type PrinterAssetMaxAggregateOutputType = {
     model: string | null;
     serialNumber: string | null;
     purchasedOn: Date | null;
+    purchasePrice: number | null;
     contractNo: string | null;
+    maintVendorId: number | null;
     maintContract: string | null;
     maintStartOn: Date | null;
     maintEndOn: Date | null;
@@ -66,7 +74,9 @@ export type PrinterAssetCountAggregateOutputType = {
     model: number;
     serialNumber: number;
     purchasedOn: number;
+    purchasePrice: number;
     contractNo: number;
+    maintVendorId: number;
     maintContract: number;
     maintStartOn: number;
     maintEndOn: number;
@@ -80,10 +90,14 @@ export type PrinterAssetCountAggregateOutputType = {
 };
 export type PrinterAssetAvgAggregateInputType = {
     id?: true;
+    purchasePrice?: true;
+    maintVendorId?: true;
     maintFee?: true;
 };
 export type PrinterAssetSumAggregateInputType = {
     id?: true;
+    purchasePrice?: true;
+    maintVendorId?: true;
     maintFee?: true;
 };
 export type PrinterAssetMinAggregateInputType = {
@@ -95,7 +109,9 @@ export type PrinterAssetMinAggregateInputType = {
     model?: true;
     serialNumber?: true;
     purchasedOn?: true;
+    purchasePrice?: true;
     contractNo?: true;
+    maintVendorId?: true;
     maintContract?: true;
     maintStartOn?: true;
     maintEndOn?: true;
@@ -115,7 +131,9 @@ export type PrinterAssetMaxAggregateInputType = {
     model?: true;
     serialNumber?: true;
     purchasedOn?: true;
+    purchasePrice?: true;
     contractNo?: true;
+    maintVendorId?: true;
     maintContract?: true;
     maintStartOn?: true;
     maintEndOn?: true;
@@ -135,7 +153,9 @@ export type PrinterAssetCountAggregateInputType = {
     model?: true;
     serialNumber?: true;
     purchasedOn?: true;
+    purchasePrice?: true;
     contractNo?: true;
+    maintVendorId?: true;
     maintContract?: true;
     maintStartOn?: true;
     maintEndOn?: true;
@@ -184,7 +204,9 @@ export type PrinterAssetGroupByOutputType = {
     model: string | null;
     serialNumber: string | null;
     purchasedOn: Date | null;
+    purchasePrice: number | null;
     contractNo: string | null;
+    maintVendorId: number | null;
     maintContract: string | null;
     maintStartOn: Date | null;
     maintEndOn: Date | null;
@@ -215,7 +237,9 @@ export type PrinterAssetWhereInput = {
     model?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
     serialNumber?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
     purchasedOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
+    purchasePrice?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
     contractNo?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    maintVendorId?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
     maintContract?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
     maintStartOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
     maintEndOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
@@ -225,6 +249,7 @@ export type PrinterAssetWhereInput = {
     countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout;
     createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string;
+    maintVendor?: Prisma.XOR<Prisma.MaintVendorNullableScalarRelationFilter, Prisma.MaintVendorWhereInput> | null;
     repairs?: Prisma.RepairRecordListRelationFilter;
     toners?: Prisma.TonerPrinterListRelationFilter;
 };
@@ -237,7 +262,9 @@ export type PrinterAssetOrderByWithRelationInput = {
     model?: Prisma.SortOrderInput | Prisma.SortOrder;
     serialNumber?: Prisma.SortOrderInput | Prisma.SortOrder;
     purchasedOn?: Prisma.SortOrderInput | Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrderInput | Prisma.SortOrder;
     contractNo?: Prisma.SortOrderInput | Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrderInput | Prisma.SortOrder;
     maintContract?: Prisma.SortOrderInput | Prisma.SortOrder;
     maintStartOn?: Prisma.SortOrderInput | Prisma.SortOrder;
     maintEndOn?: Prisma.SortOrderInput | Prisma.SortOrder;
@@ -247,6 +274,7 @@ export type PrinterAssetOrderByWithRelationInput = {
     countLayout?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
+    maintVendor?: Prisma.MaintVendorOrderByWithRelationInput;
     repairs?: Prisma.RepairRecordOrderByRelationAggregateInput;
     toners?: Prisma.TonerPrinterOrderByRelationAggregateInput;
 };
@@ -262,7 +290,9 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
     model?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
     serialNumber?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
     purchasedOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
+    purchasePrice?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
     contractNo?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    maintVendorId?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
     maintContract?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
     maintStartOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
     maintEndOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
@@ -272,6 +302,7 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
     countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout;
     createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string;
+    maintVendor?: Prisma.XOR<Prisma.MaintVendorNullableScalarRelationFilter, Prisma.MaintVendorWhereInput> | null;
     repairs?: Prisma.RepairRecordListRelationFilter;
     toners?: Prisma.TonerPrinterListRelationFilter;
 }, "id">;
@@ -284,7 +315,9 @@ export type PrinterAssetOrderByWithAggregationInput = {
     model?: Prisma.SortOrderInput | Prisma.SortOrder;
     serialNumber?: Prisma.SortOrderInput | Prisma.SortOrder;
     purchasedOn?: Prisma.SortOrderInput | Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrderInput | Prisma.SortOrder;
     contractNo?: Prisma.SortOrderInput | Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrderInput | Prisma.SortOrder;
     maintContract?: Prisma.SortOrderInput | Prisma.SortOrder;
     maintStartOn?: Prisma.SortOrderInput | Prisma.SortOrder;
     maintEndOn?: Prisma.SortOrderInput | Prisma.SortOrder;
@@ -312,7 +345,9 @@ export type PrinterAssetScalarWhereWithAggregatesInput = {
     model?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null;
     serialNumber?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null;
     purchasedOn?: Prisma.DateTimeNullableWithAggregatesFilter<"PrinterAsset"> | Date | string | null;
+    purchasePrice?: Prisma.IntNullableWithAggregatesFilter<"PrinterAsset"> | number | null;
     contractNo?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null;
+    maintVendorId?: Prisma.IntNullableWithAggregatesFilter<"PrinterAsset"> | number | null;
     maintContract?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null;
     maintStartOn?: Prisma.DateTimeNullableWithAggregatesFilter<"PrinterAsset"> | Date | string | null;
     maintEndOn?: Prisma.DateTimeNullableWithAggregatesFilter<"PrinterAsset"> | Date | string | null;
@@ -331,6 +366,7 @@ export type PrinterAssetCreateInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
@@ -341,6 +377,7 @@ export type PrinterAssetCreateInput = {
     countLayout?: $Enums.CountLayout;
     createdAt?: Date | string;
     updatedAt?: Date | string;
+    maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput;
     repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput;
     toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput;
 };
@@ -353,7 +390,9 @@ export type PrinterAssetUncheckedCreateInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
+    maintVendorId?: number | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
     maintEndOn?: Date | string | null;
@@ -374,6 +413,7 @@ export type PrinterAssetUpdateInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -384,6 +424,7 @@ export type PrinterAssetUpdateInput = {
     countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput;
     repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput;
     toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput;
 };
@@ -396,7 +437,9 @@ export type PrinterAssetUncheckedUpdateInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintVendorId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -418,7 +461,9 @@ export type PrinterAssetCreateManyInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
+    maintVendorId?: number | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
     maintEndOn?: Date | string | null;
@@ -437,6 +482,7 @@ export type PrinterAssetUpdateManyMutationInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -457,7 +503,9 @@ export type PrinterAssetUncheckedUpdateManyInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintVendorId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -481,7 +529,9 @@ export type PrinterAssetCountOrderByAggregateInput = {
     model?: Prisma.SortOrder;
     serialNumber?: Prisma.SortOrder;
     purchasedOn?: Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrder;
     contractNo?: Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrder;
     maintContract?: Prisma.SortOrder;
     maintStartOn?: Prisma.SortOrder;
     maintEndOn?: Prisma.SortOrder;
@@ -494,6 +544,8 @@ export type PrinterAssetCountOrderByAggregateInput = {
 };
 export type PrinterAssetAvgOrderByAggregateInput = {
     id?: Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrder;
     maintFee?: Prisma.SortOrder;
 };
 export type PrinterAssetMaxOrderByAggregateInput = {
@@ -505,7 +557,9 @@ export type PrinterAssetMaxOrderByAggregateInput = {
     model?: Prisma.SortOrder;
     serialNumber?: Prisma.SortOrder;
     purchasedOn?: Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrder;
     contractNo?: Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrder;
     maintContract?: Prisma.SortOrder;
     maintStartOn?: Prisma.SortOrder;
     maintEndOn?: Prisma.SortOrder;
@@ -525,7 +579,9 @@ export type PrinterAssetMinOrderByAggregateInput = {
     model?: Prisma.SortOrder;
     serialNumber?: Prisma.SortOrder;
     purchasedOn?: Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrder;
     contractNo?: Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrder;
     maintContract?: Prisma.SortOrder;
     maintStartOn?: Prisma.SortOrder;
     maintEndOn?: Prisma.SortOrder;
@@ -538,7 +594,17 @@ export type PrinterAssetMinOrderByAggregateInput = {
 };
 export type PrinterAssetSumOrderByAggregateInput = {
     id?: Prisma.SortOrder;
+    purchasePrice?: Prisma.SortOrder;
+    maintVendorId?: Prisma.SortOrder;
     maintFee?: Prisma.SortOrder;
+};
+export type PrinterAssetListRelationFilter = {
+    every?: Prisma.PrinterAssetWhereInput;
+    some?: Prisma.PrinterAssetWhereInput;
+    none?: Prisma.PrinterAssetWhereInput;
+};
+export type PrinterAssetOrderByRelationAggregateInput = {
+    _count?: Prisma.SortOrder;
 };
 export type PrinterAssetCreateNestedOneWithoutTonersInput = {
     create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutTonersInput, Prisma.PrinterAssetUncheckedCreateWithoutTonersInput>;
@@ -554,6 +620,44 @@ export type PrinterAssetUpdateOneRequiredWithoutTonersNestedInput = {
 };
 export type EnumCountLayoutFieldUpdateOperationsInput = {
     set?: $Enums.CountLayout;
+};
+export type PrinterAssetCreateNestedManyWithoutMaintVendorInput = {
+    create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput> | Prisma.PrinterAssetCreateWithoutMaintVendorInput[] | Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput[];
+    connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput | Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput[];
+    createMany?: Prisma.PrinterAssetCreateManyMaintVendorInputEnvelope;
+    connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+};
+export type PrinterAssetUncheckedCreateNestedManyWithoutMaintVendorInput = {
+    create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput> | Prisma.PrinterAssetCreateWithoutMaintVendorInput[] | Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput[];
+    connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput | Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput[];
+    createMany?: Prisma.PrinterAssetCreateManyMaintVendorInputEnvelope;
+    connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+};
+export type PrinterAssetUpdateManyWithoutMaintVendorNestedInput = {
+    create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput> | Prisma.PrinterAssetCreateWithoutMaintVendorInput[] | Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput[];
+    connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput | Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput[];
+    upsert?: Prisma.PrinterAssetUpsertWithWhereUniqueWithoutMaintVendorInput | Prisma.PrinterAssetUpsertWithWhereUniqueWithoutMaintVendorInput[];
+    createMany?: Prisma.PrinterAssetCreateManyMaintVendorInputEnvelope;
+    set?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    disconnect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    delete?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    update?: Prisma.PrinterAssetUpdateWithWhereUniqueWithoutMaintVendorInput | Prisma.PrinterAssetUpdateWithWhereUniqueWithoutMaintVendorInput[];
+    updateMany?: Prisma.PrinterAssetUpdateManyWithWhereWithoutMaintVendorInput | Prisma.PrinterAssetUpdateManyWithWhereWithoutMaintVendorInput[];
+    deleteMany?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[];
+};
+export type PrinterAssetUncheckedUpdateManyWithoutMaintVendorNestedInput = {
+    create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput> | Prisma.PrinterAssetCreateWithoutMaintVendorInput[] | Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput[];
+    connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput | Prisma.PrinterAssetCreateOrConnectWithoutMaintVendorInput[];
+    upsert?: Prisma.PrinterAssetUpsertWithWhereUniqueWithoutMaintVendorInput | Prisma.PrinterAssetUpsertWithWhereUniqueWithoutMaintVendorInput[];
+    createMany?: Prisma.PrinterAssetCreateManyMaintVendorInputEnvelope;
+    set?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    disconnect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    delete?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[];
+    update?: Prisma.PrinterAssetUpdateWithWhereUniqueWithoutMaintVendorInput | Prisma.PrinterAssetUpdateWithWhereUniqueWithoutMaintVendorInput[];
+    updateMany?: Prisma.PrinterAssetUpdateManyWithWhereWithoutMaintVendorInput | Prisma.PrinterAssetUpdateManyWithWhereWithoutMaintVendorInput[];
+    deleteMany?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[];
 };
 export type PrinterAssetCreateNestedOneWithoutRepairsInput = {
     create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutRepairsInput, Prisma.PrinterAssetUncheckedCreateWithoutRepairsInput>;
@@ -575,6 +679,7 @@ export type PrinterAssetCreateWithoutTonersInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
@@ -585,6 +690,7 @@ export type PrinterAssetCreateWithoutTonersInput = {
     countLayout?: $Enums.CountLayout;
     createdAt?: Date | string;
     updatedAt?: Date | string;
+    maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput;
     repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput;
 };
 export type PrinterAssetUncheckedCreateWithoutTonersInput = {
@@ -596,7 +702,9 @@ export type PrinterAssetUncheckedCreateWithoutTonersInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
+    maintVendorId?: number | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
     maintEndOn?: Date | string | null;
@@ -629,6 +737,7 @@ export type PrinterAssetUpdateWithoutTonersInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -639,6 +748,7 @@ export type PrinterAssetUpdateWithoutTonersInput = {
     countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput;
     repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput;
 };
 export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
@@ -650,7 +760,9 @@ export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintVendorId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -662,7 +774,7 @@ export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput;
 };
-export type PrinterAssetCreateWithoutRepairsInput = {
+export type PrinterAssetCreateWithoutMaintVendorInput = {
     department?: string | null;
     no?: string | null;
     ipAddress?: string | null;
@@ -670,6 +782,7 @@ export type PrinterAssetCreateWithoutRepairsInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
@@ -680,6 +793,98 @@ export type PrinterAssetCreateWithoutRepairsInput = {
     countLayout?: $Enums.CountLayout;
     createdAt?: Date | string;
     updatedAt?: Date | string;
+    repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput;
+    toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput;
+};
+export type PrinterAssetUncheckedCreateWithoutMaintVendorInput = {
+    id?: number;
+    department?: string | null;
+    no?: string | null;
+    ipAddress?: string | null;
+    maker?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
+    contractNo?: string | null;
+    maintContract?: string | null;
+    maintStartOn?: Date | string | null;
+    maintEndOn?: Date | string | null;
+    maintDealOn?: Date | string | null;
+    maintFee?: number | null;
+    note?: string | null;
+    countLayout?: $Enums.CountLayout;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    repairs?: Prisma.RepairRecordUncheckedCreateNestedManyWithoutAssetInput;
+    toners?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutAssetInput;
+};
+export type PrinterAssetCreateOrConnectWithoutMaintVendorInput = {
+    where: Prisma.PrinterAssetWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PrinterAssetCreateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput>;
+};
+export type PrinterAssetCreateManyMaintVendorInputEnvelope = {
+    data: Prisma.PrinterAssetCreateManyMaintVendorInput | Prisma.PrinterAssetCreateManyMaintVendorInput[];
+    skipDuplicates?: boolean;
+};
+export type PrinterAssetUpsertWithWhereUniqueWithoutMaintVendorInput = {
+    where: Prisma.PrinterAssetWhereUniqueInput;
+    update: Prisma.XOR<Prisma.PrinterAssetUpdateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedUpdateWithoutMaintVendorInput>;
+    create: Prisma.XOR<Prisma.PrinterAssetCreateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedCreateWithoutMaintVendorInput>;
+};
+export type PrinterAssetUpdateWithWhereUniqueWithoutMaintVendorInput = {
+    where: Prisma.PrinterAssetWhereUniqueInput;
+    data: Prisma.XOR<Prisma.PrinterAssetUpdateWithoutMaintVendorInput, Prisma.PrinterAssetUncheckedUpdateWithoutMaintVendorInput>;
+};
+export type PrinterAssetUpdateManyWithWhereWithoutMaintVendorInput = {
+    where: Prisma.PrinterAssetScalarWhereInput;
+    data: Prisma.XOR<Prisma.PrinterAssetUpdateManyMutationInput, Prisma.PrinterAssetUncheckedUpdateManyWithoutMaintVendorInput>;
+};
+export type PrinterAssetScalarWhereInput = {
+    AND?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[];
+    OR?: Prisma.PrinterAssetScalarWhereInput[];
+    NOT?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[];
+    id?: Prisma.IntFilter<"PrinterAsset"> | number;
+    department?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    no?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    ipAddress?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    maker?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    model?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    serialNumber?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    purchasedOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
+    purchasePrice?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
+    contractNo?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    maintVendorId?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
+    maintContract?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    maintStartOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
+    maintEndOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
+    maintDealOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null;
+    maintFee?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null;
+    note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null;
+    countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout;
+    createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string;
+    updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string;
+};
+export type PrinterAssetCreateWithoutRepairsInput = {
+    department?: string | null;
+    no?: string | null;
+    ipAddress?: string | null;
+    maker?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
+    contractNo?: string | null;
+    maintContract?: string | null;
+    maintStartOn?: Date | string | null;
+    maintEndOn?: Date | string | null;
+    maintDealOn?: Date | string | null;
+    maintFee?: number | null;
+    note?: string | null;
+    countLayout?: $Enums.CountLayout;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput;
     toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput;
 };
 export type PrinterAssetUncheckedCreateWithoutRepairsInput = {
@@ -691,7 +896,9 @@ export type PrinterAssetUncheckedCreateWithoutRepairsInput = {
     model?: string | null;
     serialNumber?: string | null;
     purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
     contractNo?: string | null;
+    maintVendorId?: number | null;
     maintContract?: string | null;
     maintStartOn?: Date | string | null;
     maintEndOn?: Date | string | null;
@@ -724,6 +931,7 @@ export type PrinterAssetUpdateWithoutRepairsInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -734,6 +942,7 @@ export type PrinterAssetUpdateWithoutRepairsInput = {
     countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput;
     toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput;
 };
 export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
@@ -745,7 +954,9 @@ export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
     model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintVendorId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
     maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
@@ -756,6 +967,93 @@ export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     toners?: Prisma.TonerPrinterUncheckedUpdateManyWithoutAssetNestedInput;
+};
+export type PrinterAssetCreateManyMaintVendorInput = {
+    id?: number;
+    department?: string | null;
+    no?: string | null;
+    ipAddress?: string | null;
+    maker?: string | null;
+    model?: string | null;
+    serialNumber?: string | null;
+    purchasedOn?: Date | string | null;
+    purchasePrice?: number | null;
+    contractNo?: string | null;
+    maintContract?: string | null;
+    maintStartOn?: Date | string | null;
+    maintEndOn?: Date | string | null;
+    maintDealOn?: Date | string | null;
+    maintFee?: number | null;
+    note?: string | null;
+    countLayout?: $Enums.CountLayout;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+};
+export type PrinterAssetUpdateWithoutMaintVendorInput = {
+    department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput;
+    toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput;
+};
+export type PrinterAssetUncheckedUpdateWithoutMaintVendorInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput;
+    toners?: Prisma.TonerPrinterUncheckedUpdateManyWithoutAssetNestedInput;
+};
+export type PrinterAssetUncheckedUpdateManyWithoutMaintVendorInput = {
+    id?: Prisma.IntFieldUpdateOperationsInput | number;
+    department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null;
+    note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 export type PrinterAssetCountOutputType = {
     repairs: number;
@@ -783,7 +1081,9 @@ export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.Internal
     model?: boolean;
     serialNumber?: boolean;
     purchasedOn?: boolean;
+    purchasePrice?: boolean;
     contractNo?: boolean;
+    maintVendorId?: boolean;
     maintContract?: boolean;
     maintStartOn?: boolean;
     maintEndOn?: boolean;
@@ -793,6 +1093,7 @@ export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.Internal
     countLayout?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
+    maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>;
     repairs?: boolean | Prisma.PrinterAsset$repairsArgs<ExtArgs>;
     toners?: boolean | Prisma.PrinterAsset$tonersArgs<ExtArgs>;
     _count?: boolean | Prisma.PrinterAssetCountOutputTypeDefaultArgs<ExtArgs>;
@@ -806,7 +1107,9 @@ export type PrinterAssetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
     model?: boolean;
     serialNumber?: boolean;
     purchasedOn?: boolean;
+    purchasePrice?: boolean;
     contractNo?: boolean;
+    maintVendorId?: boolean;
     maintContract?: boolean;
     maintStartOn?: boolean;
     maintEndOn?: boolean;
@@ -816,6 +1119,7 @@ export type PrinterAssetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
     countLayout?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
+    maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>;
 }, ExtArgs["result"]["printerAsset"]>;
 export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
@@ -826,7 +1130,9 @@ export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
     model?: boolean;
     serialNumber?: boolean;
     purchasedOn?: boolean;
+    purchasePrice?: boolean;
     contractNo?: boolean;
+    maintVendorId?: boolean;
     maintContract?: boolean;
     maintStartOn?: boolean;
     maintEndOn?: boolean;
@@ -836,6 +1142,7 @@ export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
     countLayout?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
+    maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>;
 }, ExtArgs["result"]["printerAsset"]>;
 export type PrinterAssetSelectScalar = {
     id?: boolean;
@@ -846,7 +1153,9 @@ export type PrinterAssetSelectScalar = {
     model?: boolean;
     serialNumber?: boolean;
     purchasedOn?: boolean;
+    purchasePrice?: boolean;
     contractNo?: boolean;
+    maintVendorId?: boolean;
     maintContract?: boolean;
     maintStartOn?: boolean;
     maintEndOn?: boolean;
@@ -857,17 +1166,23 @@ export type PrinterAssetSelectScalar = {
     createdAt?: boolean;
     updatedAt?: boolean;
 };
-export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "contractNo" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>;
+export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>;
 export type PrinterAssetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>;
     repairs?: boolean | Prisma.PrinterAsset$repairsArgs<ExtArgs>;
     toners?: boolean | Prisma.PrinterAsset$tonersArgs<ExtArgs>;
     _count?: boolean | Prisma.PrinterAssetCountOutputTypeDefaultArgs<ExtArgs>;
 };
-export type PrinterAssetIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
-export type PrinterAssetIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
+export type PrinterAssetIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>;
+};
+export type PrinterAssetIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>;
+};
 export type $PrinterAssetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "PrinterAsset";
     objects: {
+        maintVendor: Prisma.$MaintVendorPayload<ExtArgs> | null;
         repairs: Prisma.$RepairRecordPayload<ExtArgs>[];
         toners: Prisma.$TonerPrinterPayload<ExtArgs>[];
     };
@@ -880,7 +1195,9 @@ export type $PrinterAssetPayload<ExtArgs extends runtime.Types.Extensions.Intern
         model: string | null;
         serialNumber: string | null;
         purchasedOn: Date | null;
+        purchasePrice: number | null;
         contractNo: string | null;
+        maintVendorId: number | null;
         maintContract: string | null;
         maintStartOn: Date | null;
         maintEndOn: Date | null;
@@ -942,6 +1259,7 @@ export interface PrinterAssetDelegate<ExtArgs extends runtime.Types.Extensions.I
 }
 export interface Prisma__PrinterAssetClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
+    maintVendor<T extends Prisma.PrinterAsset$maintVendorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterAsset$maintVendorArgs<ExtArgs>>): Prisma.Prisma__MaintVendorClient<runtime.Types.Result.GetResult<Prisma.$MaintVendorPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
     repairs<T extends Prisma.PrinterAsset$repairsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterAsset$repairsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RepairRecordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     toners<T extends Prisma.PrinterAsset$tonersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterAsset$tonersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TonerPrinterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): runtime.Types.Utils.JsPromise<TResult1 | TResult2>;
@@ -957,7 +1275,9 @@ export interface PrinterAssetFieldRefs {
     readonly model: Prisma.FieldRef<"PrinterAsset", 'String'>;
     readonly serialNumber: Prisma.FieldRef<"PrinterAsset", 'String'>;
     readonly purchasedOn: Prisma.FieldRef<"PrinterAsset", 'DateTime'>;
+    readonly purchasePrice: Prisma.FieldRef<"PrinterAsset", 'Int'>;
     readonly contractNo: Prisma.FieldRef<"PrinterAsset", 'String'>;
+    readonly maintVendorId: Prisma.FieldRef<"PrinterAsset", 'Int'>;
     readonly maintContract: Prisma.FieldRef<"PrinterAsset", 'String'>;
     readonly maintStartOn: Prisma.FieldRef<"PrinterAsset", 'DateTime'>;
     readonly maintEndOn: Prisma.FieldRef<"PrinterAsset", 'DateTime'>;
@@ -1028,6 +1348,7 @@ export type PrinterAssetCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
     omit?: Prisma.PrinterAssetOmit<ExtArgs> | null;
     data: Prisma.PrinterAssetCreateManyInput | Prisma.PrinterAssetCreateManyInput[];
     skipDuplicates?: boolean;
+    include?: Prisma.PrinterAssetIncludeCreateManyAndReturn<ExtArgs> | null;
 };
 export type PrinterAssetUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     select?: Prisma.PrinterAssetSelect<ExtArgs> | null;
@@ -1047,6 +1368,7 @@ export type PrinterAssetUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
     data: Prisma.XOR<Prisma.PrinterAssetUpdateManyMutationInput, Prisma.PrinterAssetUncheckedUpdateManyInput>;
     where?: Prisma.PrinterAssetWhereInput;
     limit?: number;
+    include?: Prisma.PrinterAssetIncludeUpdateManyAndReturn<ExtArgs> | null;
 };
 export type PrinterAssetUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     select?: Prisma.PrinterAssetSelect<ExtArgs> | null;
@@ -1065,6 +1387,12 @@ export type PrinterAssetDeleteArgs<ExtArgs extends runtime.Types.Extensions.Inte
 export type PrinterAssetDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     where?: Prisma.PrinterAssetWhereInput;
     limit?: number;
+};
+export type PrinterAsset$maintVendorArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    select?: Prisma.MaintVendorSelect<ExtArgs> | null;
+    omit?: Prisma.MaintVendorOmit<ExtArgs> | null;
+    include?: Prisma.MaintVendorInclude<ExtArgs> | null;
+    where?: Prisma.MaintVendorWhereInput;
 };
 export type PrinterAsset$repairsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     select?: Prisma.RepairRecordSelect<ExtArgs> | null;

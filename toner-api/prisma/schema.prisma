@@ -27,6 +27,17 @@ enum SnmpVersion {
   @@map("snmp_version")
 }
 
+/// 実機との話し方。**SNMP を持たない機種がある**ので分けて持つ
+enum PrinterProtocol {
+  /// 標準の Printer-MIB を SNMP で読む。既定
+  SNMP
+  /// SATO のステータス返送（ENQ をソケットへ 1 バイト）。
+  /// レスプリは SNMP を持たず、これでしか状態を読めない
+  SATO_ENQ
+
+  @@map("printer_protocol")
+}
+
 /// 修理の分類。
 /// 前半 4 つは現場の分類そのまま。後半はこの台数で実際に起きている故障を足した
 enum RepairCategory {
@@ -70,6 +81,10 @@ enum RepairHandler {
 enum RepairStatus {
   /// 調査中
   INVESTIGATING
+  /// 問い合わせ中（業者へ連絡した）
+  INQUIRING
+  /// 連絡待ち（業者からの返事待ち）
+  AWAITING_REPLY
   /// 見積中
   QUOTING
   /// 決算中
@@ -119,14 +134,29 @@ model Toner {
   /// リサイクル品・互換品か。純正なら false
   recycled Boolean @default(false)
 
+  /// 在庫がこの本数**以下**になったら一覧で警告する。
+  /// 品番ごとに減り方が違うので、共通の閾値ではなくマスタに持つ。
+  /// 未設定なら警告しない（0 を入れると「在庫 0 で警告」の意味になる）
+  alertThreshold Int? @map("alert_threshold")
+
+  /// 1 本で刷れる枚数（カタログの印刷可能枚数）。
+  ///
+  /// **1 枚あたりのトナー代を出すために持つ。** `価格 ÷ この枚数` が単価になる。
+  /// メーカー公表値は A4・画像面積率 5% が基準で、実際の使い方では前後する。
+  /// 実消費の記録が貯まるまでの見積りに使う値。
+  /// ドラム・メンテナンスボックスなど寿命が枚数で示される消耗品にも入れる。
+  /// 公表値が見つからない品番は未設定（null）にして、単価を出さない
+  yieldPages Int? @map("yield_pages")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  stock    TonerStock?
-  entries  TonerEntry[]
-  orders   TonerOrder[]
-  printers TonerPrinter[]
-  prices   TonerPrice[]
+  stock        TonerStock?
+  entries      TonerEntry[]
+  orders       TonerOrder[]
+  printers     TonerPrinter[]
+  prices       TonerPrice[]
+  invoiceLines TonerInvoiceLine[]
 
   @@map("toners")
 }
@@ -211,12 +241,19 @@ model TonerEntry {
   /// 操作直後の在庫数
   balance Int @default(0)
 
+  /// 搬入日。**搬入のときだけ入る**（既定は受け付けた日）。
+  /// 注文の次回搬入日（TonerOrder.deliveryOn）と突き合わせるための日付で、
+  /// 記録した日時（createdAt）とは別に持つ。後から入力し直すことがあるため。
+  /// @db.Date なので UTC 成分で読み書きする
+  receivedOn DateTime? @map("received_on") @db.Date
+
   createdAt DateTime @default(now()) @map("created_at")
 
   toner Toner @relation(fields: [tonerId], references: [id])
 
   @@index([createdAt])
   @@index([tonerId, createdAt])
+  @@index([receivedOn])
   @@map("toner_entries")
 }
 
@@ -225,11 +262,21 @@ model TonerOrder {
   id      Int    @id @default(autoincrement())
   tonerId String @map("toner_id")
 
+  /// 注文した人。職員番号（数字 6〜10 桁）か、未入力のときは「ゲスト」。
+  /// この列を足す前の注文は持っていないので null を許す
+  userId String? @map("user_id")
+
   /// 注文した本数
   quantity Int
 
   /// 注文日時。入力値を保持する（登録日時とは別）
   orderedAt DateTime @map("ordered_at")
+
+  /// 次回搬入日（納品予定日）。
+  /// 受付の搬入日（TonerEntry.receivedOn）と品番・日付で突き合わせ、
+  /// 注文した本数どおり入ったかを見るための鍵。
+  /// @db.Date なので UTC 成分で読み書きする
+  deliveryOn DateTime? @map("delivery_on") @db.Date
 
   status OrderStatus @default(PENDING)
 
@@ -240,7 +287,70 @@ model TonerOrder {
 
   @@index([status, orderedAt])
   @@index([tonerId, orderedAt])
+  @@index([deliveryOn])
   @@map("toner_orders")
+}
+
+/// 業者から月に 1 通届く請求書。書かれている内容をそのまま持つ。
+///
+/// **これは「請求された内容」で、搬入の記録とは別物。**
+/// 突き合わせて初めて食い違いが分かるので、片方をもう片方から作ることはしない。
+/// 金額はすべて税別（マスタの TonerPrice と揃えてある）
+model TonerInvoice {
+  id Int @id @default(autoincrement())
+
+  /// 請求書の日付
+  issuedOn DateTime @map("issued_on") @db.Date
+
+  /// 突き合わせる搬入の期間。**必須**。
+  /// 請求書の明細には搬入日が無いので、この期間の搬入をまとめて相手にする。
+  /// 画面の既定は「請求日の前月 1 日〜末日」で、締めが違えば直して使う
+  periodFrom DateTime @map("period_from") @db.Date
+  periodTo   DateTime @map("period_to") @db.Date
+
+  /// 請求書番号。業者側の採番なので一意とは限らない
+  invoiceNo String? @map("invoice_no")
+
+  /// 覚書。訂正請求のときに経緯を残す用
+  note String?
+
+  /// 突き合わせを確かめた記録。誰がいつ見たか
+  checkedAt DateTime? @map("checked_at")
+  checkedBy String?   @map("checked_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lines TonerInvoiceLine[]
+
+  @@index([periodTo])
+  @@map("toner_invoices")
+}
+
+/// 請求書の明細 1 行。
+///
+/// 品番は画面で検索して選ぶので、マスタに無い消耗品は先にトナー登録が要る。
+/// 金額は「単価 × 個数」で出すため持たない（請求書の数字を写すのは単価まで）
+model TonerInvoiceLine {
+  id        Int    @id @default(autoincrement())
+  invoiceId Int    @map("invoice_id")
+  tonerId   String @map("toner_id")
+
+  /// 請求された本数
+  quantity Int
+
+  /// 請求書に書かれた税別単価（円）。
+  /// **画面で品番を選んだ時点でマスタの価格が入り、請求書の数字が違えば直せる。**
+  /// マスタに価格が無いまま選んだときは未入力になる
+  unitPrice Int? @map("unit_price")
+
+  invoice TonerInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  toner   Toner        @relation(fields: [tonerId], references: [id])
+
+  /// 同じ請求書に同じ品番を 2 行入れさせない。個数はまとめて 1 行で持つ
+  @@unique([invoiceId, tonerId])
+  @@index([invoiceId])
+  @@map("toner_invoice_lines")
 }
 
 /// プリンター。IP アドレスで一意に管理する
@@ -256,6 +366,13 @@ model Printer {
   /// 応答があったバージョン。次回のポーリングで最初に試す
   version SnmpVersion @default(V1)
 
+  /// この機器の読み方。
+  ///
+  /// **SATO_ENQ は毎日の定期実行から外れる。** ステータス返送は印刷用のポートへ
+  /// こちらから送る操作になるので、画面から人が押したときだけ読む。
+  /// そのため状態・取得時刻は最後に手で読んだ時点のものになる
+  protocol PrinterProtocol @default(SNMP)
+
   /// sysName（1.3.6.1.2.1.1.5.0）
   hostName String? @map("host_name")
 
@@ -268,8 +385,16 @@ model Printer {
   /// 設置場所。SNMP の sysLocation ではなく手入力を優先する
   location String?
 
-  /// 累計印刷枚数（prtMarkerLifeCount）
+  /// 累計カウンタ（prtMarkerLifeCount）。単位は counterUnit を見ること
   pageCount Int? @map("page_count")
+
+  /// pageCount の単位（prtMarkerCounterUnit）。
+  ///
+  /// **枚数とは限らない。** 一般のプリンターは 7（インプレッション＝枚）だが、
+  /// SATO のラベルプリンター（HC4-LX）は 17（メートル）で印字した長さを返す。
+  /// 単位を見ずに足すと長さと枚数が混ざるので、集計の前に必ず見る。
+  /// 返さない機種は null で、その場合は枚として扱う
+  counterUnit Int? @map("counter_unit")
 
   /// 直近のポーリングで応答があったか
   reachable Boolean @default(false)
@@ -288,7 +413,8 @@ model Printer {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   /// 操作パネルに出ている文字（prtConsoleDisplayBufferText）。
-  /// 警告表を持たない機種でも、交換時期はここに出ることがある
+  /// 警告表を持たない機種でも、交換時期はここに出ることがある。
+  /// protocol が SATO_ENQ のときは、ENQ で読んだ状態の呼び名がここに入る
   consoleText String? @map("console_text")
 
   readings SupplyReading[]
@@ -358,8 +484,16 @@ model PrinterAsset {
   /// 購入日。@db.Date なので UTC 成分で読み書きする
   purchasedOn DateTime? @map("purchased_on") @db.Date
 
+  /// 購入金額（円）。円未満を扱わないので整数。保守金額（maintFee）と同じ持ち方
+  purchasePrice Int? @map("purchase_price")
+
   /// 契約番号
   contractNo String? @map("contract_no")
+
+  /// 保守を頼んでいる業者。連絡先は業者マスタ側に持つ。
+  /// 同じ業者が何台も見ているので、番号を台帳に写さず参照する
+  maintVendorId Int?         @map("maint_vendor_id")
+  maintVendor   MaintVendor? @relation(fields: [maintVendorId], references: [id], onDelete: SetNull)
 
   /// 保守契約の有無。台帳の「有」「×」をそのまま持つ
   maintContract String? @map("maint_contract")
@@ -395,7 +529,39 @@ model PrinterAsset {
 
   @@index([department])
   @@index([ipAddress])
+  @@index([maintVendorId])
   @@map("printer_assets")
+}
+
+/// 保守を頼んでいる業者。
+///
+/// 台帳に会社名と電話番号を直接持たせると、同じ業者を見ている機器のぶんだけ
+/// 同じ番号を writing することになり、番号が変わったときに直し漏れる。
+/// マスタにして台帳から参照する。
+model MaintVendor {
+  id Int @id @default(autoincrement())
+
+  /// 会社名。台帳から選ぶときの見出しになるので重複させない
+  name String @unique
+
+  /// 連絡先。「0942-00-0000（代表）」のように文字も入るので文字列。
+  /// 代表・担当者・夜間などで複数あるため配列で持つ
+  phones String[] @default([])
+
+  /// この業者が**既定**になるメーカー名（台帳の maker と突き合わせる）。
+  /// 台帳に業者の指定が無い機器は、メーカーが一致するこの業者を使う。
+  /// 1 つのメーカーを 2 社が名乗ると既定が決まらないので、重複はサービス側で弾く
+  makers String[] @default([])
+
+  /// 担当者名や訪問の条件など、番号だけでは足りない情報の受け皿
+  note String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  assets PrinterAsset[]
+
+  @@map("maint_vendors")
 }
 
 /// 日次の印刷枚数。累計カウンタのスナップショットと、そこから出した 1 日分
@@ -415,6 +581,16 @@ model PageCountDaily {
   /// 同時点の累計カラー枚数。内訳を返さない機種は null
   totalColor Int? @map("total_color")
 
+  /// 機能ごとの累計。**カラー・モノクロの内訳は機器が持っていない**ので合計だけ。
+  /// RICOH の拡張 MIB から読む（プリンター=1806 / コピー=701）。
+  /// 出さない機種・メーカーは null。0 と区別する
+  totalPrint Int? @map("total_print")
+  totalCopy  Int? @map("total_copy")
+
+  /// スキャナの累計。**手元で読めた RICOH 機はいずれも 0 を返し、
+  /// どの ID がスキャナか特定できていない。** 今は常に null が入る
+  totalScan Int? @map("total_scan")
+
   /// date 当日の印刷枚数。前回値がない初回と、
   /// カウンタが巻き戻った（機器交換・リセット）ときは null
   pages Int?
@@ -424,6 +600,11 @@ model PageCountDaily {
 
   /// 同期間のカラー枚数。内訳を返さない機種は null
   colorPages Int? @map("color_pages")
+
+  /// 同期間の機能ごとの枚数。累計の差分で出す
+  printPages Int? @map("print_pages")
+  copyPages  Int? @map("copy_pages")
+  scanPages  Int? @map("scan_pages")
 
   /// pages が何日分か。1 なら純粋に date 当日の分。
   /// 取得が飛ぶと 2 以上になり、その日数分をまとめた値になる
@@ -505,8 +686,13 @@ model RepairRecord {
   /// 修理内容。何が起きて何をしたか。任意
   detail String?
 
-  /// 復旧日。必須
-  restoredOn DateTime @map("restored_on") @db.Date
+  /// かかった費用（円・税別）。円未満を扱わないので整数。
+  /// 保守で無償だったものは 0、金額が分からないうちは未入力にする。
+  /// 保守金額（printer_assets.maint_fee）と並べて契約の損得を見るために持つ
+  cost Int? @map("cost")
+
+  /// 復旧日。まだ直っていない、日付が分からないこともあるので任意
+  restoredOn DateTime? @map("restored_on") @db.Date
 
   status RepairStatus @default(INVESTIGATING)
 

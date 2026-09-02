@@ -48,6 +48,12 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
     get tonerOrder(): Prisma.TonerOrderDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
+    get tonerInvoice(): Prisma.TonerInvoiceDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get tonerInvoiceLine(): Prisma.TonerInvoiceLineDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
     get printer(): Prisma.PrinterDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
@@ -55,6 +61,9 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
         omit: OmitOpts;
     }>;
     get printerAsset(): Prisma.PrinterAssetDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get maintVendor(): Prisma.MaintVendorDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
     get pageCountDaily(): Prisma.PageCountDailyDelegate<ExtArgs, {

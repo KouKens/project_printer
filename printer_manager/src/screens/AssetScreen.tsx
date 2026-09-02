@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MANUAL_MAINT, maintStatus } from '../lib/maint';
 
+import { num, orNull } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
+import { refreshAsset } from '../lib/refresh';
 import './AssetScreen.css';
+
+/** 保守企業の選択肢。登録は「保守企業」の画面で行う */
+type Vendor = {
+  id: number;
+  name: string;
+  phones: string[];
+  /** この業者が既定になるメーカー。台帳で指定しない機器がここに落ちる */
+  makers: string[];
+};
 
 /** 枚数の集計表でこの機器が占める行 */
 type CountLayout = 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
@@ -18,7 +29,11 @@ type Asset = {
   model: string;
   serialNumber: string;
   purchasedOn: string;
+  /** 購入金額（円）。入力欄の値なので文字列で持つ */
+  purchasePrice: string;
   contractNo: string;
+  /** 保守を頼んでいる業者。保守企業の画面で登録したものから選ぶ */
+  maintVendorId: string;
   /** 保守の有無の手入力。保守終了日が無いときだけ使う */
   maintContract: string;
   maintStartOn: string;
@@ -43,7 +58,21 @@ type SavedAsset = {
   model: string | null;
   serialNumber: string | null;
   purchasedOn: string | null;
+  purchasePrice: number | null;
   contractNo: string | null;
+  maintVendorId: number | null;
+  /** 会社名と連絡先は保守企業マスタ側。表示用に添えて返ってくる */
+  maintVendor: { id: number; name: string; phones: string[] } | null;
+  /**
+   * 実際に頼む先。台帳で指定していればそれ（source: 'asset'）、
+   * していなければメーカーの既定（source: 'maker'）。どちらも無ければ null
+   */
+  effectiveVendor: {
+    id: number;
+    name: string;
+    phones: string[];
+    source: 'asset' | 'maker';
+  } | null;
   maintContract: string | null;
   maintStartOn: string | null;
   maintEndOn: string | null;
@@ -62,7 +91,9 @@ const EMPTY: Asset = {
   model: '',
   serialNumber: '',
   purchasedOn: '',
+  purchasePrice: '',
   contractNo: '',
+  maintVendorId: '',
   maintContract: '',
   maintStartOn: '',
   maintEndOn: '',
@@ -95,8 +126,12 @@ type Probe = {
   supplies: Supply[];
 };
 
-/** 一覧の列。ソートの鍵も兼ねる。maintStatus だけは保存値でなく導出値 */
-type SortKey = Exclude<keyof SavedAsset, 'id'> | 'maintStatus';
+/** 一覧の「更新」で実機を取り直したときの結果 */
+/**
+ * 一覧の列。ソートの鍵も兼ねる。maintStatus だけは保存値でなく導出値。
+ * effectiveVendor は保守企業の列が中で見るので、列としては持たない
+ */
+type SortKey = Exclude<keyof SavedAsset, 'id' | 'effectiveVendor'> | 'maintStatus';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
   { key: 'department', label: '部署', kind: 'text' },
@@ -106,7 +141,9 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
   { key: 'model', label: '型番', kind: 'text' },
   { key: 'serialNumber', label: 'シリアル', kind: 'text' },
   { key: 'purchasedOn', label: '購入日', kind: 'date' },
+  { key: 'purchasePrice', label: '購入金額', kind: 'number', numeric: true },
   { key: 'contractNo', label: '契約 No.', kind: 'text' },
+  { key: 'maintVendor', label: '保守企業', kind: 'text' },
   { key: 'maintStatus', label: '保守', kind: 'text' },
   { key: 'maintStartOn', label: '保守開始', kind: 'date' },
   { key: 'maintEndOn', label: '保守終了', kind: 'date' },
@@ -115,12 +152,6 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
   { key: 'note', label: '備考', kind: 'text' },
   { key: 'updatedAt', label: '更新日', kind: 'date' },
 ];
-
-/** 空欄は null で送る。API 側で「未入力」として扱われ、更新なら値が消える */
-function orNull(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
 
 function toPayload(asset: Asset) {
   return {
@@ -131,7 +162,11 @@ function toPayload(asset: Asset) {
     model: orNull(asset.model),
     serialNumber: orNull(asset.serialNumber),
     purchasedOn: orNull(asset.purchasedOn),
+    purchasePrice:
+      asset.purchasePrice.trim() === '' ? null : Number(asset.purchasePrice),
     contractNo: orNull(asset.contractNo),
+    maintVendorId:
+      asset.maintVendorId === '' ? null : Number(asset.maintVendorId),
     maintContract: orNull(asset.maintContract),
     maintStartOn: orNull(asset.maintStartOn),
     maintEndOn: orNull(asset.maintEndOn),
@@ -151,7 +186,10 @@ function toForm(saved: SavedAsset): Asset {
     model: saved.model ?? '',
     serialNumber: saved.serialNumber ?? '',
     purchasedOn: saved.purchasedOn ?? '',
+    purchasePrice: saved.purchasePrice === null ? '' : String(saved.purchasePrice),
     contractNo: saved.contractNo ?? '',
+    maintVendorId:
+      saved.maintVendorId === null ? '' : String(saved.maintVendorId),
     maintContract: saved.maintContract ?? '',
     maintStartOn: saved.maintStartOn ?? '',
     maintEndOn: saved.maintEndOn ?? '',
@@ -170,12 +208,11 @@ function compare(input: string, actual: string | null): 'same' | 'diff' | null {
   return a === b ? 'same' : 'diff';
 }
 
-const yen = new Intl.NumberFormat('ja-JP');
-
 export default function AssetScreen() {
   const [asset, setAsset] = useState<Asset>(EMPTY);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saved, setSaved] = useState<SavedAsset[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: 'department',
     dir: 'asc',
@@ -188,7 +225,13 @@ export default function AssetScreen() {
 
   const load = useCallback(async () => {
     try {
-      setSaved(await request<SavedAsset[]>('/printer-assets'));
+      // 保守企業は選択欄に出す。登録は「保守企業」の画面で行う
+      const [assets, vendorRows] = await Promise.all([
+        request<SavedAsset[]>('/printer-assets'),
+        request<Vendor[]>('/maint-vendors'),
+      ]);
+      setSaved(assets);
+      setVendors(vendorRows);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -205,7 +248,9 @@ export default function AssetScreen() {
       (row) =>
         sort.key === 'maintStatus'
           ? maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract)
-          : row[sort.key],
+          : sort.key === 'maintVendor'
+            ? (row.effectiveVendor?.name ?? null)
+            : row[sort.key],
       column?.kind ?? 'text',
       sort.dir,
       (row) => row.id,
@@ -279,19 +324,49 @@ export default function AssetScreen() {
     }
   };
 
-  /** 中身は変えず、更新日だけ現在時刻に進める */
-  const touch = async (row: SavedAsset) => {
+  /**
+   * その台帳の IP に問い合わせて実機の情報を取り直す。
+   * 併せて台帳の更新日も進むので、「実機を見て確かめた」記録にもなる
+   */
+  const refresh = async (row: SavedAsset) => {
+    const label = `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`;
+
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const result = await request<SavedAsset>(`/printer-assets/${row.id}/touch`, {
-        method: 'POST',
-      });
-      setNotice(
-        `${result.department ?? '部署未設定'} No.${result.no ?? '—'} の更新日を ` +
-          `${new Date(result.updatedAt).toLocaleString('ja-JP')} にしました`,
-      );
+      const result = await refreshAsset(row.id);
+
+      if (result.status === 'ok') {
+        const printer = result.printer;
+        const supplies = printer?.readings?.length ?? 0;
+        setNotice(
+          `${label}（${result.ipAddress}）を取得しました` +
+            `${printer?.model ? ` / ${printer.model}` : ''}` +
+            `${printer?.serialNumber ? ` / ${printer.serialNumber}` : ''}` +
+            `${supplies > 0 ? ` / 消耗品 ${supplies} 件` : ''}` +
+            `${result.serial?.status === 'filled' ? ' / シリアルを台帳に登録しました' : ''}`,
+        );
+
+        // 書けなかったときは取得自体は成功しているので、警告として別に出す
+        if (result.serial?.status === 'taken') {
+          const owner = `${result.serial.department ?? '部署未設定'} No.${
+            result.serial.no ?? '—'
+          }`;
+          setError(
+            `シリアル ${result.serial.serialNumber} は ${owner} が既に持っているため、` +
+              `${label} には登録しませんでした。どちらの台帳の機器か確かめてください`,
+          );
+        }
+      } else if (result.status === 'no-ip') {
+        setError(`${label} は IP アドレスが未入力なので実機に問い合わせできません`);
+      } else {
+        setError(
+          `${label}（${result.ipAddress}）から応答がありません` +
+            `${result.message ? `（${result.message}）` : ''}。更新日だけ進めました`,
+        );
+      }
+
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -338,6 +413,15 @@ export default function AssetScreen() {
     setNotice(null);
   };
 
+  /** 入力中のメーカーに対する既定の業者。選択欄の見出しに出す */
+  const defaultVendor =
+    vendors.find((vendor) =>
+      vendor.makers.some(
+        (maker) =>
+          maker.trim().toLowerCase() === asset.maker.trim().toLowerCase(),
+      ),
+    ) ?? null;
+
   const serialMatch = probe ? compare(asset.serialNumber, probe.serialNumber) : null;
   const makerMatch =
     probe && asset.maker.trim() && probe.model
@@ -349,8 +433,31 @@ export default function AssetScreen() {
   const cellOf = (row: SavedAsset, key: SortKey) => {
     if (key === 'maintStatus')
       return maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract) ?? '—';
+    if (key === 'maintVendor') {
+      // 実際に頼む先を出す。メーカーの既定を上書きしている行には印を付ける
+      const vendor = row.effectiveVendor;
+      if (!vendor) return '—';
+      const why =
+        vendor.source === 'asset'
+          ? 'この機器だけ指定しています（メーカーの既定より優先）'
+          : 'メーカーの既定です';
+      return (
+        <span title={[why, ...vendor.phones].join('\n')}>
+          {vendor.source === 'asset' && <span className="as-pin">指定</span>}
+          {vendor.name}
+          {vendor.phones.length > 0 && (
+            <span className="as-more"> {vendor.phones[0]}</span>
+          )}
+        </span>
+      );
+    }
     if (key === 'maintFee') {
-      return row.maintFee === null ? '—' : `${yen.format(row.maintFee)} 円`;
+      return row.maintFee === null ? '—' : `${num.format(row.maintFee)} 円`;
+    }
+    if (key === 'purchasePrice') {
+      return row.purchasePrice === null
+        ? '—'
+        : `${num.format(row.purchasePrice)} 円`;
     }
     if (key === 'updatedAt') return new Date(row.updatedAt).toLocaleString('ja-JP');
     return row[key] ?? '—';
@@ -427,8 +534,44 @@ export default function AssetScreen() {
         </label>
 
         <label>
+          <span>購入金額（円）</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
+            value={asset.purchasePrice}
+            onChange={(e) => set('purchasePrice')(e.target.value)}
+            placeholder="0"
+          />
+        </label>
+
+        <label>
           <span>契約 No.</span>
           <input value={asset.contractNo} onChange={(e) => set('contractNo')(e.target.value)} />
+        </label>
+
+        <label>
+          <span>保守企業</span>
+          <select
+            value={asset.maintVendorId}
+            onChange={(e) => set('maintVendorId')(e.target.value)}
+          >
+            {/*
+              空欄は「メーカーの既定に従う」の意味。
+              業者を選ぶと、その機器だけ既定を上書きする
+            */}
+            <option value="">
+              {defaultVendor
+                ? `メーカーの既定に従う（${asset.maker.trim()} → ${defaultVendor.name}）`
+                : 'メーカーの既定に従う（既定なし）'}
+            </option>
+            {vendors.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>
+                {vendor.name}
+              </option>
+            ))}
+          </select>
         </label>
 
         {/*
@@ -696,7 +839,16 @@ export default function AssetScreen() {
                       </td>
                     ))}
                     <td className="as-ops">
-                      <button onClick={() => void touch(row)} disabled={busy} type="button">
+                      <button
+                        onClick={() => void refresh(row)}
+                        disabled={busy || !row.ipAddress}
+                        type="button"
+                        title={
+                          row.ipAddress
+                            ? `${row.ipAddress} に問い合わせて実機の情報を取り直します`
+                            : 'IP アドレスが未入力なので問い合わせできません'
+                        }
+                      >
                         更新
                       </button>
                       <button onClick={() => edit(row)} disabled={busy} type="button">

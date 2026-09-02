@@ -8,4 +8,5 @@ export declare class BulkTonerEntryDto {
     action: TonerActionInput;
     userId: string;
     items: BulkTonerEntryItemDto[];
+    receivedOn?: string;
 }

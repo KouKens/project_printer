@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OrderStatus = exports.CountLayout = exports.RepairStatus = exports.RepairHandler = exports.RepairCategory = exports.SnmpVersion = exports.TonerAction = void 0;
+exports.OrderStatus = exports.CountLayout = exports.RepairStatus = exports.RepairHandler = exports.RepairCategory = exports.PrinterProtocol = exports.SnmpVersion = exports.TonerAction = void 0;
 exports.TonerAction = {
     REGISTER: 'REGISTER',
     RECEIVE: 'RECEIVE',
@@ -11,6 +11,10 @@ exports.TonerAction = {
 exports.SnmpVersion = {
     V1: 'V1',
     V2C: 'V2C'
+};
+exports.PrinterProtocol = {
+    SNMP: 'SNMP',
+    SATO_ENQ: 'SATO_ENQ'
 };
 exports.RepairCategory = {
     PART_REPLACEMENT: 'PART_REPLACEMENT',
@@ -31,6 +35,8 @@ exports.RepairHandler = {
 };
 exports.RepairStatus = {
     INVESTIGATING: 'INVESTIGATING',
+    INQUIRING: 'INQUIRING',
+    AWAITING_REPLY: 'AWAITING_REPLY',
     QUOTING: 'QUOTING',
     SETTLING: 'SETTLING',
     SHIPPED: 'SHIPPED',

@@ -1,0 +1,111 @@
+/*
+ * 入出庫。表の骨格は DataTable.css を使い、
+ * この画面だけの飾り（状態の札・区分・明細）をここに置く
+ */
+
+.dl .dt-tools .dl-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+/* --- 状態の札 --- */
+.dl-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.dt-legend .dl-badge { margin-right: 4px; }
+
+.dl-ok { color: #1d6b48; background: #eef8f2; }
+/* 数が合わない 2 つは、一番強い色にする */
+.dl-short { color: #b23a3a; background: #fdf1f1; font-weight: 600; }
+.dl-over { color: #8a4b0a; background: #fdf3e6; font-weight: 600; }
+.dl-wait { color: #1f4f8b; background: #e9f0f9; }
+.dl-noorder { color: #6b4fa8; background: #f1edfa; }
+.dl-undated { color: #64748b; background: #f1f4f7; }
+
+/* 差の本数。0 以外だけ目立たせる */
+.dl-diff { color: #b23a3a; font-weight: 600; }
+
+/* --- 行の色 --- */
+.dl-row-short td { background: #fdf1f1; }
+.dl-row-short td:first-child { box-shadow: inset 3px 0 0 #b23a3a; }
+.dt-table tbody tr.dl-row-short:hover td { background: #fbe7e7; }
+
+.dl-row-over td { background: #fdf7ea; }
+.dl-row-over td:first-child { box-shadow: inset 3px 0 0 #d99a2b; }
+.dt-table tbody tr.dl-row-over:hover td { background: #fbf1dc; }
+
+.dl-row-no-order td { background: #f7f4fd; }
+.dl-row-no-order td:first-child { box-shadow: inset 3px 0 0 #6b4fa8; }
+
+.dl-row-undated td { color: #64748b; }
+.dl-row-open td { box-shadow: inset 0 -1px 0 var(--accent); }
+
+/* --- 開閉 --- */
+.dl-toggle-head { width: 34px; }
+.dl-toggle { width: 34px; padding-right: 0 !important; }
+.dl-toggle button {
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dl-toggle button:hover { color: var(--accent); border-color: var(--line); }
+
+/* --- 明細（注文 / 搬入を左右に並べる） --- */
+.dl-detail td { padding: 0 !important; background: #f4f7f9; }
+.dl-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  padding: 10px 12px 12px 34px;
+}
+.dl-detail-grid h3 {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.dl-detail-grid ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+}
+.dl-detail-grid li {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0;
+}
+.dl-when { font-variant-numeric: tabular-nums; color: var(--muted); }
+.dl-qty { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* --- 受付の区分 --- */
+.dl-action {
+  padding: 1px 7px;
+  font-size: 10.5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.dl-action-receive { color: #1d6b48; background: #eef8f2; }
+.dl-action-issue { color: #1f4f8b; background: #e9f0f9; }
+.dl-action-dispose { color: #8a4b0a; background: #fdf3e6; }
+.dl-action-adjust { color: #6b4fa8; background: #f1edfa; }
+.dl-action-register { color: #64748b; background: #f1f4f7; }
+
+/* 取り消し。取り返しがつかないので色で分ける */
+.dl .dt-ops .dl-danger { color: #b23a3a; }
+.dl .dt-ops .dl-danger:hover:not(:disabled) { background: #fdf1f1; }
+
+/* 合計の中で、注意が要る数字だけ赤くする */
+.dl-alert { color: #b23a3a; }

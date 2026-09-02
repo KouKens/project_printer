@@ -5,8 +5,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { fromDate, startOfDay } from '../common/date';
 import { PrismaService } from '../prisma/prisma.service';
-import { SnmpService, SnmpUnreachableError } from './snmp.service';
+import {
+  SnmpService,
+  SnmpUnreachableError,
+  SnmpVersionKey,
+} from './snmp.service';
+
+/** 部署を引くために台帳から持ってくる分 */
+type LedgerAsset = {
+  id: number;
+  no: string | null;
+  department: string | null;
+  ipAddress: string | null;
+  serialNumber: string | null;
+};
 
 /** 1 台あたりの結果 */
 export type CaptureRow = {
@@ -19,10 +33,20 @@ export type CaptureRow = {
   /** 同時点の累計モノクロ・カラー枚数。内訳を返さない機種は null */
   totalMono: number | null;
   totalColor: number | null;
+  /**
+   * 機能ごとの累計。**合計だけで、カラー・モノクロの内訳は機器が持っていない。**
+   * 出さない機種は null（0 と区別する）
+   */
+  totalPrint: number | null;
+  totalCopy: number | null;
+  totalScan: number | null;
   /** 期間内の印刷枚数。出せないときは null */
   pages: number | null;
   monoPages: number | null;
   colorPages: number | null;
+  printPages: number | null;
+  copyPages: number | null;
+  scanPages: number | null;
   spanDays: number;
   status: 'recorded' | 'skipped' | 'unreachable';
   note?: string;
@@ -40,20 +64,9 @@ function delta(current: number | null, previous: number | null): number | null {
 }
 
 /**
- * ローカルの暦日を UTC 0 時として持つ Date にする。
- *
- * `@db.Date` は Date の UTC 成分だけを見るので、ローカル 0 時を渡すと
- * JST では 9 時間戻って前日として保存されてしまう。
- * 「どの日か」はローカル時刻で決め、器は UTC 0 時に揃える。
- * 以降の addDays / diffDays / toDateKey もすべて UTC 成分で扱う。
+ * startOfDay（common/date）で UTC 0 時に揃えた Date を前提に日数を足す。
+ * この下の diffDays と日付キーの読み書きも、すべて UTC 成分で扱う
  */
-function startOfDay(date: Date): Date {
-  return new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
-}
-
-/** startOfDay で正規化済みの Date を前提に日数を足す */
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
@@ -103,11 +116,6 @@ function rangeOf(days: number, from?: string, to?: string) {
   return end === null ? { gte: start } : { gte: start, lte: end };
 }
 
-function toDateKey(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
-}
-
 @Injectable()
 export class PageCountsService {
   private readonly logger = new Logger(PageCountsService.name);
@@ -144,12 +152,14 @@ export class PageCountsService {
    */
   async captureAll(now = new Date()): Promise<CaptureRow[]> {
     const printers = await this.prisma.printer.findMany({
+      // 枚数を返すのは SNMP の機器だけ。SATO_ENQ は累計枚数を持たない
+      where: { protocol: 'SNMP' },
       orderBy: { ipAddress: 'asc' },
     });
 
     const rows: CaptureRow[] = [];
     for (const printer of printers) {
-      rows.push(await this.captureOne(printer.id, now));
+      rows.push(await this.capture(printer, now));
     }
     return rows;
   }
@@ -165,29 +175,53 @@ export class PageCountsService {
         `ID ${printerId} のプリンターは登録されていません`,
       );
     }
+    return this.capture(printer, now);
+  }
 
+  /**
+   * 読み取って記録する本体。
+   * 全台ぶんを回すときに 1 台ずつ引き直さずに済むよう、機器の行を受け取る形にしてある
+   */
+  private async capture(
+    printer: {
+      id: number;
+      ipAddress: string;
+      community: string;
+      version: SnmpVersionKey;
+    },
+    now: Date,
+  ): Promise<CaptureRow> {
     // 読んだ日を集計対象日にする。その日の正午までの 24 時間分にあたる
     const date = startOfDay(now);
 
     const base = {
       printerId: printer.id,
       ipAddress: printer.ipAddress,
-      date: toDateKey(date),
+      date: fromDate(date),
     };
 
     const empty = {
       total: null,
       totalMono: null,
       totalColor: null,
+      totalPrint: null,
+      totalCopy: null,
+      totalScan: null,
       pages: null,
       monoPages: null,
       colorPages: null,
+      printPages: null,
+      copyPages: null,
+      scanPages: null,
       spanDays: 0,
     };
 
     let total: number | null;
     let totalMono: number | null;
     let totalColor: number | null;
+    let totalPrint: number | null;
+    let totalCopy: number | null;
+    let totalScan: number | null;
 
     try {
       const snapshot = await this.snmp.poll(
@@ -198,6 +232,9 @@ export class PageCountsService {
       total = snapshot.pageCount;
       totalMono = snapshot.monoCount;
       totalColor = snapshot.colorCount;
+      totalPrint = snapshot.printCount;
+      totalCopy = snapshot.copyCount;
+      totalScan = snapshot.scanCount;
 
       await this.prisma.printer.update({
         where: { id: printer.id },
@@ -242,6 +279,9 @@ export class PageCountsService {
     let pages: number | null = null;
     let monoPages: number | null = null;
     let colorPages: number | null = null;
+    let printPages: number | null = null;
+    let copyPages: number | null = null;
+    let scanPages: number | null = null;
     let spanDays = 1;
     let note: string | undefined;
 
@@ -252,11 +292,14 @@ export class PageCountsService {
       pages = delta(total, previous.total);
       monoPages = delta(totalMono, previous.totalMono);
       colorPages = delta(totalColor, previous.totalColor);
+      printPages = delta(totalPrint, previous.totalPrint);
+      copyPages = delta(totalCopy, previous.totalCopy);
+      scanPages = delta(totalScan, previous.totalScan);
 
       if (pages === null) {
         note = `カウンタが前回（${previous.total}）より小さくなっています。機器交換かリセットの可能性があります`;
       } else if (spanDays > 1) {
-        note = `${spanDays} 日分をまとめた値です（前回の記録は ${toDateKey(previous.date)}）`;
+        note = `${spanDays} 日分をまとめた値です（前回の記録は ${fromDate(previous.date)}）`;
       }
     }
 
@@ -264,9 +307,15 @@ export class PageCountsService {
       total,
       totalMono,
       totalColor,
+      totalPrint,
+      totalCopy,
+      totalScan,
       pages,
       monoPages,
       colorPages,
+      printPages,
+      copyPages,
+      scanPages,
       spanDays,
     };
 
@@ -284,27 +333,68 @@ export class PageCountsService {
    * 機器ごとに叩くと台数分の往復になるため。
    */
   async findAllDaily(days = 30, from?: string, to?: string) {
-    const rows = await this.prisma.pageCountDaily.findMany({
-      where: { date: rangeOf(days, from, to) },
-      orderBy: [{ date: 'desc' }, { printerId: 'asc' }],
-      include: { printer: { select: { ipAddress: true, model: true } } },
-    });
+    const [rows, assets] = await Promise.all([
+      this.prisma.pageCountDaily.findMany({
+        where: { date: rangeOf(days, from, to) },
+        orderBy: [{ date: 'desc' }, { printerId: 'asc' }],
+        include: {
+          printer: {
+            select: {
+              ipAddress: true,
+              model: true,
+              serialNumber: true,
+              counterUnit: true,
+            },
+          },
+        },
+      }),
+      this.prisma.printerAsset.findMany({
+        select: {
+          id: true,
+          no: true,
+          department: true,
+          ipAddress: true,
+          serialNumber: true,
+        },
+        orderBy: [{ no: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
 
-    return rows.map((row) => ({
-      id: row.id,
-      printerId: row.printerId,
-      ipAddress: row.printer.ipAddress,
-      model: row.printer.model,
-      date: toDateKey(row.date),
-      total: row.total,
-      totalMono: row.totalMono,
-      totalColor: row.totalColor,
-      pages: row.pages,
-      monoPages: row.monoPages,
-      colorPages: row.colorPages,
-      spanDays: row.spanDays,
-      capturedAt: row.capturedAt,
-    }));
+    const ledger = this.ledgerIndex(assets);
+
+    return rows.map((row) => {
+      const asset = this.assetOf(row.printer, ledger);
+
+      return {
+        id: row.id,
+        printerId: row.printerId,
+        ipAddress: row.printer.ipAddress,
+        model: row.printer.model,
+        /**
+         * カウンタの単位（prtMarkerCounterUnit）。
+         * 7 / 8 なら枚、17 ならメートル。**混ぜて足さないよう画面で分ける**
+         */
+        counterUnit: row.printer.counterUnit,
+        /** 台帳から引いた部署と管理番号。突き合わせられないときは null */
+        department: asset?.department ?? null,
+        no: asset?.no ?? null,
+        date: fromDate(row.date),
+        total: row.total,
+        totalMono: row.totalMono,
+        totalColor: row.totalColor,
+        totalPrint: row.totalPrint,
+        totalCopy: row.totalCopy,
+        totalScan: row.totalScan,
+        pages: row.pages,
+        monoPages: row.monoPages,
+        colorPages: row.colorPages,
+        printPages: row.printPages,
+        copyPages: row.copyPages,
+        scanPages: row.scanPages,
+        spanDays: row.spanDays,
+        capturedAt: row.capturedAt,
+      };
+    });
   }
 
   /** 日次の一覧。既定は直近 30 日。from / to を渡せばその期間 */
@@ -315,15 +405,64 @@ export class PageCountsService {
     });
 
     return rows.map((row) => ({
-      date: toDateKey(row.date),
+      date: fromDate(row.date),
       pages: row.pages,
       monoPages: row.monoPages,
       colorPages: row.colorPages,
+      printPages: row.printPages,
+      copyPages: row.copyPages,
+      scanPages: row.scanPages,
       total: row.total,
       totalMono: row.totalMono,
       totalColor: row.totalColor,
+      totalPrint: row.totalPrint,
+      totalCopy: row.totalCopy,
+      totalScan: row.totalScan,
       spanDays: row.spanDays,
       capturedAt: row.capturedAt,
     }));
+  }
+
+  // ── 内部ヘルパー ──────────────────────
+
+  /**
+   * 台帳を引くための索引。シリアルと IP の 2 本を作る。
+   *
+   * 同じ IP を持つ台帳が複数あるので（No.041 と No.051）、IP のほうは配列で持ち、
+   * 1 台に絞れないときは部署を決めない。
+   */
+  private ledgerIndex(assets: LedgerAsset[]) {
+    const bySerial = new Map<string, LedgerAsset>();
+    const byIp = new Map<string, LedgerAsset[]>();
+
+    for (const asset of assets) {
+      if (asset.serialNumber) {
+        bySerial.set(asset.serialNumber.toLowerCase(), asset);
+      }
+      if (asset.ipAddress) {
+        const list = byIp.get(asset.ipAddress) ?? [];
+        list.push(asset);
+        byIp.set(asset.ipAddress, list);
+      }
+    }
+    return { bySerial, byIp };
+  }
+
+  /**
+   * その実機に対応する台帳。**シリアルを先に見て、無いときだけ IP で引く。**
+   * 台帳の突き合わせ（printer-assets の findOverview）と同じ順にしてある。
+   * IP で複数に当たるときは、どちらの機器か決められないので null を返す。
+   */
+  private assetOf(
+    printer: { ipAddress: string; serialNumber: string | null },
+    ledger: ReturnType<PageCountsService['ledgerIndex']>,
+  ): LedgerAsset | null {
+    if (printer.serialNumber) {
+      const bySerial = ledger.bySerial.get(printer.serialNumber.toLowerCase());
+      if (bySerial) return bySerial;
+    }
+
+    const byIp = ledger.byIp.get(printer.ipAddress) ?? [];
+    return byIp.length === 1 ? byIp[0] : null;
   }
 }

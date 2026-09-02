@@ -11,24 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RepairsService = void 0;
 const common_1 = require("@nestjs/common");
+const date_1 = require("../common/date");
+const text_1 = require("../common/text");
 const prisma_service_1 = require("../prisma/prisma.service");
-function toDate(value) {
-    if (!value)
-        return null;
-    const [year, month, day] = value.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day));
-}
-function trimmed(value) {
-    const text = value?.trim() ?? '';
-    return text === '' ? null : text;
-}
-function fromDate(value) {
-    if (!value)
-        return null;
-    const month = `${value.getUTCMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getUTCDate()}`.padStart(2, '0');
-    return `${value.getUTCFullYear()}-${month}-${day}`;
-}
 let RepairsService = class RepairsService {
     prisma;
     constructor(prisma) {
@@ -64,7 +49,7 @@ let RepairsService = class RepairsService {
         return this.toResponse(row);
     }
     async update(id, dto) {
-        await this.findOne(id);
+        await this.ensureExists(id);
         await this.ensureAsset(dto.printerAssetId);
         this.ensureDateOrder(dto);
         const saved = await this.prisma.repairRecord.update({
@@ -75,32 +60,43 @@ let RepairsService = class RepairsService {
         return this.toResponse(saved);
     }
     async remove(id) {
-        await this.findOne(id);
+        await this.ensureExists(id);
         await this.prisma.repairRecord.delete({ where: { id } });
         return { id };
+    }
+    async ensureExists(id) {
+        const found = await this.prisma.repairRecord.findUnique({
+            where: { id },
+            select: { id: true },
+        });
+        if (!found) {
+            throw new common_1.NotFoundException(`ID ${id} の修理履歴は登録されていません`);
+        }
     }
     async ensureAsset(printerAssetId) {
         const asset = await this.prisma.printerAsset.findUnique({
             where: { id: printerAssetId },
+            select: { id: true },
         });
         if (!asset) {
             throw new common_1.BadRequestException(`ID ${printerAssetId} の機器は端末台帳にありません`);
         }
     }
     ensureDateOrder(dto) {
-        if (dto.occurredOn && dto.restoredOn < dto.occurredOn) {
+        if (dto.occurredOn && dto.restoredOn && dto.restoredOn < dto.occurredOn) {
             throw new common_1.BadRequestException('復旧日が発生日より前になっています。日付を確認してください');
         }
     }
     toData(dto) {
         return {
-            assignee: trimmed(dto.assignee),
+            assignee: (0, text_1.toText)(dto.assignee),
             printerAssetId: dto.printerAssetId,
-            occurredOn: toDate(dto.occurredOn),
+            occurredOn: (0, date_1.toDate)(dto.occurredOn),
             category: dto.category ?? null,
             handledBy: dto.handledBy,
-            detail: trimmed(dto.detail),
-            restoredOn: toDate(dto.restoredOn),
+            detail: (0, text_1.toText)(dto.detail),
+            cost: dto.cost ?? null,
+            restoredOn: (0, date_1.toDate)(dto.restoredOn),
             status: dto.status ?? 'INVESTIGATING',
         };
     }
@@ -113,11 +109,12 @@ let RepairsService = class RepairsService {
             no: row.asset?.no ?? null,
             maker: row.asset?.maker ?? null,
             model: row.asset?.model ?? null,
-            occurredOn: fromDate(row.occurredOn),
+            occurredOn: (0, date_1.fromDate)(row.occurredOn),
             category: row.category,
             handledBy: row.handledBy,
             detail: row.detail,
-            restoredOn: fromDate(row.restoredOn),
+            cost: row.cost,
+            restoredOn: (0, date_1.fromDate)(row.restoredOn),
             status: row.status,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,

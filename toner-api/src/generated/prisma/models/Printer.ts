@@ -29,11 +29,13 @@ export type AggregatePrinter = {
 export type PrinterAvgAggregateOutputType = {
   id: number | null
   pageCount: number | null
+  counterUnit: number | null
 }
 
 export type PrinterSumAggregateOutputType = {
   id: number | null
   pageCount: number | null
+  counterUnit: number | null
 }
 
 export type PrinterMinAggregateOutputType = {
@@ -41,12 +43,14 @@ export type PrinterMinAggregateOutputType = {
   ipAddress: string | null
   community: string | null
   version: $Enums.SnmpVersion | null
+  protocol: $Enums.PrinterProtocol | null
   hostName: string | null
   model: string | null
   serialNumber: string | null
   macAddress: string | null
   location: string | null
   pageCount: number | null
+  counterUnit: number | null
   reachable: boolean | null
   lastError: string | null
   lastPolledAt: Date | null
@@ -61,12 +65,14 @@ export type PrinterMaxAggregateOutputType = {
   ipAddress: string | null
   community: string | null
   version: $Enums.SnmpVersion | null
+  protocol: $Enums.PrinterProtocol | null
   hostName: string | null
   model: string | null
   serialNumber: string | null
   macAddress: string | null
   location: string | null
   pageCount: number | null
+  counterUnit: number | null
   reachable: boolean | null
   lastError: string | null
   lastPolledAt: Date | null
@@ -81,12 +87,14 @@ export type PrinterCountAggregateOutputType = {
   ipAddress: number
   community: number
   version: number
+  protocol: number
   hostName: number
   model: number
   serialNumber: number
   macAddress: number
   location: number
   pageCount: number
+  counterUnit: number
   reachable: number
   lastError: number
   lastPolledAt: number
@@ -101,11 +109,13 @@ export type PrinterCountAggregateOutputType = {
 export type PrinterAvgAggregateInputType = {
   id?: true
   pageCount?: true
+  counterUnit?: true
 }
 
 export type PrinterSumAggregateInputType = {
   id?: true
   pageCount?: true
+  counterUnit?: true
 }
 
 export type PrinterMinAggregateInputType = {
@@ -113,12 +123,14 @@ export type PrinterMinAggregateInputType = {
   ipAddress?: true
   community?: true
   version?: true
+  protocol?: true
   hostName?: true
   model?: true
   serialNumber?: true
   macAddress?: true
   location?: true
   pageCount?: true
+  counterUnit?: true
   reachable?: true
   lastError?: true
   lastPolledAt?: true
@@ -133,12 +145,14 @@ export type PrinterMaxAggregateInputType = {
   ipAddress?: true
   community?: true
   version?: true
+  protocol?: true
   hostName?: true
   model?: true
   serialNumber?: true
   macAddress?: true
   location?: true
   pageCount?: true
+  counterUnit?: true
   reachable?: true
   lastError?: true
   lastPolledAt?: true
@@ -153,12 +167,14 @@ export type PrinterCountAggregateInputType = {
   ipAddress?: true
   community?: true
   version?: true
+  protocol?: true
   hostName?: true
   model?: true
   serialNumber?: true
   macAddress?: true
   location?: true
   pageCount?: true
+  counterUnit?: true
   reachable?: true
   lastError?: true
   lastPolledAt?: true
@@ -260,12 +276,14 @@ export type PrinterGroupByOutputType = {
   ipAddress: string
   community: string
   version: $Enums.SnmpVersion
+  protocol: $Enums.PrinterProtocol
   hostName: string | null
   model: string | null
   serialNumber: string | null
   macAddress: string | null
   location: string | null
   pageCount: number | null
+  counterUnit: number | null
   reachable: boolean
   lastError: string | null
   lastPolledAt: Date | null
@@ -303,12 +321,14 @@ export type PrinterWhereInput = {
   ipAddress?: Prisma.StringFilter<"Printer"> | string
   community?: Prisma.StringFilter<"Printer"> | string
   version?: Prisma.EnumSnmpVersionFilter<"Printer"> | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFilter<"Printer"> | $Enums.PrinterProtocol
   hostName?: Prisma.StringNullableFilter<"Printer"> | string | null
   model?: Prisma.StringNullableFilter<"Printer"> | string | null
   serialNumber?: Prisma.StringNullableFilter<"Printer"> | string | null
   macAddress?: Prisma.StringNullableFilter<"Printer"> | string | null
   location?: Prisma.StringNullableFilter<"Printer"> | string | null
   pageCount?: Prisma.IntNullableFilter<"Printer"> | number | null
+  counterUnit?: Prisma.IntNullableFilter<"Printer"> | number | null
   reachable?: Prisma.BoolFilter<"Printer"> | boolean
   lastError?: Prisma.StringNullableFilter<"Printer"> | string | null
   lastPolledAt?: Prisma.DateTimeNullableFilter<"Printer"> | Date | string | null
@@ -326,12 +346,14 @@ export type PrinterOrderByWithRelationInput = {
   ipAddress?: Prisma.SortOrder
   community?: Prisma.SortOrder
   version?: Prisma.SortOrder
+  protocol?: Prisma.SortOrder
   hostName?: Prisma.SortOrderInput | Prisma.SortOrder
   model?: Prisma.SortOrderInput | Prisma.SortOrder
   serialNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   macAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   location?: Prisma.SortOrderInput | Prisma.SortOrder
   pageCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  counterUnit?: Prisma.SortOrderInput | Prisma.SortOrder
   reachable?: Prisma.SortOrder
   lastError?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPolledAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -352,12 +374,14 @@ export type PrinterWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PrinterWhereInput | Prisma.PrinterWhereInput[]
   community?: Prisma.StringFilter<"Printer"> | string
   version?: Prisma.EnumSnmpVersionFilter<"Printer"> | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFilter<"Printer"> | $Enums.PrinterProtocol
   hostName?: Prisma.StringNullableFilter<"Printer"> | string | null
   model?: Prisma.StringNullableFilter<"Printer"> | string | null
   serialNumber?: Prisma.StringNullableFilter<"Printer"> | string | null
   macAddress?: Prisma.StringNullableFilter<"Printer"> | string | null
   location?: Prisma.StringNullableFilter<"Printer"> | string | null
   pageCount?: Prisma.IntNullableFilter<"Printer"> | number | null
+  counterUnit?: Prisma.IntNullableFilter<"Printer"> | number | null
   reachable?: Prisma.BoolFilter<"Printer"> | boolean
   lastError?: Prisma.StringNullableFilter<"Printer"> | string | null
   lastPolledAt?: Prisma.DateTimeNullableFilter<"Printer"> | Date | string | null
@@ -375,12 +399,14 @@ export type PrinterOrderByWithAggregationInput = {
   ipAddress?: Prisma.SortOrder
   community?: Prisma.SortOrder
   version?: Prisma.SortOrder
+  protocol?: Prisma.SortOrder
   hostName?: Prisma.SortOrderInput | Prisma.SortOrder
   model?: Prisma.SortOrderInput | Prisma.SortOrder
   serialNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   macAddress?: Prisma.SortOrderInput | Prisma.SortOrder
   location?: Prisma.SortOrderInput | Prisma.SortOrder
   pageCount?: Prisma.SortOrderInput | Prisma.SortOrder
+  counterUnit?: Prisma.SortOrderInput | Prisma.SortOrder
   reachable?: Prisma.SortOrder
   lastError?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPolledAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -403,12 +429,14 @@ export type PrinterScalarWhereWithAggregatesInput = {
   ipAddress?: Prisma.StringWithAggregatesFilter<"Printer"> | string
   community?: Prisma.StringWithAggregatesFilter<"Printer"> | string
   version?: Prisma.EnumSnmpVersionWithAggregatesFilter<"Printer"> | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolWithAggregatesFilter<"Printer"> | $Enums.PrinterProtocol
   hostName?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null
   model?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null
   serialNumber?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null
   macAddress?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null
   location?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null
   pageCount?: Prisma.IntNullableWithAggregatesFilter<"Printer"> | number | null
+  counterUnit?: Prisma.IntNullableWithAggregatesFilter<"Printer"> | number | null
   reachable?: Prisma.BoolWithAggregatesFilter<"Printer"> | boolean
   lastError?: Prisma.StringNullableWithAggregatesFilter<"Printer"> | string | null
   lastPolledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Printer"> | Date | string | null
@@ -422,12 +450,14 @@ export type PrinterCreateInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -445,12 +475,14 @@ export type PrinterUncheckedCreateInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -467,12 +499,14 @@ export type PrinterUpdateInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -490,12 +524,14 @@ export type PrinterUncheckedUpdateInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -513,12 +549,14 @@ export type PrinterCreateManyInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -532,12 +570,14 @@ export type PrinterUpdateManyMutationInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -552,12 +592,14 @@ export type PrinterUncheckedUpdateManyInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -572,12 +614,14 @@ export type PrinterCountOrderByAggregateInput = {
   ipAddress?: Prisma.SortOrder
   community?: Prisma.SortOrder
   version?: Prisma.SortOrder
+  protocol?: Prisma.SortOrder
   hostName?: Prisma.SortOrder
   model?: Prisma.SortOrder
   serialNumber?: Prisma.SortOrder
   macAddress?: Prisma.SortOrder
   location?: Prisma.SortOrder
   pageCount?: Prisma.SortOrder
+  counterUnit?: Prisma.SortOrder
   reachable?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   lastPolledAt?: Prisma.SortOrder
@@ -590,6 +634,7 @@ export type PrinterCountOrderByAggregateInput = {
 export type PrinterAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
   pageCount?: Prisma.SortOrder
+  counterUnit?: Prisma.SortOrder
 }
 
 export type PrinterMaxOrderByAggregateInput = {
@@ -597,12 +642,14 @@ export type PrinterMaxOrderByAggregateInput = {
   ipAddress?: Prisma.SortOrder
   community?: Prisma.SortOrder
   version?: Prisma.SortOrder
+  protocol?: Prisma.SortOrder
   hostName?: Prisma.SortOrder
   model?: Prisma.SortOrder
   serialNumber?: Prisma.SortOrder
   macAddress?: Prisma.SortOrder
   location?: Prisma.SortOrder
   pageCount?: Prisma.SortOrder
+  counterUnit?: Prisma.SortOrder
   reachable?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   lastPolledAt?: Prisma.SortOrder
@@ -617,12 +664,14 @@ export type PrinterMinOrderByAggregateInput = {
   ipAddress?: Prisma.SortOrder
   community?: Prisma.SortOrder
   version?: Prisma.SortOrder
+  protocol?: Prisma.SortOrder
   hostName?: Prisma.SortOrder
   model?: Prisma.SortOrder
   serialNumber?: Prisma.SortOrder
   macAddress?: Prisma.SortOrder
   location?: Prisma.SortOrder
   pageCount?: Prisma.SortOrder
+  counterUnit?: Prisma.SortOrder
   reachable?: Prisma.SortOrder
   lastError?: Prisma.SortOrder
   lastPolledAt?: Prisma.SortOrder
@@ -635,6 +684,7 @@ export type PrinterMinOrderByAggregateInput = {
 export type PrinterSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   pageCount?: Prisma.SortOrder
+  counterUnit?: Prisma.SortOrder
 }
 
 export type PrinterScalarRelationFilter = {
@@ -646,16 +696,8 @@ export type EnumSnmpVersionFieldUpdateOperationsInput = {
   set?: $Enums.SnmpVersion
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
+export type EnumPrinterProtocolFieldUpdateOperationsInput = {
+  set?: $Enums.PrinterProtocol
 }
 
 export type PrinterCreateNestedOneWithoutAlertsInput = {
@@ -704,12 +746,14 @@ export type PrinterCreateWithoutAlertsInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -726,12 +770,14 @@ export type PrinterUncheckedCreateWithoutAlertsInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -763,12 +809,14 @@ export type PrinterUpdateWithoutAlertsInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -785,12 +833,14 @@ export type PrinterUncheckedUpdateWithoutAlertsInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -806,12 +856,14 @@ export type PrinterCreateWithoutPageDaysInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -828,12 +880,14 @@ export type PrinterUncheckedCreateWithoutPageDaysInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -865,12 +919,14 @@ export type PrinterUpdateWithoutPageDaysInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -887,12 +943,14 @@ export type PrinterUncheckedUpdateWithoutPageDaysInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -908,12 +966,14 @@ export type PrinterCreateWithoutReadingsInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -930,12 +990,14 @@ export type PrinterUncheckedCreateWithoutReadingsInput = {
   ipAddress: string
   community?: string
   version?: $Enums.SnmpVersion
+  protocol?: $Enums.PrinterProtocol
   hostName?: string | null
   model?: string | null
   serialNumber?: string | null
   macAddress?: string | null
   location?: string | null
   pageCount?: number | null
+  counterUnit?: number | null
   reachable?: boolean
   lastError?: string | null
   lastPolledAt?: Date | string | null
@@ -967,12 +1029,14 @@ export type PrinterUpdateWithoutReadingsInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -989,12 +1053,14 @@ export type PrinterUncheckedUpdateWithoutReadingsInput = {
   ipAddress?: Prisma.StringFieldUpdateOperationsInput | string
   community?: Prisma.StringFieldUpdateOperationsInput | string
   version?: Prisma.EnumSnmpVersionFieldUpdateOperationsInput | $Enums.SnmpVersion
+  protocol?: Prisma.EnumPrinterProtocolFieldUpdateOperationsInput | $Enums.PrinterProtocol
   hostName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   macAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   pageCount?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  counterUnit?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   reachable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPolledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1060,12 +1126,14 @@ export type PrinterSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   ipAddress?: boolean
   community?: boolean
   version?: boolean
+  protocol?: boolean
   hostName?: boolean
   model?: boolean
   serialNumber?: boolean
   macAddress?: boolean
   location?: boolean
   pageCount?: boolean
+  counterUnit?: boolean
   reachable?: boolean
   lastError?: boolean
   lastPolledAt?: boolean
@@ -1084,12 +1152,14 @@ export type PrinterSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   ipAddress?: boolean
   community?: boolean
   version?: boolean
+  protocol?: boolean
   hostName?: boolean
   model?: boolean
   serialNumber?: boolean
   macAddress?: boolean
   location?: boolean
   pageCount?: boolean
+  counterUnit?: boolean
   reachable?: boolean
   lastError?: boolean
   lastPolledAt?: boolean
@@ -1104,12 +1174,14 @@ export type PrinterSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   ipAddress?: boolean
   community?: boolean
   version?: boolean
+  protocol?: boolean
   hostName?: boolean
   model?: boolean
   serialNumber?: boolean
   macAddress?: boolean
   location?: boolean
   pageCount?: boolean
+  counterUnit?: boolean
   reachable?: boolean
   lastError?: boolean
   lastPolledAt?: boolean
@@ -1124,12 +1196,14 @@ export type PrinterSelectScalar = {
   ipAddress?: boolean
   community?: boolean
   version?: boolean
+  protocol?: boolean
   hostName?: boolean
   model?: boolean
   serialNumber?: boolean
   macAddress?: boolean
   location?: boolean
   pageCount?: boolean
+  counterUnit?: boolean
   reachable?: boolean
   lastError?: boolean
   lastPolledAt?: boolean
@@ -1139,7 +1213,7 @@ export type PrinterSelectScalar = {
   consoleText?: boolean
 }
 
-export type PrinterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ipAddress" | "community" | "version" | "hostName" | "model" | "serialNumber" | "macAddress" | "location" | "pageCount" | "reachable" | "lastError" | "lastPolledAt" | "lastSuccessAt" | "createdAt" | "updatedAt" | "consoleText", ExtArgs["result"]["printer"]>
+export type PrinterOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ipAddress" | "community" | "version" | "protocol" | "hostName" | "model" | "serialNumber" | "macAddress" | "location" | "pageCount" | "counterUnit" | "reachable" | "lastError" | "lastPolledAt" | "lastSuccessAt" | "createdAt" | "updatedAt" | "consoleText", ExtArgs["result"]["printer"]>
 export type PrinterInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   readings?: boolean | Prisma.Printer$readingsArgs<ExtArgs>
   alerts?: boolean | Prisma.Printer$alertsArgs<ExtArgs>
@@ -1171,6 +1245,14 @@ export type $PrinterPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      */
     version: $Enums.SnmpVersion
     /**
+     * この機器の読み方。
+     * 
+     * **SATO_ENQ は毎日の定期実行から外れる。** ステータス返送は印刷用のポートへ
+     * こちらから送る操作になるので、画面から人が押したときだけ読む。
+     * そのため状態・取得時刻は最後に手で読んだ時点のものになる
+     */
+    protocol: $Enums.PrinterProtocol
+    /**
      * sysName（1.3.6.1.2.1.1.5.0）
      */
     hostName: string | null
@@ -1185,9 +1267,18 @@ export type $PrinterPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
      */
     location: string | null
     /**
-     * 累計印刷枚数（prtMarkerLifeCount）
+     * 累計カウンタ（prtMarkerLifeCount）。単位は counterUnit を見ること
      */
     pageCount: number | null
+    /**
+     * pageCount の単位（prtMarkerCounterUnit）。
+     * 
+     * **枚数とは限らない。** 一般のプリンターは 7（インプレッション＝枚）だが、
+     * SATO のラベルプリンター（HC4-LX）は 17（メートル）で印字した長さを返す。
+     * 単位を見ずに足すと長さと枚数が混ざるので、集計の前に必ず見る。
+     * 返さない機種は null で、その場合は枚として扱う
+     */
+    counterUnit: number | null
     /**
      * 直近のポーリングで応答があったか
      */
@@ -1209,7 +1300,8 @@ export type $PrinterPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     updatedAt: Date
     /**
      * 操作パネルに出ている文字（prtConsoleDisplayBufferText）。
-     * 警告表を持たない機種でも、交換時期はここに出ることがある
+     * 警告表を持たない機種でも、交換時期はここに出ることがある。
+     * protocol が SATO_ENQ のときは、ENQ で読んだ状態の呼び名がここに入る
      */
     consoleText: string | null
   }, ExtArgs["result"]["printer"]>
@@ -1642,12 +1734,14 @@ export interface PrinterFieldRefs {
   readonly ipAddress: Prisma.FieldRef<"Printer", 'String'>
   readonly community: Prisma.FieldRef<"Printer", 'String'>
   readonly version: Prisma.FieldRef<"Printer", 'SnmpVersion'>
+  readonly protocol: Prisma.FieldRef<"Printer", 'PrinterProtocol'>
   readonly hostName: Prisma.FieldRef<"Printer", 'String'>
   readonly model: Prisma.FieldRef<"Printer", 'String'>
   readonly serialNumber: Prisma.FieldRef<"Printer", 'String'>
   readonly macAddress: Prisma.FieldRef<"Printer", 'String'>
   readonly location: Prisma.FieldRef<"Printer", 'String'>
   readonly pageCount: Prisma.FieldRef<"Printer", 'Int'>
+  readonly counterUnit: Prisma.FieldRef<"Printer", 'Int'>
   readonly reachable: Prisma.FieldRef<"Printer", 'Boolean'>
   readonly lastError: Prisma.FieldRef<"Printer", 'String'>
   readonly lastPolledAt: Prisma.FieldRef<"Printer", 'DateTime'>

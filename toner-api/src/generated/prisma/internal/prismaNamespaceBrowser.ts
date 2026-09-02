@@ -57,9 +57,12 @@ export const ModelName = {
   TonerStock: 'TonerStock',
   TonerEntry: 'TonerEntry',
   TonerOrder: 'TonerOrder',
+  TonerInvoice: 'TonerInvoice',
+  TonerInvoiceLine: 'TonerInvoiceLine',
   Printer: 'Printer',
   PrinterAlert: 'PrinterAlert',
   PrinterAsset: 'PrinterAsset',
+  MaintVendor: 'MaintVendor',
   PageCountDaily: 'PageCountDaily',
   SupplyReading: 'SupplyReading',
   RepairRecord: 'RepairRecord'
@@ -86,6 +89,8 @@ export const TonerScalarFieldEnum = {
   name: 'name',
   color: 'color',
   recycled: 'recycled',
+  alertThreshold: 'alertThreshold',
+  yieldPages: 'yieldPages',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -132,6 +137,7 @@ export const TonerEntryScalarFieldEnum = {
   action: 'action',
   quantity: 'quantity',
   balance: 'balance',
+  receivedOn: 'receivedOn',
   createdAt: 'createdAt'
 } as const
 
@@ -141,8 +147,10 @@ export type TonerEntryScalarFieldEnum = (typeof TonerEntryScalarFieldEnum)[keyof
 export const TonerOrderScalarFieldEnum = {
   id: 'id',
   tonerId: 'tonerId',
+  userId: 'userId',
   quantity: 'quantity',
   orderedAt: 'orderedAt',
+  deliveryOn: 'deliveryOn',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -151,17 +159,46 @@ export const TonerOrderScalarFieldEnum = {
 export type TonerOrderScalarFieldEnum = (typeof TonerOrderScalarFieldEnum)[keyof typeof TonerOrderScalarFieldEnum]
 
 
+export const TonerInvoiceScalarFieldEnum = {
+  id: 'id',
+  issuedOn: 'issuedOn',
+  periodFrom: 'periodFrom',
+  periodTo: 'periodTo',
+  invoiceNo: 'invoiceNo',
+  note: 'note',
+  checkedAt: 'checkedAt',
+  checkedBy: 'checkedBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TonerInvoiceScalarFieldEnum = (typeof TonerInvoiceScalarFieldEnum)[keyof typeof TonerInvoiceScalarFieldEnum]
+
+
+export const TonerInvoiceLineScalarFieldEnum = {
+  id: 'id',
+  invoiceId: 'invoiceId',
+  tonerId: 'tonerId',
+  quantity: 'quantity',
+  unitPrice: 'unitPrice'
+} as const
+
+export type TonerInvoiceLineScalarFieldEnum = (typeof TonerInvoiceLineScalarFieldEnum)[keyof typeof TonerInvoiceLineScalarFieldEnum]
+
+
 export const PrinterScalarFieldEnum = {
   id: 'id',
   ipAddress: 'ipAddress',
   community: 'community',
   version: 'version',
+  protocol: 'protocol',
   hostName: 'hostName',
   model: 'model',
   serialNumber: 'serialNumber',
   macAddress: 'macAddress',
   location: 'location',
   pageCount: 'pageCount',
+  counterUnit: 'counterUnit',
   reachable: 'reachable',
   lastError: 'lastError',
   lastPolledAt: 'lastPolledAt',
@@ -198,7 +235,9 @@ export const PrinterAssetScalarFieldEnum = {
   model: 'model',
   serialNumber: 'serialNumber',
   purchasedOn: 'purchasedOn',
+  purchasePrice: 'purchasePrice',
   contractNo: 'contractNo',
+  maintVendorId: 'maintVendorId',
   maintContract: 'maintContract',
   maintStartOn: 'maintStartOn',
   maintEndOn: 'maintEndOn',
@@ -213,6 +252,19 @@ export const PrinterAssetScalarFieldEnum = {
 export type PrinterAssetScalarFieldEnum = (typeof PrinterAssetScalarFieldEnum)[keyof typeof PrinterAssetScalarFieldEnum]
 
 
+export const MaintVendorScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  phones: 'phones',
+  makers: 'makers',
+  note: 'note',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MaintVendorScalarFieldEnum = (typeof MaintVendorScalarFieldEnum)[keyof typeof MaintVendorScalarFieldEnum]
+
+
 export const PageCountDailyScalarFieldEnum = {
   id: 'id',
   printerId: 'printerId',
@@ -220,9 +272,15 @@ export const PageCountDailyScalarFieldEnum = {
   total: 'total',
   totalMono: 'totalMono',
   totalColor: 'totalColor',
+  totalPrint: 'totalPrint',
+  totalCopy: 'totalCopy',
+  totalScan: 'totalScan',
   pages: 'pages',
   monoPages: 'monoPages',
   colorPages: 'colorPages',
+  printPages: 'printPages',
+  copyPages: 'copyPages',
+  scanPages: 'scanPages',
   spanDays: 'spanDays',
   capturedAt: 'capturedAt'
 } as const
@@ -255,6 +313,7 @@ export const RepairRecordScalarFieldEnum = {
   category: 'category',
   handledBy: 'handledBy',
   detail: 'detail',
+  cost: 'cost',
   restoredOn: 'restoredOn',
   status: 'status',
   createdAt: 'createdAt',

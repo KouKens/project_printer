@@ -38,6 +38,26 @@ export class CreateTonerDto {
   })
   recycled?: boolean;
 
+  /**
+   * 在庫がこの本数以下になったら一覧で警告する。
+   * 未入力（null）なら警告しない
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: '警告する本数は整数で入力してください' })
+  @Min(0, { message: '警告する本数は 0 以上で入力してください' })
+  alertThreshold?: number | null;
+
+  /**
+   * 1 本で刷れる枚数（カタログの印刷可能枚数）。
+   * 1 枚あたりのトナー代を出すのに使う。公表値が無ければ未入力
+   */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: '印刷可能枚数は整数で入力してください' })
+  @Min(1, { message: '印刷可能枚数は 1 以上で入力してください' })
+  yieldPages?: number | null;
+
   /** 対応する機器。端末台帳（printer_assets）の主キーで受ける */
   @IsOptional()
   @IsArray()

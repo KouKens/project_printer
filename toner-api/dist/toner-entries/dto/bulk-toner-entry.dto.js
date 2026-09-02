@@ -42,6 +42,7 @@ class BulkTonerEntryDto {
     action;
     userId;
     items;
+    receivedOn;
 }
 exports.BulkTonerEntryDto = BulkTonerEntryDto;
 __decorate([
@@ -63,4 +64,11 @@ __decorate([
     (0, class_transformer_1.Type)(() => BulkTonerEntryItemDto),
     __metadata("design:type", Array)
 ], BulkTonerEntryDto.prototype, "items", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Matches)(/^\d{4}-\d{2}-\d{2}$/, {
+        message: '搬入日は YYYY-MM-DD の形式で入力してください',
+    }),
+    __metadata("design:type", String)
+], BulkTonerEntryDto.prototype, "receivedOn", void 0);
 //# sourceMappingURL=bulk-toner-entry.dto.js.map

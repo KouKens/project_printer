@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TonerOrdersController = void 0;
 const common_1 = require("@nestjs/common");
+const bulk_toner_order_dto_1 = require("./dto/bulk-toner-order.dto");
 const create_toner_order_dto_1 = require("./dto/create-toner-order.dto");
 const toner_orders_service_1 = require("./toner-orders.service");
 let TonerOrdersController = class TonerOrdersController {
@@ -24,11 +25,20 @@ let TonerOrdersController = class TonerOrdersController {
     create(dto) {
         return this.service.create(dto);
     }
+    createMany(dto) {
+        return this.service.bulk(dto);
+    }
+    remove(id) {
+        return this.service.remove(id);
+    }
     findAll() {
         return this.service.findAll();
     }
     findPending() {
         return this.service.findPending();
+    }
+    findDeliveryCheck(days) {
+        return this.service.findDeliveryCheck(days);
     }
 };
 exports.TonerOrdersController = TonerOrdersController;
@@ -39,6 +49,20 @@ __decorate([
     __metadata("design:paramtypes", [create_toner_order_dto_1.CreateTonerOrderDto]),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "create", null);
+__decorate([
+    (0, common_1.Post)('bulk'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [bulk_toner_order_dto_1.BulkTonerOrderDto]),
+    __metadata("design:returntype", void 0)
+], TonerOrdersController.prototype, "createMany", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], TonerOrdersController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
@@ -51,6 +75,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "findPending", null);
+__decorate([
+    (0, common_1.Get)('delivery-check'),
+    __param(0, (0, common_1.Query)('days', new common_1.DefaultValuePipe(180), common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], TonerOrdersController.prototype, "findDeliveryCheck", null);
 exports.TonerOrdersController = TonerOrdersController = __decorate([
     (0, common_1.Controller)('toner-orders'),
     __metadata("design:paramtypes", [toner_orders_service_1.TonerOrdersService])

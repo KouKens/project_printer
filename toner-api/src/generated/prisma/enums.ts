@@ -28,6 +28,14 @@ export const SnmpVersion = {
 export type SnmpVersion = (typeof SnmpVersion)[keyof typeof SnmpVersion]
 
 
+export const PrinterProtocol = {
+  SNMP: 'SNMP',
+  SATO_ENQ: 'SATO_ENQ'
+} as const
+
+export type PrinterProtocol = (typeof PrinterProtocol)[keyof typeof PrinterProtocol]
+
+
 export const RepairCategory = {
   PART_REPLACEMENT: 'PART_REPLACEMENT',
   SENSOR_DIRT: 'SENSOR_DIRT',
@@ -55,6 +63,8 @@ export type RepairHandler = (typeof RepairHandler)[keyof typeof RepairHandler]
 
 export const RepairStatus = {
   INVESTIGATING: 'INVESTIGATING',
+  INQUIRING: 'INQUIRING',
+  AWAITING_REPLY: 'AWAITING_REPLY',
   QUOTING: 'QUOTING',
   SETTLING: 'SETTLING',
   SHIPPED: 'SHIPPED',

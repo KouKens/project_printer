@@ -5,4 +5,5 @@ export declare class CreateTonerEntryDto {
     tonerId: string;
     name?: string;
     quantity?: number;
+    receivedOn?: string;
 }

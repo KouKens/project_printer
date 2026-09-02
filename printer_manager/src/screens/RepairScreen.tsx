@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { todayIso } from '../lib/date';
+import { num } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -32,6 +32,8 @@ const HANDLERS: { value: string; label: string }[] = [
 /** 状態。対応の進み方の順に並べる */
 const STATUSES: { value: string; label: string }[] = [
   { value: 'INVESTIGATING', label: '調査中' },
+  { value: 'INQUIRING', label: '問い合わせ中' },
+  { value: 'AWAITING_REPLY', label: '連絡待ち' },
   { value: 'QUOTING', label: '見積中' },
   { value: 'SETTLING', label: '決算中' },
   { value: 'SHIPPED', label: '発送済' },
@@ -54,22 +56,24 @@ type Form = {
   category: string;
   handledBy: string;
   detail: string;
+  cost: string;
   restoredOn: string;
   status: string;
 };
 
 /**
- * 発生日は今日を既定にする。
- * 修理分類は任意なので、選ばなければ空のまま登録する。
- * 復旧日は必須だが、日付を勝手に決めると誤りに気づけないので空から始める
+ * 日付は勝手に決めない。入っていた日付をそのまま登録してしまうと、
+ * 誰も確かめていない値が履歴に残るため。
+ * 修理分類も選ばなければ空のまま登録する
  */
 const emptyForm = (): Form => ({
   assignee: '',
   printerAssetId: '',
-  occurredOn: todayIso(),
+  occurredOn: '',
   category: '',
   handledBy: 'IN_HOUSE',
   detail: '',
+  cost: '',
   restoredOn: '',
   status: 'INVESTIGATING',
 });
@@ -86,7 +90,8 @@ type Repair = {
   category: string | null;
   handledBy: string;
   detail: string | null;
-  restoredOn: string;
+  cost: number | null;
+  restoredOn: string | null;
   status: string;
   updatedAt: string;
 };
@@ -119,7 +124,8 @@ type SortKey =
   | 'handledBy'
   | 'status'
   | 'assignee'
-  | 'detail';
+  | 'detail'
+  | 'cost';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind }[] = [
   { key: 'occurredOn', label: '発生日', kind: 'date' },
@@ -127,6 +133,7 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind }[] = [
   { key: 'category', label: '修理分類', kind: 'text' },
   { key: 'handledBy', label: '対応区分', kind: 'text' },
   { key: 'detail', label: '修理内容', kind: 'text' },
+  { key: 'cost', label: '費用', kind: 'number' },
   { key: 'restoredOn', label: '復旧日', kind: 'date' },
   { key: 'status', label: '状態', kind: 'text' },
   { key: 'assignee', label: '担当', kind: 'text' },
@@ -228,15 +235,6 @@ export default function RepairScreen() {
   const set = (key: keyof Form) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  /**
-   * 日付欄を開いたときに今日を入れる。
-   * <input type="date"> は空のままだと確定した値を持たないので、
-   * 触った時点で今日を入れて、そこから直してもらう
-   */
-  const fillToday = (key: 'occurredOn' | 'restoredOn') => () => {
-    setForm((prev) => (prev[key] ? prev : { ...prev, [key]: todayIso() }));
-  };
-
   const reset = () => {
     setForm(emptyForm());
     setAssetQuery('');
@@ -299,7 +297,8 @@ export default function RepairScreen() {
       category: row.category ?? '',
       handledBy: row.handledBy,
       detail: row.detail ?? '',
-      restoredOn: row.restoredOn,
+      cost: row.cost === null ? '' : String(row.cost),
+      restoredOn: row.restoredOn ?? '',
       status: row.status,
     });
     setAssetQuery('');
@@ -322,7 +321,9 @@ export default function RepairScreen() {
         category: blankToNull(form.category),
         handledBy: form.handledBy,
         detail: blankToNull(form.detail),
-        restoredOn: form.restoredOn,
+        // 空欄は「まだ分からない」。0 円（保守で無償）とは区別する
+        cost: form.cost.trim() === '' ? null : Number(form.cost),
+        restoredOn: blankToNull(form.restoredOn),
         status: form.status,
       });
 
@@ -391,9 +392,8 @@ export default function RepairScreen() {
     [repairs],
   );
 
-  /** 必須はプリンター名・対応区分・復旧日の 3 つだけ。残りは空欄のままでも登録できる */
-  const canSave =
-    form.printerAssetId !== '' && form.handledBy !== '' && form.restoredOn !== '';
+  /** 必須はプリンター名と対応区分の 2 つだけ。残りは空欄のままでも登録できる */
+  const canSave = form.printerAssetId !== '' && form.handledBy !== '';
 
   return (
     <div className="rp">
@@ -401,7 +401,7 @@ export default function RepairScreen() {
         <h1>修理履歴</h1>
         <p>
           不具合の発生から復旧までを 1 件ずつ残します。プリンターは端末台帳から選びます。
-          必須はプリンター名・対応区分・復旧日の 3 つだけです。担当や修理分類などは
+          必須はプリンター名と対応区分の 2 つだけです。発生日・復旧日・担当などは
           分かる範囲で埋めてください。あとから一覧の「編集」で足せます。
         </p>
       </header>
@@ -514,19 +514,15 @@ export default function RepairScreen() {
             <input
               type="date"
               value={form.occurredOn}
-              onFocus={fillToday('occurredOn')}
               onChange={(e) => set('occurredOn')(e.target.value)}
             />
           </label>
 
           <label>
-            <span>
-              復旧日<b className="rp-req">必須</b>
-            </span>
+            <span>復旧日</span>
             <input
               type="date"
               value={form.restoredOn}
-              onFocus={fillToday('restoredOn')}
               onChange={(e) => set('restoredOn')(e.target.value)}
             />
           </label>
@@ -552,6 +548,19 @@ export default function RepairScreen() {
                 </option>
               ))}
             </select>
+          </label>
+
+          <label>
+            <span>費用（円・税別）</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              value={form.cost}
+              onChange={(e) => set('cost')(e.target.value)}
+              placeholder="保守で無償なら 0"
+            />
           </label>
 
           <label className="rp-wide">
@@ -644,7 +653,10 @@ export default function RepairScreen() {
                       </span>
                     </td>
                     <td className="rp-detail">{row.detail ?? '—'}</td>
-                    <td>{row.restoredOn}</td>
+                    <td className="rp-num">
+                      {row.cost === null ? '—' : `${num.format(row.cost)} 円`}
+                    </td>
+                    <td>{row.restoredOn ?? '—'}</td>
                     <td>
                       <span
                         className={

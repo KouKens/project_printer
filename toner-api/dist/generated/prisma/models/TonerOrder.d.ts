@@ -20,8 +20,10 @@ export type TonerOrderSumAggregateOutputType = {
 export type TonerOrderMinAggregateOutputType = {
     id: number | null;
     tonerId: string | null;
+    userId: string | null;
     quantity: number | null;
     orderedAt: Date | null;
+    deliveryOn: Date | null;
     status: $Enums.OrderStatus | null;
     createdAt: Date | null;
     updatedAt: Date | null;
@@ -29,8 +31,10 @@ export type TonerOrderMinAggregateOutputType = {
 export type TonerOrderMaxAggregateOutputType = {
     id: number | null;
     tonerId: string | null;
+    userId: string | null;
     quantity: number | null;
     orderedAt: Date | null;
+    deliveryOn: Date | null;
     status: $Enums.OrderStatus | null;
     createdAt: Date | null;
     updatedAt: Date | null;
@@ -38,8 +42,10 @@ export type TonerOrderMaxAggregateOutputType = {
 export type TonerOrderCountAggregateOutputType = {
     id: number;
     tonerId: number;
+    userId: number;
     quantity: number;
     orderedAt: number;
+    deliveryOn: number;
     status: number;
     createdAt: number;
     updatedAt: number;
@@ -56,8 +62,10 @@ export type TonerOrderSumAggregateInputType = {
 export type TonerOrderMinAggregateInputType = {
     id?: true;
     tonerId?: true;
+    userId?: true;
     quantity?: true;
     orderedAt?: true;
+    deliveryOn?: true;
     status?: true;
     createdAt?: true;
     updatedAt?: true;
@@ -65,8 +73,10 @@ export type TonerOrderMinAggregateInputType = {
 export type TonerOrderMaxAggregateInputType = {
     id?: true;
     tonerId?: true;
+    userId?: true;
     quantity?: true;
     orderedAt?: true;
+    deliveryOn?: true;
     status?: true;
     createdAt?: true;
     updatedAt?: true;
@@ -74,8 +84,10 @@ export type TonerOrderMaxAggregateInputType = {
 export type TonerOrderCountAggregateInputType = {
     id?: true;
     tonerId?: true;
+    userId?: true;
     quantity?: true;
     orderedAt?: true;
+    deliveryOn?: true;
     status?: true;
     createdAt?: true;
     updatedAt?: true;
@@ -112,8 +124,10 @@ export type TonerOrderGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 export type TonerOrderGroupByOutputType = {
     id: number;
     tonerId: string;
+    userId: string | null;
     quantity: number;
     orderedAt: Date;
+    deliveryOn: Date | null;
     status: $Enums.OrderStatus;
     createdAt: Date;
     updatedAt: Date;
@@ -132,8 +146,10 @@ export type TonerOrderWhereInput = {
     NOT?: Prisma.TonerOrderWhereInput | Prisma.TonerOrderWhereInput[];
     id?: Prisma.IntFilter<"TonerOrder"> | number;
     tonerId?: Prisma.StringFilter<"TonerOrder"> | string;
+    userId?: Prisma.StringNullableFilter<"TonerOrder"> | string | null;
     quantity?: Prisma.IntFilter<"TonerOrder"> | number;
     orderedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
+    deliveryOn?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusFilter<"TonerOrder"> | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
@@ -142,8 +158,10 @@ export type TonerOrderWhereInput = {
 export type TonerOrderOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     tonerId?: Prisma.SortOrder;
+    userId?: Prisma.SortOrderInput | Prisma.SortOrder;
     quantity?: Prisma.SortOrder;
     orderedAt?: Prisma.SortOrder;
+    deliveryOn?: Prisma.SortOrderInput | Prisma.SortOrder;
     status?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
@@ -155,8 +173,10 @@ export type TonerOrderWhereUniqueInput = Prisma.AtLeast<{
     OR?: Prisma.TonerOrderWhereInput[];
     NOT?: Prisma.TonerOrderWhereInput | Prisma.TonerOrderWhereInput[];
     tonerId?: Prisma.StringFilter<"TonerOrder"> | string;
+    userId?: Prisma.StringNullableFilter<"TonerOrder"> | string | null;
     quantity?: Prisma.IntFilter<"TonerOrder"> | number;
     orderedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
+    deliveryOn?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusFilter<"TonerOrder"> | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
@@ -165,8 +185,10 @@ export type TonerOrderWhereUniqueInput = Prisma.AtLeast<{
 export type TonerOrderOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
     tonerId?: Prisma.SortOrder;
+    userId?: Prisma.SortOrderInput | Prisma.SortOrder;
     quantity?: Prisma.SortOrder;
     orderedAt?: Prisma.SortOrder;
+    deliveryOn?: Prisma.SortOrderInput | Prisma.SortOrder;
     status?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
@@ -182,15 +204,19 @@ export type TonerOrderScalarWhereWithAggregatesInput = {
     NOT?: Prisma.TonerOrderScalarWhereWithAggregatesInput | Prisma.TonerOrderScalarWhereWithAggregatesInput[];
     id?: Prisma.IntWithAggregatesFilter<"TonerOrder"> | number;
     tonerId?: Prisma.StringWithAggregatesFilter<"TonerOrder"> | string;
+    userId?: Prisma.StringNullableWithAggregatesFilter<"TonerOrder"> | string | null;
     quantity?: Prisma.IntWithAggregatesFilter<"TonerOrder"> | number;
     orderedAt?: Prisma.DateTimeWithAggregatesFilter<"TonerOrder"> | Date | string;
+    deliveryOn?: Prisma.DateTimeNullableWithAggregatesFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusWithAggregatesFilter<"TonerOrder"> | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeWithAggregatesFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeWithAggregatesFilter<"TonerOrder"> | Date | string;
 };
 export type TonerOrderCreateInput = {
+    userId?: string | null;
     quantity: number;
     orderedAt: Date | string;
+    deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
     createdAt?: Date | string;
     updatedAt?: Date | string;
@@ -199,15 +225,19 @@ export type TonerOrderCreateInput = {
 export type TonerOrderUncheckedCreateInput = {
     id?: number;
     tonerId: string;
+    userId?: string | null;
     quantity: number;
     orderedAt: Date | string;
+    deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
 export type TonerOrderUpdateInput = {
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
@@ -216,8 +246,10 @@ export type TonerOrderUpdateInput = {
 export type TonerOrderUncheckedUpdateInput = {
     id?: Prisma.IntFieldUpdateOperationsInput | number;
     tonerId?: Prisma.StringFieldUpdateOperationsInput | string;
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
@@ -225,15 +257,19 @@ export type TonerOrderUncheckedUpdateInput = {
 export type TonerOrderCreateManyInput = {
     id?: number;
     tonerId: string;
+    userId?: string | null;
     quantity: number;
     orderedAt: Date | string;
+    deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
 export type TonerOrderUpdateManyMutationInput = {
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
@@ -241,8 +277,10 @@ export type TonerOrderUpdateManyMutationInput = {
 export type TonerOrderUncheckedUpdateManyInput = {
     id?: Prisma.IntFieldUpdateOperationsInput | number;
     tonerId?: Prisma.StringFieldUpdateOperationsInput | string;
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
@@ -258,8 +296,10 @@ export type TonerOrderOrderByRelationAggregateInput = {
 export type TonerOrderCountOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     tonerId?: Prisma.SortOrder;
+    userId?: Prisma.SortOrder;
     quantity?: Prisma.SortOrder;
     orderedAt?: Prisma.SortOrder;
+    deliveryOn?: Prisma.SortOrder;
     status?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
@@ -271,8 +311,10 @@ export type TonerOrderAvgOrderByAggregateInput = {
 export type TonerOrderMaxOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     tonerId?: Prisma.SortOrder;
+    userId?: Prisma.SortOrder;
     quantity?: Prisma.SortOrder;
     orderedAt?: Prisma.SortOrder;
+    deliveryOn?: Prisma.SortOrder;
     status?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
@@ -280,8 +322,10 @@ export type TonerOrderMaxOrderByAggregateInput = {
 export type TonerOrderMinOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     tonerId?: Prisma.SortOrder;
+    userId?: Prisma.SortOrder;
     quantity?: Prisma.SortOrder;
     orderedAt?: Prisma.SortOrder;
+    deliveryOn?: Prisma.SortOrder;
     status?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
@@ -332,16 +376,20 @@ export type EnumOrderStatusFieldUpdateOperationsInput = {
     set?: $Enums.OrderStatus;
 };
 export type TonerOrderCreateWithoutTonerInput = {
+    userId?: string | null;
     quantity: number;
     orderedAt: Date | string;
+    deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
 export type TonerOrderUncheckedCreateWithoutTonerInput = {
     id?: number;
+    userId?: string | null;
     quantity: number;
     orderedAt: Date | string;
+    deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
     createdAt?: Date | string;
     updatedAt?: Date | string;
@@ -373,39 +421,49 @@ export type TonerOrderScalarWhereInput = {
     NOT?: Prisma.TonerOrderScalarWhereInput | Prisma.TonerOrderScalarWhereInput[];
     id?: Prisma.IntFilter<"TonerOrder"> | number;
     tonerId?: Prisma.StringFilter<"TonerOrder"> | string;
+    userId?: Prisma.StringNullableFilter<"TonerOrder"> | string | null;
     quantity?: Prisma.IntFilter<"TonerOrder"> | number;
     orderedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
+    deliveryOn?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusFilter<"TonerOrder"> | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
 };
 export type TonerOrderCreateManyTonerInput = {
     id?: number;
+    userId?: string | null;
     quantity: number;
     orderedAt: Date | string;
+    deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
 export type TonerOrderUpdateWithoutTonerInput = {
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 export type TonerOrderUncheckedUpdateWithoutTonerInput = {
     id?: Prisma.IntFieldUpdateOperationsInput | number;
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 export type TonerOrderUncheckedUpdateManyWithoutTonerInput = {
     id?: Prisma.IntFieldUpdateOperationsInput | number;
+    userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     quantity?: Prisma.IntFieldUpdateOperationsInput | number;
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
@@ -413,8 +471,10 @@ export type TonerOrderUncheckedUpdateManyWithoutTonerInput = {
 export type TonerOrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     tonerId?: boolean;
+    userId?: boolean;
     quantity?: boolean;
     orderedAt?: boolean;
+    deliveryOn?: boolean;
     status?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
@@ -423,8 +483,10 @@ export type TonerOrderSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
 export type TonerOrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     tonerId?: boolean;
+    userId?: boolean;
     quantity?: boolean;
     orderedAt?: boolean;
+    deliveryOn?: boolean;
     status?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
@@ -433,8 +495,10 @@ export type TonerOrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
 export type TonerOrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     tonerId?: boolean;
+    userId?: boolean;
     quantity?: boolean;
     orderedAt?: boolean;
+    deliveryOn?: boolean;
     status?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
@@ -443,13 +507,15 @@ export type TonerOrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
 export type TonerOrderSelectScalar = {
     id?: boolean;
     tonerId?: boolean;
+    userId?: boolean;
     quantity?: boolean;
     orderedAt?: boolean;
+    deliveryOn?: boolean;
     status?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
 };
-export type TonerOrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tonerId" | "quantity" | "orderedAt" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["tonerOrder"]>;
+export type TonerOrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tonerId" | "userId" | "quantity" | "orderedAt" | "deliveryOn" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["tonerOrder"]>;
 export type TonerOrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>;
 };
@@ -467,8 +533,10 @@ export type $TonerOrderPayload<ExtArgs extends runtime.Types.Extensions.Internal
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: number;
         tonerId: string;
+        userId: string | null;
         quantity: number;
         orderedAt: Date;
+        deliveryOn: Date | null;
         status: $Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
@@ -532,8 +600,10 @@ export interface Prisma__TonerOrderClient<T, Null = never, ExtArgs extends runti
 export interface TonerOrderFieldRefs {
     readonly id: Prisma.FieldRef<"TonerOrder", 'Int'>;
     readonly tonerId: Prisma.FieldRef<"TonerOrder", 'String'>;
+    readonly userId: Prisma.FieldRef<"TonerOrder", 'String'>;
     readonly quantity: Prisma.FieldRef<"TonerOrder", 'Int'>;
     readonly orderedAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
+    readonly deliveryOn: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
     readonly status: Prisma.FieldRef<"TonerOrder", 'OrderStatus'>;
     readonly createdAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
     readonly updatedAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;

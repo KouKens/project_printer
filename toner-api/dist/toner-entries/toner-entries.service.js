@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TonerEntriesService = exports.GUEST_USER = void 0;
 const common_1 = require("@nestjs/common");
+const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
 exports.GUEST_USER = 'ゲスト';
 let TonerEntriesService = class TonerEntriesService {
@@ -31,6 +32,7 @@ let TonerEntriesService = class TonerEntriesService {
                     tonerId: item.tonerId,
                     name: item.name,
                     quantity: item.quantity,
+                    receivedOn: dto.receivedOn,
                 }));
             }
             return results;
@@ -97,6 +99,7 @@ let TonerEntriesService = class TonerEntriesService {
                 action: 'RECEIVE',
                 quantity: count,
                 balance: stock.quantity,
+                receivedOn: (0, date_1.toDate)(dto.receivedOn) ?? (0, date_1.today)(),
             },
         });
         return this.toResult(toner.id, toner.name, 'RECEIVE', count, stock);
@@ -152,12 +155,15 @@ let TonerEntriesService = class TonerEntriesService {
     async stockTake(dto) {
         const userId = dto.userId?.trim() || exports.GUEST_USER;
         return this.prisma.$transaction(async (tx) => {
+            const toners = await tx.toner.findMany({
+                where: { id: { in: dto.counts.map((count) => count.tonerId) } },
+                include: { stock: true },
+            });
+            const known = new Map(toners.map((toner) => [toner.id, toner]));
+            const quantities = new Map(toners.map((toner) => [toner.id, toner.stock?.quantity ?? 0]));
             const rows = [];
             for (const count of dto.counts) {
-                const toner = await tx.toner.findUnique({
-                    where: { id: count.tonerId },
-                    include: { stock: true },
-                });
+                const toner = known.get(count.tonerId);
                 if (!toner) {
                     rows.push({
                         tonerId: count.tonerId,
@@ -169,7 +175,7 @@ let TonerEntriesService = class TonerEntriesService {
                     });
                     continue;
                 }
-                const before = toner.stock?.quantity ?? 0;
+                const before = quantities.get(toner.id) ?? 0;
                 const diff = count.counted - before;
                 if (diff === 0) {
                     rows.push({
@@ -187,6 +193,7 @@ let TonerEntriesService = class TonerEntriesService {
                     create: { tonerId: toner.id, quantity: count.counted },
                     update: { quantity: count.counted },
                 });
+                quantities.set(toner.id, count.counted);
                 await tx.tonerEntry.create({
                     data: {
                         userId,
@@ -223,12 +230,102 @@ let TonerEntriesService = class TonerEntriesService {
             updatedAt: t.stock?.updatedAt ?? t.updatedAt,
         }));
     }
+    async remove(id) {
+        return this.prisma.$transaction(async (tx) => {
+            const entry = await tx.tonerEntry.findUnique({
+                where: { id },
+                include: { toner: { select: { name: true } } },
+            });
+            if (!entry) {
+                throw new common_1.NotFoundException(`ID ${id} の記録はありません`);
+            }
+            if (entry.action === 'ADJUST') {
+                throw new common_1.UnprocessableEntityException('棚卸しの調整は取り消せません。数え直して棚卸しをやり直してください');
+            }
+            const stock = await tx.tonerStock.findUnique({
+                where: { tonerId: entry.tonerId },
+            });
+            const quantity = stock?.quantity ?? 0;
+            const received = stock?.received ?? 0;
+            const disposed = stock?.disposed ?? 0;
+            const count = entry.quantity;
+            if (entry.action === 'RECEIVE') {
+                if (quantity < count) {
+                    throw new common_1.UnprocessableEntityException(`取り消せません。搬入した ${count} 本のうち ${count - quantity} 本は` +
+                        `すでに持ち出されています（在庫 ${quantity} 本）`);
+                }
+                if (received - count < disposed) {
+                    throw new common_1.UnprocessableEntityException(`取り消せません。廃棄済み ${disposed} 本が搬入累計を上回ります`);
+                }
+                await tx.tonerStock.update({
+                    where: { tonerId: entry.tonerId },
+                    data: {
+                        quantity: { decrement: count },
+                        received: { decrement: count },
+                    },
+                });
+            }
+            else if (entry.action === 'ISSUE') {
+                await tx.tonerStock.update({
+                    where: { tonerId: entry.tonerId },
+                    data: { quantity: { increment: count } },
+                });
+            }
+            else if (entry.action === 'DISPOSE') {
+                await tx.tonerStock.update({
+                    where: { tonerId: entry.tonerId },
+                    data: { disposed: { decrement: Math.min(count, disposed) } },
+                });
+            }
+            await tx.tonerEntry.delete({ where: { id } });
+            const after = await tx.tonerStock.findUnique({
+                where: { tonerId: entry.tonerId },
+            });
+            return {
+                id,
+                tonerId: entry.tonerId,
+                name: entry.toner.name,
+                action: entry.action,
+                quantity: count,
+                stock: after?.quantity ?? 0,
+                received: after?.received ?? 0,
+                disposed: after?.disposed ?? 0,
+            };
+        });
+    }
     findRecent() {
         return this.prisma.tonerEntry.findMany({
             orderBy: { createdAt: 'desc' },
             take: 20,
             include: { toner: { select: { name: true } } },
         });
+    }
+    async findHistory(params) {
+        const days = params.days && params.days > 0 ? params.days : 60;
+        const from = new Date();
+        from.setDate(from.getDate() - days);
+        const rows = await this.prisma.tonerEntry.findMany({
+            where: {
+                createdAt: { gte: from },
+                ...(params.action ? { action: params.action } : {}),
+                ...(params.tonerId ? { tonerId: params.tonerId } : {}),
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1000,
+            include: { toner: { select: { name: true, color: true } } },
+        });
+        return rows.map((row) => ({
+            id: row.id,
+            userId: row.userId,
+            tonerId: row.tonerId,
+            name: row.toner.name,
+            color: row.toner.color,
+            action: row.action,
+            quantity: row.quantity,
+            balance: row.balance,
+            receivedOn: (0, date_1.fromDate)(row.receivedOn),
+            createdAt: row.createdAt,
+        }));
     }
     async requireToner(tx, tonerId) {
         const toner = await tx.toner.findUnique({

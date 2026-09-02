@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PageCountsService = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
+const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
 const snmp_service_1 = require("./snmp.service");
 function delta(current, previous) {
@@ -20,9 +21,6 @@ function delta(current, previous) {
         return null;
     const diff = current - previous;
     return diff < 0 ? null : diff;
-}
-function startOfDay(date) {
-    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
 }
 function addDays(date, days) {
     const next = new Date(date);
@@ -45,16 +43,12 @@ function fromDateKey(value, label) {
 function rangeOf(days, from, to) {
     const start = from
         ? fromDateKey(from, '開始日')
-        : addDays(startOfDay(new Date()), -days);
+        : addDays((0, date_1.startOfDay)(new Date()), -days);
     const end = to ? fromDateKey(to, '終了日') : null;
     if (end !== null && start > end) {
         throw new common_1.BadRequestException('開始日は終了日より前の日付を指定してください');
     }
     return end === null ? { gte: start } : { gte: start, lte: end };
-}
-function toDateKey(date) {
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 }
 let PageCountsService = PageCountsService_1 = class PageCountsService {
     prisma;
@@ -73,11 +67,12 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
     }
     async captureAll(now = new Date()) {
         const printers = await this.prisma.printer.findMany({
+            where: { protocol: 'SNMP' },
             orderBy: { ipAddress: 'asc' },
         });
         const rows = [];
         for (const printer of printers) {
-            rows.push(await this.captureOne(printer.id, now));
+            rows.push(await this.capture(printer, now));
         }
         return rows;
     }
@@ -88,29 +83,44 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
         if (!printer) {
             throw new common_1.NotFoundException(`ID ${printerId} のプリンターは登録されていません`);
         }
-        const date = startOfDay(now);
+        return this.capture(printer, now);
+    }
+    async capture(printer, now) {
+        const date = (0, date_1.startOfDay)(now);
         const base = {
             printerId: printer.id,
             ipAddress: printer.ipAddress,
-            date: toDateKey(date),
+            date: (0, date_1.fromDate)(date),
         };
         const empty = {
             total: null,
             totalMono: null,
             totalColor: null,
+            totalPrint: null,
+            totalCopy: null,
+            totalScan: null,
             pages: null,
             monoPages: null,
             colorPages: null,
+            printPages: null,
+            copyPages: null,
+            scanPages: null,
             spanDays: 0,
         };
         let total;
         let totalMono;
         let totalColor;
+        let totalPrint;
+        let totalCopy;
+        let totalScan;
         try {
             const snapshot = await this.snmp.poll(printer.ipAddress, printer.community, printer.version);
             total = snapshot.pageCount;
             totalMono = snapshot.monoCount;
             totalColor = snapshot.colorCount;
+            totalPrint = snapshot.printCount;
+            totalCopy = snapshot.copyCount;
+            totalScan = snapshot.scanCount;
             await this.prisma.printer.update({
                 where: { id: printer.id },
                 data: {
@@ -150,6 +160,9 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
         let pages = null;
         let monoPages = null;
         let colorPages = null;
+        let printPages = null;
+        let copyPages = null;
+        let scanPages = null;
         let spanDays = 1;
         let note;
         if (!previous) {
@@ -160,20 +173,29 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
             pages = delta(total, previous.total);
             monoPages = delta(totalMono, previous.totalMono);
             colorPages = delta(totalColor, previous.totalColor);
+            printPages = delta(totalPrint, previous.totalPrint);
+            copyPages = delta(totalCopy, previous.totalCopy);
+            scanPages = delta(totalScan, previous.totalScan);
             if (pages === null) {
                 note = `カウンタが前回（${previous.total}）より小さくなっています。機器交換かリセットの可能性があります`;
             }
             else if (spanDays > 1) {
-                note = `${spanDays} 日分をまとめた値です（前回の記録は ${toDateKey(previous.date)}）`;
+                note = `${spanDays} 日分をまとめた値です（前回の記録は ${(0, date_1.fromDate)(previous.date)}）`;
             }
         }
         const values = {
             total,
             totalMono,
             totalColor,
+            totalPrint,
+            totalCopy,
+            totalScan,
             pages,
             monoPages,
             colorPages,
+            printPages,
+            copyPages,
+            scanPages,
             spanDays,
         };
         await this.prisma.pageCountDaily.upsert({
@@ -184,26 +206,60 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
         return { ...base, ...values, status: 'recorded', note };
     }
     async findAllDaily(days = 30, from, to) {
-        const rows = await this.prisma.pageCountDaily.findMany({
-            where: { date: rangeOf(days, from, to) },
-            orderBy: [{ date: 'desc' }, { printerId: 'asc' }],
-            include: { printer: { select: { ipAddress: true, model: true } } },
+        const [rows, assets] = await Promise.all([
+            this.prisma.pageCountDaily.findMany({
+                where: { date: rangeOf(days, from, to) },
+                orderBy: [{ date: 'desc' }, { printerId: 'asc' }],
+                include: {
+                    printer: {
+                        select: {
+                            ipAddress: true,
+                            model: true,
+                            serialNumber: true,
+                            counterUnit: true,
+                        },
+                    },
+                },
+            }),
+            this.prisma.printerAsset.findMany({
+                select: {
+                    id: true,
+                    no: true,
+                    department: true,
+                    ipAddress: true,
+                    serialNumber: true,
+                },
+                orderBy: [{ no: 'asc' }, { id: 'asc' }],
+            }),
+        ]);
+        const ledger = this.ledgerIndex(assets);
+        return rows.map((row) => {
+            const asset = this.assetOf(row.printer, ledger);
+            return {
+                id: row.id,
+                printerId: row.printerId,
+                ipAddress: row.printer.ipAddress,
+                model: row.printer.model,
+                counterUnit: row.printer.counterUnit,
+                department: asset?.department ?? null,
+                no: asset?.no ?? null,
+                date: (0, date_1.fromDate)(row.date),
+                total: row.total,
+                totalMono: row.totalMono,
+                totalColor: row.totalColor,
+                totalPrint: row.totalPrint,
+                totalCopy: row.totalCopy,
+                totalScan: row.totalScan,
+                pages: row.pages,
+                monoPages: row.monoPages,
+                colorPages: row.colorPages,
+                printPages: row.printPages,
+                copyPages: row.copyPages,
+                scanPages: row.scanPages,
+                spanDays: row.spanDays,
+                capturedAt: row.capturedAt,
+            };
         });
-        return rows.map((row) => ({
-            id: row.id,
-            printerId: row.printerId,
-            ipAddress: row.printer.ipAddress,
-            model: row.printer.model,
-            date: toDateKey(row.date),
-            total: row.total,
-            totalMono: row.totalMono,
-            totalColor: row.totalColor,
-            pages: row.pages,
-            monoPages: row.monoPages,
-            colorPages: row.colorPages,
-            spanDays: row.spanDays,
-            capturedAt: row.capturedAt,
-        }));
     }
     async findDaily(printerId, days = 30, from, to) {
         const rows = await this.prisma.pageCountDaily.findMany({
@@ -211,16 +267,46 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
             orderBy: { date: 'desc' },
         });
         return rows.map((row) => ({
-            date: toDateKey(row.date),
+            date: (0, date_1.fromDate)(row.date),
             pages: row.pages,
             monoPages: row.monoPages,
             colorPages: row.colorPages,
+            printPages: row.printPages,
+            copyPages: row.copyPages,
+            scanPages: row.scanPages,
             total: row.total,
             totalMono: row.totalMono,
             totalColor: row.totalColor,
+            totalPrint: row.totalPrint,
+            totalCopy: row.totalCopy,
+            totalScan: row.totalScan,
             spanDays: row.spanDays,
             capturedAt: row.capturedAt,
         }));
+    }
+    ledgerIndex(assets) {
+        const bySerial = new Map();
+        const byIp = new Map();
+        for (const asset of assets) {
+            if (asset.serialNumber) {
+                bySerial.set(asset.serialNumber.toLowerCase(), asset);
+            }
+            if (asset.ipAddress) {
+                const list = byIp.get(asset.ipAddress) ?? [];
+                list.push(asset);
+                byIp.set(asset.ipAddress, list);
+            }
+        }
+        return { bySerial, byIp };
+    }
+    assetOf(printer, ledger) {
+        if (printer.serialNumber) {
+            const bySerial = ledger.bySerial.get(printer.serialNumber.toLowerCase());
+            if (bySerial)
+                return bySerial;
+        }
+        const byIp = ledger.byIp.get(printer.ipAddress) ?? [];
+        return byIp.length === 1 ? byIp[0] : null;
     }
 };
 exports.PageCountsService = PageCountsService;

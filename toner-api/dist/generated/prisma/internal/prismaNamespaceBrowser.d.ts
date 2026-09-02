@@ -17,9 +17,12 @@ export declare const ModelName: {
     readonly TonerStock: "TonerStock";
     readonly TonerEntry: "TonerEntry";
     readonly TonerOrder: "TonerOrder";
+    readonly TonerInvoice: "TonerInvoice";
+    readonly TonerInvoiceLine: "TonerInvoiceLine";
     readonly Printer: "Printer";
     readonly PrinterAlert: "PrinterAlert";
     readonly PrinterAsset: "PrinterAsset";
+    readonly MaintVendor: "MaintVendor";
     readonly PageCountDaily: "PageCountDaily";
     readonly SupplyReading: "SupplyReading";
     readonly RepairRecord: "RepairRecord";
@@ -37,6 +40,8 @@ export declare const TonerScalarFieldEnum: {
     readonly name: "name";
     readonly color: "color";
     readonly recycled: "recycled";
+    readonly alertThreshold: "alertThreshold";
+    readonly yieldPages: "yieldPages";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
@@ -71,30 +76,56 @@ export declare const TonerEntryScalarFieldEnum: {
     readonly action: "action";
     readonly quantity: "quantity";
     readonly balance: "balance";
+    readonly receivedOn: "receivedOn";
     readonly createdAt: "createdAt";
 };
 export type TonerEntryScalarFieldEnum = (typeof TonerEntryScalarFieldEnum)[keyof typeof TonerEntryScalarFieldEnum];
 export declare const TonerOrderScalarFieldEnum: {
     readonly id: "id";
     readonly tonerId: "tonerId";
+    readonly userId: "userId";
     readonly quantity: "quantity";
     readonly orderedAt: "orderedAt";
+    readonly deliveryOn: "deliveryOn";
     readonly status: "status";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
 export type TonerOrderScalarFieldEnum = (typeof TonerOrderScalarFieldEnum)[keyof typeof TonerOrderScalarFieldEnum];
+export declare const TonerInvoiceScalarFieldEnum: {
+    readonly id: "id";
+    readonly issuedOn: "issuedOn";
+    readonly periodFrom: "periodFrom";
+    readonly periodTo: "periodTo";
+    readonly invoiceNo: "invoiceNo";
+    readonly note: "note";
+    readonly checkedAt: "checkedAt";
+    readonly checkedBy: "checkedBy";
+    readonly createdAt: "createdAt";
+    readonly updatedAt: "updatedAt";
+};
+export type TonerInvoiceScalarFieldEnum = (typeof TonerInvoiceScalarFieldEnum)[keyof typeof TonerInvoiceScalarFieldEnum];
+export declare const TonerInvoiceLineScalarFieldEnum: {
+    readonly id: "id";
+    readonly invoiceId: "invoiceId";
+    readonly tonerId: "tonerId";
+    readonly quantity: "quantity";
+    readonly unitPrice: "unitPrice";
+};
+export type TonerInvoiceLineScalarFieldEnum = (typeof TonerInvoiceLineScalarFieldEnum)[keyof typeof TonerInvoiceLineScalarFieldEnum];
 export declare const PrinterScalarFieldEnum: {
     readonly id: "id";
     readonly ipAddress: "ipAddress";
     readonly community: "community";
     readonly version: "version";
+    readonly protocol: "protocol";
     readonly hostName: "hostName";
     readonly model: "model";
     readonly serialNumber: "serialNumber";
     readonly macAddress: "macAddress";
     readonly location: "location";
     readonly pageCount: "pageCount";
+    readonly counterUnit: "counterUnit";
     readonly reachable: "reachable";
     readonly lastError: "lastError";
     readonly lastPolledAt: "lastPolledAt";
@@ -125,7 +156,9 @@ export declare const PrinterAssetScalarFieldEnum: {
     readonly model: "model";
     readonly serialNumber: "serialNumber";
     readonly purchasedOn: "purchasedOn";
+    readonly purchasePrice: "purchasePrice";
     readonly contractNo: "contractNo";
+    readonly maintVendorId: "maintVendorId";
     readonly maintContract: "maintContract";
     readonly maintStartOn: "maintStartOn";
     readonly maintEndOn: "maintEndOn";
@@ -137,6 +170,16 @@ export declare const PrinterAssetScalarFieldEnum: {
     readonly updatedAt: "updatedAt";
 };
 export type PrinterAssetScalarFieldEnum = (typeof PrinterAssetScalarFieldEnum)[keyof typeof PrinterAssetScalarFieldEnum];
+export declare const MaintVendorScalarFieldEnum: {
+    readonly id: "id";
+    readonly name: "name";
+    readonly phones: "phones";
+    readonly makers: "makers";
+    readonly note: "note";
+    readonly createdAt: "createdAt";
+    readonly updatedAt: "updatedAt";
+};
+export type MaintVendorScalarFieldEnum = (typeof MaintVendorScalarFieldEnum)[keyof typeof MaintVendorScalarFieldEnum];
 export declare const PageCountDailyScalarFieldEnum: {
     readonly id: "id";
     readonly printerId: "printerId";
@@ -144,9 +187,15 @@ export declare const PageCountDailyScalarFieldEnum: {
     readonly total: "total";
     readonly totalMono: "totalMono";
     readonly totalColor: "totalColor";
+    readonly totalPrint: "totalPrint";
+    readonly totalCopy: "totalCopy";
+    readonly totalScan: "totalScan";
     readonly pages: "pages";
     readonly monoPages: "monoPages";
     readonly colorPages: "colorPages";
+    readonly printPages: "printPages";
+    readonly copyPages: "copyPages";
+    readonly scanPages: "scanPages";
     readonly spanDays: "spanDays";
     readonly capturedAt: "capturedAt";
 };
@@ -173,6 +222,7 @@ export declare const RepairRecordScalarFieldEnum: {
     readonly category: "category";
     readonly handledBy: "handledBy";
     readonly detail: "detail";
+    readonly cost: "cost";
     readonly restoredOn: "restoredOn";
     readonly status: "status";
     readonly createdAt: "createdAt";

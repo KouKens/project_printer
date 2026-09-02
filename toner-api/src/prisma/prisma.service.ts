@@ -2,6 +2,12 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client';
 
+/**
+ * $transaction のコールバックが受け取るクライアント。
+ * トランザクションの中で使うヘルパーの引数の型になる
+ */
+export type Tx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
+
 @Injectable()
 export class PrismaService
   extends PrismaClient

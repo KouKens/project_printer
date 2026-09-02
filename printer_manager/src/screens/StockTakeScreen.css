@@ -162,11 +162,29 @@
   position: sticky;
   top: 0;
   z-index: 1;
+  /* 見出しは丸ごと押せるボタンにするので、余白はボタン側に持たせる */
+  padding: 0;
   background: #f4f7f9;
   font-weight: 600;
   font-size: 12px;
   color: var(--muted);
 }
+.st-table thead th button {
+  width: 100%;
+  padding: 6px 10px;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-align: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.st-table thead th button:hover { background: #e9eff4; color: var(--ink); }
+.st-table thead th.st-num button { text-align: right; }
+.st-table thead th[aria-sort='ascending'] button,
+.st-table thead th[aria-sort='descending'] button { color: var(--accent); }
+.st-arrow { margin-left: 4px; font-size: 9px; }
 .st-table tbody tr:hover { background: #f7fafc; }
 /* 差のある行は目で追えるようにする。棚卸しはここだけ見れば済む */
 .st-row-diff { background: #fdf6e8; }

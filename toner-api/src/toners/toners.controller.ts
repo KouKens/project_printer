@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -36,6 +37,12 @@ export class TonersController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateTonerDto) {
     return this.service.update(id, dto);
+  }
+
+  /** マスタから消す。履歴・注文・在庫が残っているものは消せない */
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.service.remove(id);
   }
 
   /** 価格の履歴。新しい順 */

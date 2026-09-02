@@ -7,6 +7,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -57,4 +58,14 @@ export class BulkTonerEntryDto {
   @ValidateNested({ each: true })
   @Type(() => BulkTonerEntryItemDto)
   items: BulkTonerEntryItemDto[];
+
+  /**
+   * 搬入日（YYYY-MM-DD）。搬入のときだけ使う。
+   * まとめて受け付ける分はすべて同じ日付になる
+   */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: '搬入日は YYYY-MM-DD の形式で入力してください',
+  })
+  receivedOn?: string;
 }

@@ -11,26 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TonersService = void 0;
 const common_1 = require("@nestjs/common");
+const date_1 = require("../common/date");
+const text_1 = require("../common/text");
 const prisma_service_1 = require("../prisma/prisma.service");
-function toDate(value) {
-    const [year, month, day] = value.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day));
-}
-function fromDate(value) {
-    const month = `${value.getUTCMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getUTCDate()}`.padStart(2, '0');
-    return `${value.getUTCFullYear()}-${month}-${day}`;
-}
-function today() {
-    const now = new Date();
-    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-}
-function toText(value) {
-    if (value === undefined || value === null)
-        return null;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-}
 let TonersService = class TonersService {
     prisma;
     constructor(prisma) {
@@ -47,9 +30,11 @@ let TonersService = class TonersService {
             await tx.toner.create({
                 data: {
                     id,
-                    name: toText(dto.name),
-                    color: toText(dto.color),
+                    name: (0, text_1.toText)(dto.name),
+                    color: (0, text_1.toText)(dto.color),
                     recycled: dto.recycled ?? false,
+                    alertThreshold: dto.alertThreshold ?? null,
+                    yieldPages: dto.yieldPages ?? null,
                     stock: { create: {} },
                     printers: {
                         create: (dto.printerAssetIds ?? []).map((printerAssetId) => ({
@@ -64,8 +49,8 @@ let TonersService = class TonersService {
                         tonerId: id,
                         price: dto.price,
                         effectiveFrom: dto.effectiveFrom
-                            ? toDate(dto.effectiveFrom)
-                            : today(),
+                            ? (0, date_1.toDate)(dto.effectiveFrom)
+                            : (0, date_1.today)(),
                     },
                 });
             }
@@ -135,9 +120,11 @@ let TonersService = class TonersService {
             await tx.toner.update({
                 where: { id },
                 data: {
-                    name: dto.name === undefined ? undefined : toText(dto.name),
-                    color: dto.color === undefined ? undefined : toText(dto.color),
+                    name: dto.name === undefined ? undefined : (0, text_1.toText)(dto.name),
+                    color: dto.color === undefined ? undefined : (0, text_1.toText)(dto.color),
                     recycled: dto.recycled,
+                    alertThreshold: dto.alertThreshold === undefined ? undefined : dto.alertThreshold,
+                    yieldPages: dto.yieldPages === undefined ? undefined : dto.yieldPages,
                 },
             });
             if (dto.printerAssetIds !== undefined) {
@@ -160,19 +147,46 @@ let TonersService = class TonersService {
             throw new common_1.NotFoundException(`${id} は登録されていません`);
         }
         const effectiveFrom = dto.effectiveFrom
-            ? toDate(dto.effectiveFrom)
-            : today();
+            ? (0, date_1.toDate)(dto.effectiveFrom)
+            : (0, date_1.today)();
         await this.prisma.tonerPrice.upsert({
             where: { tonerId_effectiveFrom: { tonerId: id, effectiveFrom } },
             create: {
                 tonerId: id,
                 price: dto.price,
                 effectiveFrom,
-                note: toText(dto.note),
+                note: (0, text_1.toText)(dto.note),
             },
-            update: { price: dto.price, note: toText(dto.note) },
+            update: { price: dto.price, note: (0, text_1.toText)(dto.note) },
         });
         return this.findOne(id);
+    }
+    async remove(id) {
+        const toner = await this.prisma.toner.findUnique({
+            where: { id },
+            include: {
+                stock: true,
+                _count: { select: { entries: true, orders: true } },
+            },
+        });
+        if (!toner) {
+            throw new common_1.NotFoundException(`${id} は登録されていません`);
+        }
+        const blockers = [];
+        if (toner._count.entries > 0) {
+            blockers.push(`受付の履歴が ${toner._count.entries} 件`);
+        }
+        if (toner._count.orders > 0) {
+            blockers.push(`注文が ${toner._count.orders} 件`);
+        }
+        if ((toner.stock?.quantity ?? 0) !== 0) {
+            blockers.push(`在庫が ${toner.stock?.quantity} 本`);
+        }
+        if (blockers.length > 0) {
+            throw new common_1.ConflictException(`${id} は削除できません（${blockers.join(' / ')}あります）`);
+        }
+        await this.prisma.toner.delete({ where: { id } });
+        return { id };
     }
     async findPrices(id) {
         const toner = await this.prisma.toner.findUnique({
@@ -185,7 +199,7 @@ let TonersService = class TonersService {
         return toner.prices.map((row) => ({
             id: row.id,
             price: row.price,
-            effectiveFrom: fromDate(row.effectiveFrom),
+            effectiveFrom: (0, date_1.fromDate)(row.effectiveFrom),
             note: row.note,
             createdAt: row.createdAt,
         }));
@@ -195,7 +209,7 @@ let TonersService = class TonersService {
             throw new common_1.BadRequestException('日付は YYYY-MM-DD の形式で指定してください');
         }
         const row = await this.prisma.tonerPrice.findFirst({
-            where: { tonerId: id, effectiveFrom: { lte: toDate(date) } },
+            where: { tonerId: id, effectiveFrom: { lte: (0, date_1.toDate)(date) } },
             orderBy: { effectiveFrom: 'desc' },
         });
         return row?.price ?? null;
@@ -207,13 +221,14 @@ let TonersService = class TonersService {
             where: { id: { in: assetIds } },
             select: { id: true },
         });
-        const missing = assetIds.filter((id) => !found.some((asset) => asset.id === id));
+        const registered = new Set(found.map((asset) => asset.id));
+        const missing = assetIds.filter((id) => !registered.has(id));
         if (missing.length > 0) {
             throw new common_1.BadRequestException(`端末情報に無いプリンターが指定されています（ID ${missing.join(', ')}）`);
         }
     }
     currentPrice(prices) {
-        const now = today();
+        const now = (0, date_1.today)();
         return prices.find((row) => row.effectiveFrom <= now) ?? null;
     }
     toResponse(toner) {
@@ -223,8 +238,11 @@ let TonersService = class TonersService {
             name: toner.name,
             color: toner.color,
             recycled: toner.recycled,
+            alertThreshold: toner.alertThreshold,
+            yieldPages: toner.yieldPages,
             price: current?.price ?? null,
-            priceFrom: current ? fromDate(current.effectiveFrom) : null,
+            costPerPage: current && toner.yieldPages ? current.price / toner.yieldPages : null,
+            priceFrom: current ? (0, date_1.fromDate)(current.effectiveFrom) : null,
             priceCount: toner.prices.length,
             stock: toner.stock?.quantity ?? 0,
             printers: toner.printers.map((link) => ({

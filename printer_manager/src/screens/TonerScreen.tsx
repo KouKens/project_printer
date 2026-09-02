@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { todayIso } from '../lib/date';
-import { ipToNumber } from '../lib/table';
+import { num, orNull } from '../lib/format';
+import { ipToNumber, nextSort, sortRows } from '../lib/table';
+import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
 import './TonerScreen.css';
 
@@ -11,6 +13,10 @@ type Form = {
   color: string;
   recycled: boolean;
   price: string;
+  /** 在庫がこの本数以下になったら一覧で警告する。空欄なら警告しない */
+  alertThreshold: string;
+  /** 1 本で刷れる枚数（カタログ値）。1 枚あたりのトナー代の分母になる */
+  yieldPages: string;
   effectiveFrom: string;
   /** 端末情報（台帳）の主キー */
   printerAssetIds: number[];
@@ -22,6 +28,12 @@ type SavedToner = {
   name: string | null;
   color: string | null;
   recycled: boolean;
+  /** 在庫がこの本数以下なら警告する。未設定なら null */
+  alertThreshold: number | null;
+  /** 1 本で刷れる枚数（カタログ値）。未設定なら null */
+  yieldPages: number | null;
+  /** 1 枚あたりのトナー代（税別）。価格と枚数の両方があるときだけ入る */
+  costPerPage: number | null;
   /** 今日の時点で有効な税別価格。まだ登録が無ければ null */
   price: number | null;
   priceFrom: string | null;
@@ -50,6 +62,52 @@ type Printer = {
   model: string | null;
 };
 
+/**
+ * 一覧の列。並べ替えの鍵も兼ねる。
+ * printers は台数、recycled は純正を先にしたいので、どちらも数として比べる
+ */
+type SortKey =
+  | 'id'
+  | 'name'
+  | 'color'
+  | 'recycled'
+  | 'price'
+  | 'priceFrom'
+  | 'priceCount'
+  | 'printers'
+  | 'alertThreshold'
+  | 'yieldPages'
+  | 'costPerPage'
+  | 'stock';
+
+const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
+  { key: 'id', label: 'トナーID', kind: 'text' },
+  { key: 'name', label: 'トナー名', kind: 'text' },
+  { key: 'color', label: '色', kind: 'text' },
+  { key: 'recycled', label: 'リサイクル', kind: 'number' },
+  { key: 'price', label: '価格（税別）', kind: 'number', numeric: true },
+  { key: 'yieldPages', label: '印刷可能枚数', kind: 'number', numeric: true },
+  { key: 'costPerPage', label: '1 枚あたり', kind: 'number', numeric: true },
+  { key: 'priceFrom', label: '適用開始', kind: 'date' },
+  { key: 'priceCount', label: '改定', kind: 'number', numeric: true },
+  { key: 'printers', label: '対応プリンター', kind: 'number' },
+  { key: 'alertThreshold', label: '警告本数', kind: 'number', numeric: true },
+  { key: 'stock', label: '在庫', kind: 'number', numeric: true },
+];
+
+/** 並べ替えの鍵。入れ子になっている値はここで平らにする */
+function pick(toner: SavedToner, key: SortKey): unknown {
+  switch (key) {
+    case 'recycled':
+      // 純正（false）を先に集める
+      return toner.recycled ? 1 : 0;
+    case 'printers':
+      return toner.printers.length;
+    default:
+      return toner[key];
+  }
+}
+
 /** 添付の一覧に出てくる色。ここに無いものも自由に入力できる */
 const COLORS = [
   'ブラック',
@@ -68,17 +126,29 @@ const EMPTY: Form = {
   color: '',
   recycled: false,
   price: '',
+  alertThreshold: '',
+  yieldPages: '',
   effectiveFrom: todayIso(),
   printerAssetIds: [],
 };
 
-/** 空欄は null で送る。API 側で「未入力」として扱われる */
-function orNull(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+/** 空欄は「警告しない」なので null で送る。0 は「在庫 0 で警告」の意味で残す */
+function toCount(value: string): number | null {
+  return value.trim() === '' ? null : Number(value);
 }
 
-const yen = new Intl.NumberFormat('ja-JP');
+/**
+ * 在庫の状態。
+ * 0 は切らしているので赤、閾値以下は補充の合図としてオレンジ。
+ * 閾値が未設定なら 0 のときだけ赤にする
+ */
+function stockState(toner: SavedToner): 'out' | 'low' | null {
+  if (toner.stock <= 0) return 'out';
+  if (toner.alertThreshold !== null && toner.stock <= toner.alertThreshold) {
+    return 'low';
+  }
+  return null;
+}
 
 /** 一覧のツールチップに出す機器の呼び名 */
 const printerLabel = (printer: Printer) =>
@@ -91,9 +161,17 @@ const printerLabel = (printer: Printer) =>
     .filter(Boolean)
     .join(' / ');
 
-/** 一覧の狭いセルに出す短い呼び名。IP 未入力の台帳もあるので No. で代替する */
+/**
+ * 一覧の狭いセルに出す短い呼び名。IP 未入力の台帳もあるので No. で代替する。
+ *
+ * ラベルプリンターや FAX のように IP も No. も持たない台があるので、
+ * 最後の手前で型番を出す。ID だけだとどの機器か分からない
+ */
 const printerShort = (printer: Printer) =>
-  printer.ipAddress ?? (printer.no ? `No.${printer.no}` : `ID ${printer.id}`);
+  printer.ipAddress ??
+  (printer.no ? `No.${printer.no}` : null) ??
+  printer.model ??
+  `ID ${printer.id}`;
 
 export default function TonerScreen() {
   const [form, setForm] = useState<Form>(EMPTY);
@@ -103,6 +181,10 @@ export default function TonerScreen() {
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [filter, setFilter] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+    key: 'id',
+    dir: 'asc',
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -133,6 +215,28 @@ export default function TonerScreen() {
 
   const set = <K extends keyof Form>(key: K) => (value: Form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  /** 凡例に出す件数。一覧の色分けと同じ判定を使う */
+  const counts = useMemo(
+    () => ({
+      out: toners.filter((toner) => stockState(toner) === 'out').length,
+      low: toners.filter((toner) => stockState(toner) === 'low').length,
+    }),
+    [toners],
+  );
+
+  /** 見出しを押した列で並べ替えた一覧 */
+  const shown = useMemo(() => {
+    const column = COLUMNS.find((col) => col.key === sort.key);
+    return sortRows(
+      toners,
+      (toner) => pick(toner, sort.key),
+      column?.kind ?? 'text',
+      sort.dir,
+      // 値が並んだときは API が返した順（トナー名 → 品番）で安定させる
+      (toner) => toners.indexOf(toner),
+    );
+  }, [toners, sort]);
 
   const shownPrinters = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -167,6 +271,8 @@ export default function TonerScreen() {
           name: orNull(form.name),
           color: orNull(form.color),
           recycled: form.recycled,
+          alertThreshold: toCount(form.alertThreshold),
+          yieldPages: toCount(form.yieldPages),
           printerAssetIds: form.printerAssetIds,
           price: form.price.trim() === '' ? null : Number(form.price),
           effectiveFrom: form.price.trim() === '' ? null : form.effectiveFrom,
@@ -195,6 +301,8 @@ export default function TonerScreen() {
           name: orNull(form.name),
           color: orNull(form.color),
           recycled: form.recycled,
+          alertThreshold: toCount(form.alertThreshold),
+          yieldPages: toCount(form.yieldPages),
           printerAssetIds: form.printerAssetIds,
         }),
       });
@@ -227,7 +335,7 @@ export default function TonerScreen() {
         }),
       });
       setNotice(
-        `${form.effectiveFrom} から ${yen.format(Number(form.price))} 円（税別）にしました`,
+        `${form.effectiveFrom} から ${num.format(Number(form.price))} 円（税別）にしました`,
       );
       await edit(editingId);
       await load();
@@ -251,6 +359,9 @@ export default function TonerScreen() {
         name: toner.name ?? '',
         color: toner.color ?? '',
         recycled: toner.recycled,
+        alertThreshold:
+          toner.alertThreshold === null ? '' : String(toner.alertThreshold),
+        yieldPages: toner.yieldPages === null ? '' : String(toner.yieldPages),
         price: toner.price === null ? '' : String(toner.price),
         effectiveFrom: toner.priceFrom ?? todayIso(),
         printerAssetIds: toner.printers.map((printer) => printer.id),
@@ -259,6 +370,36 @@ export default function TonerScreen() {
       setPrices(history);
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  /**
+   * マスタから消す。取り消せないので確認を挟む。
+   * 履歴・注文・在庫が残っている品番は API 側で弾かれ、理由が文言で返る
+   */
+  const remove = async (toner: SavedToner) => {
+    const label = toner.name ?? toner.id;
+    if (!window.confirm(`${label}（${toner.id}）をマスタから削除します。よろしいですか。`)) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await request(`/toners/${encodeURIComponent(toner.id)}`, { method: 'DELETE' });
+      setNotice(`${label} を削除しました`);
+      // 消した品番を編集中なら、フォームも空に戻す
+      if (editingId === toner.id) {
+        setForm(EMPTY);
+        setEditingId(null);
+        setPrices([]);
+      }
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -318,6 +459,32 @@ export default function TonerScreen() {
               <option key={color} value={color} />
             ))}
           </datalist>
+        </label>
+
+        <label>
+          <span>この本数以下で警告</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            inputMode="numeric"
+            value={form.alertThreshold}
+            onChange={(e) => set('alertThreshold')(e.target.value)}
+            placeholder="空欄なら警告しない"
+          />
+        </label>
+
+        <label>
+          <span>印刷可能枚数（1 本あたり）</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            inputMode="numeric"
+            value={form.yieldPages}
+            onChange={(e) => set('yieldPages')(e.target.value)}
+            placeholder="カタログ値（A4・5%）"
+          />
         </label>
 
         <label>
@@ -419,7 +586,7 @@ export default function TonerScreen() {
             {prices.map((row, index) => (
               <li key={row.id}>
                 <span className="tn-from">{row.effectiveFrom} 〜</span>
-                <span>{yen.format(row.price)} 円</span>
+                <span>{num.format(row.price)} 円</span>
                 {index === 0 && row.effectiveFrom <= todayIso() && (
                   <span className="tn-now">現在</span>
                 )}
@@ -436,6 +603,16 @@ export default function TonerScreen() {
           価格は今日の時点で有効なものです。「編集」で読み込むと履歴も見られます。
         </p>
 
+        <p className="tn-legend">
+          <span className="tn-swatch tn-swatch-out" aria-hidden />
+          在庫なし（{counts.out} 件）
+          <span className="tn-swatch tn-swatch-low" aria-hidden />
+          警告本数以下（{counts.low} 件）
+          <span className="tn-muted">
+            警告する本数は品番ごとに設定します。空欄なら在庫 0 のときだけ赤にします。
+          </span>
+        </p>
+
         {toners.length === 0 ? (
           <p className="tn-empty">まだ登録がありません。上の欄を入力して登録してください。</p>
         ) : (
@@ -443,27 +620,57 @@ export default function TonerScreen() {
             <table className="tn-table">
               <thead>
                 <tr>
-                  <th>トナーID</th>
-                  <th>トナー名</th>
-                  <th>色</th>
-                  <th>リサイクル</th>
-                  <th className="tn-num">価格（税別）</th>
-                  <th>適用開始</th>
-                  <th className="tn-num">改定</th>
-                  <th>対応プリンター</th>
-                  <th className="tn-num">在庫</th>
-                  <th>操作</th>
+                  {COLUMNS.map((col) => (
+                    <th
+                      key={col.key}
+                      className={col.numeric ? 'tn-num' : undefined}
+                      aria-sort={
+                        sort.key === col.key
+                          ? sort.dir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                    >
+                      <button type="button" onClick={() => setSort(nextSort(sort, col.key))}>
+                        {col.label}
+                        <span className="tn-arrow" aria-hidden>
+                          {sort.key === col.key ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
+                        </span>
+                      </button>
+                    </th>
+                  ))}
+                  <th className="tn-plain">操作</th>
                 </tr>
               </thead>
               <tbody>
-                {toners.map((toner) => (
+                {shown.map((toner) => (
                   <tr key={toner.id} className={toner.id === editingId ? 'tn-row-on' : undefined}>
                     <td className="tn-mono">{toner.id}</td>
                     <td>{toner.name ?? '—'}</td>
                     <td>{toner.color ?? '—'}</td>
                     <td>{toner.recycled ? '○' : '—'}</td>
                     <td className="tn-num">
-                      {toner.price === null ? '—' : `${yen.format(toner.price)} 円`}
+                      {toner.price === null ? '—' : `${num.format(toner.price)} 円`}
+                    </td>
+                    <td className="tn-num">
+                      {toner.yieldPages === null ? (
+                        <span className="tn-muted">—</span>
+                      ) : (
+                        `${num.format(toner.yieldPages)} 枚`
+                      )}
+                    </td>
+                    <td
+                      className={toner.costPerPage === null ? 'tn-num tn-muted' : 'tn-num tn-cpp'}
+                      title={
+                        toner.costPerPage === null
+                          ? '価格と印刷可能枚数の両方が入っている品番だけ出します'
+                          : `${num.format(toner.price ?? 0)} 円 ÷ ${num.format(
+                              toner.yieldPages ?? 0,
+                            )} 枚（カタログ値・A4 5% 基準）`
+                      }
+                    >
+                      {toner.costPerPage === null ? '—' : `${toner.costPerPage.toFixed(2)} 円`}
                     </td>
                     <td className="tn-mono">{toner.priceFrom ?? '—'}</td>
                     <td className="tn-num">{toner.priceCount}</td>
@@ -480,10 +687,47 @@ export default function TonerScreen() {
                         </>
                       )}
                     </td>
-                    <td className="tn-num">{toner.stock}</td>
+                    <td className="tn-num">
+                      {toner.alertThreshold === null ? (
+                        <span className="tn-muted">—</span>
+                      ) : (
+                        `${toner.alertThreshold} 本以下`
+                      )}
+                    </td>
+                    <td
+                      className={
+                        stockState(toner) === 'out'
+                          ? 'tn-num tn-stock-out'
+                          : stockState(toner) === 'low'
+                            ? 'tn-num tn-stock-low'
+                            : 'tn-num'
+                      }
+                      title={
+                        stockState(toner) === 'out'
+                          ? '在庫がありません'
+                          : stockState(toner) === 'low'
+                            ? `警告する本数（${toner.alertThreshold} 本）以下です`
+                            : undefined
+                      }
+                    >
+                      {toner.stock}
+                    </td>
                     <td className="tn-ops">
                       <button onClick={() => void edit(toner.id)} disabled={busy} type="button">
                         編集
+                      </button>
+                      <button
+                        className="tn-danger"
+                        onClick={() => void remove(toner)}
+                        disabled={busy}
+                        type="button"
+                        title={
+                          toner.stock > 0
+                            ? `在庫が ${toner.stock} 本あるので削除できません`
+                            : '受付の履歴・注文・在庫が無い品番だけ削除できます'
+                        }
+                      >
+                        削除
                       </button>
                     </td>
                   </tr>

@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrinterAssetsModule = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_module_1 = require("../prisma/prisma.module");
+const printers_module_1 = require("../printers/printers.module");
 const printer_assets_controller_1 = require("./printer-assets.controller");
 const printer_assets_service_1 = require("./printer-assets.service");
 let PrinterAssetsModule = class PrinterAssetsModule {
@@ -16,7 +17,7 @@ let PrinterAssetsModule = class PrinterAssetsModule {
 exports.PrinterAssetsModule = PrinterAssetsModule;
 exports.PrinterAssetsModule = PrinterAssetsModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule],
+        imports: [prisma_module_1.PrismaModule, printers_module_1.PrintersModule],
         controllers: [printer_assets_controller_1.PrinterAssetsController],
         providers: [printer_assets_service_1.PrinterAssetsService],
     })

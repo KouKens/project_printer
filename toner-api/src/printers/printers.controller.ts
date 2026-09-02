@@ -7,19 +7,45 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { BulkCreatePrintersDto } from './dto/bulk-create-printers.dto';
 import { CreatePrinterDto } from './dto/create-printer.dto';
 import { ProbePrinterDto } from './dto/probe-printer.dto';
 import { PageCountsService } from './page-counts.service';
 import { PrintersService } from './printers.service';
+import { SatoStatusService, SatoUnreachableError } from './sato-status.service';
 
 @Controller('printers')
 export class PrintersController {
   constructor(
     private readonly service: PrintersService,
     private readonly pageCounts: PageCountsService,
+    private readonly sato: SatoStatusService,
   ) {}
+
+  /**
+   * SATO ラベルプリンターのステータスを ENQ で 1 台読む。**押したときだけ動く。**
+   *
+   * 定期実行にも一括ポーリングにも入れていない。相手は印刷用のポートで、
+   * 稼働中の機器へこちらから送る操作になるため、人が必要と判断したときだけにする。
+   *
+   * 結果は実機マスタに残す。protocol を SATO_ENQ として保存するので、
+   * 毎日の SNMP 巡回はこの行を拾わず、「応答なし」で上書きされることもない。
+   * ':id' より前に置く
+   */
+  @Post('sato-status')
+  async satoStatus(@Body() dto: ProbePrinterDto) {
+    try {
+      return await this.service.readSato(dto.ipAddress.trim());
+    } catch (error) {
+      // 応答が無いのは平常運転。SNMP の取得と同じ 503 で返す
+      if (error instanceof SatoUnreachableError) {
+        throw new ServiceUnavailableException(error.message);
+      }
+      throw error;
+    }
+  }
 
   /** IP アドレスを受け取り、SNMP で取れた機器情報を保存する */
   @Post()
@@ -41,10 +67,29 @@ export class PrintersController {
     return this.service.probe(dto);
   }
 
+  /**
+   * メーカー拡張 MIB のカウンタ表をそのまま返す。**調べるための口。**
+   * どの ID がコピー・プリンター・ファクスかを実機で確かめるために使う
+   */
+  @Get(':id/counters')
+  dumpCounters(@Param('id', ParseIntPipe) id: number) {
+    return this.service.dumpCounters(id);
+  }
+
   /** 複数の IP をまとめて登録する。応答がない機器は登録されず、理由が返る */
   @Post('bulk')
   createMany(@Body() dto: BulkCreatePrintersDto) {
     return this.service.createMany(dto);
+  }
+
+  /**
+   * 登録済みの全機器の残量・警告を今すぐ取り直す。
+   * 通常は毎日 12 時の定期実行に任せる。常時起動でない環境ではこれを叩く。
+   * ':id/poll' とは別。':id' より前に置く
+   */
+  @Post('poll')
+  pollAll() {
+    return this.service.pollAll();
   }
 
   /**

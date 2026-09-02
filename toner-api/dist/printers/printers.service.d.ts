@@ -2,7 +2,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BulkCreatePrintersDto } from './dto/bulk-create-printers.dto';
 import { CreatePrinterDto, SnmpVersionInput } from './dto/create-printer.dto';
 import { ProbePrinterDto } from './dto/probe-printer.dto';
-import { SnmpService } from './snmp.service';
+import { SatoStatusService, SatoStatusSnapshot } from './sato-status.service';
+import { SnmpService, SnmpVersionKey } from './snmp.service';
+export type PollResultRow = {
+    id: number;
+    ipAddress: string;
+    status: 'polled' | 'unreachable';
+    message?: string;
+};
 export type BulkResultRow = {
     ipAddress: string;
     status: 'registered' | 'failed';
@@ -13,7 +20,11 @@ export type BulkResultRow = {
 export declare class PrintersService {
     private readonly prisma;
     private readonly snmp;
-    constructor(prisma: PrismaService, snmp: SnmpService);
+    private readonly sato;
+    private readonly logger;
+    constructor(prisma: PrismaService, snmp: SnmpService, sato: SatoStatusService);
+    pollScheduled(): Promise<void>;
+    pollAll(): Promise<PollResultRow[]>;
     create(dto: CreatePrinterDto): Promise<{
         id: number;
         ipAddress: string;
@@ -64,6 +75,18 @@ export declare class PrintersService {
         polledAt: Date;
         supplies: import("./snmp.service").SupplySnapshot[];
     }>;
+    dumpCounters(id: number): Promise<{
+        version: SnmpVersionKey;
+        vendor: "ricoh" | "canon" | null;
+        sysDescr: string | null;
+        counters: {
+            id: number;
+            value: number;
+        }[];
+        printerId: number;
+        ipAddress: string;
+        model: string | null;
+    }>;
     poll(id: number): Promise<{
         id: number;
         ipAddress: string;
@@ -101,6 +124,7 @@ export declare class PrintersService {
             description: string | null;
         }[];
     }>;
+    readSato(ipAddress: string): Promise<SatoStatusSnapshot>;
     findAll(): Promise<{
         id: number;
         ipAddress: string;
@@ -175,6 +199,8 @@ export declare class PrintersService {
             description: string | null;
         }[];
     }>;
+    private saveSato;
+    private runPool;
     private createOneForBulk;
     private toBulkRow;
     private ledgerBySerial;
