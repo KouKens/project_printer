@@ -264,13 +264,19 @@ curl.exe http://localhost:3000/api/printers
 
 本番機で次を行う。
 
+打つものだけを 1 枚にしたものが [UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) にある
+（配布物にも入るので、本番機では USB の中のそれを見ればよい）。
+
 ```powershell
+# 7-0. 先に置く。**このウィンドウを閉じたら消える**
+$env:PGPASSWORD   = "printer のパスワード"
+$env:DATABASE_URL = "postgresql://printer:同じパスワード@localhost:5432/printer?schema=public"
+
 # 7-1. 現在地の確認（何本適用済みか）
 cd C:\toner\app
 node node_modules\prisma\build\index.js migrate status
 
 # 7-2. バックアップ（戻せるようにしてから触る）
-$env:PGPASSWORD = "printer のパスワード"
 pg_dump -U printer -h localhost -Fc -f C:\toner\backup_$(Get-Date -f yyyyMMdd_HHmm).dump printer
 
 # 7-3. 停止
@@ -281,8 +287,7 @@ xcopy /E /I /Y <USB>\out\app\dist         C:\toner\app\dist
 xcopy /E /I /Y <USB>\out\app\web          C:\toner\app\web
 xcopy /E /I /Y <USB>\out\app\node_modules C:\toner\app\node_modules
 xcopy /E /I /Y <USB>\out\app\prisma       C:\toner\app\prisma
-copy /Y <USB>\out\app\package.json      C:\toner\app\
-copy /Y <USB>\out\app\prisma.config.ts  C:\toner\app\
+Copy-Item <USB>\out\app\package.json, <USB>\out\app\prisma.config.ts C:\toner\app\ -Force
 
 # 7-5. 差分だけ適用（reset は絶対にしない）
 node node_modules\prisma\build\index.js migrate deploy
@@ -290,6 +295,15 @@ node node_modules\prisma\build\index.js migrate deploy
 # 7-6. 起動
 Start-ScheduledTask -TaskName "toner-api"
 ```
+
+**7-0 を飛ばさないこと。** `migrate deploy` の接続先は `prisma.config.ts` の
+`process.env["DATABASE_URL"]` から来る。本番の `C:\toner\app` に `.env` は無く、
+`api.env` は `start.cmd` しか読まないので、シェルで入れないと
+`The datasource.url property is required in your Prisma config file` で止まる。
+
+**7-4 で `copy /Y` と書かないこと。** PowerShell では `copy` が `Copy-Item` の
+別名なので、`/Y` が引数として渡り `A positional parameter cannot be found` で
+落ちる。`Copy-Item -Force` を使う（`xcopy` は実行ファイルなのでそのままでよい）。
 
 `prisma\` を忘れると新しい migration の SQL が本番に無く、`migrate deploy` が
 「適用済み」と誤解したまま古いスキーマで新しい `dist` が動く。必ず一緒に運ぶ。

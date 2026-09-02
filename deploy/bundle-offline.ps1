@@ -100,8 +100,11 @@ Copy-Item (Join-Path $web 'dist') (Join-Path $app 'web') -Recurse
 #>
 Copy-Item (Join-Path $api 'prisma.config.ts') $app
 
-# 手順書も入れる。本番機にはリポジトリが無いので、USB だけで作業を完結させる
+# 手順書も入れる。本番機にはリポジトリが無いので、USB だけで作業を完結させる。
+# 更新のときに実際に打つのは UPDATE-COMMANDS.md のほう
 Copy-Item (Join-Path $PSScriptRoot 'OFFLINE-WINDOWS.md') $OutDir
+Copy-Item (Join-Path $PSScriptRoot 'UPDATE-COMMANDS.md') $OutDir
+Copy-Item (Join-Path $PSScriptRoot 'check-prod.ps1') $OutDir
 
 # node_modules は数が多く Copy-Item だと遅いので robocopy で運ぶ
 Step 'node_modules をコピー（数分かかる）'
