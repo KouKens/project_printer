@@ -14,6 +14,16 @@ function toVendor(vendor: VendorSlice) {
 }
 
 /**
+ * 機能ごとの累計を、モノクロとカラーを足して出す。
+ * **両方とも取れていないときだけ null**（0 枚と区別する）。
+ * 数え方は page-counts 側と揃えてある
+ */
+function sumCounts(mono: number | null, color: number | null): number | null {
+  if (mono === null && color === null) return null;
+  return (mono ?? 0) + (color ?? 0);
+}
+
+/**
  * 機種をまとめる鍵。メーカーと型番の**表記ゆれを畳む**。
  * 台帳には手入力で 'Ricoh P501' と 'Ricoh P 501' の両方が入っており、
  * そのまま比べると同じ機種が 2 つに割れる。
@@ -356,10 +366,17 @@ export class PrinterAssetsService {
               total: daily.total,
               totalMono: daily.totalMono,
               totalColor: daily.totalColor,
-              /** 機能ごとの累計。出さない機種は null */
-              totalPrint: daily.totalPrint,
-              totalCopy: daily.totalCopy,
-              totalScan: daily.totalScan,
+              /**
+               * 機能ごとの累計。**機能 × 色の内訳を足して出す。**
+               * 出さない機種・機能は null（0 と区別する）。
+               * スキャナは紙に出ないので total には入っていない
+               */
+              totalPrint: sumCounts(
+                daily.totalPrintMono,
+                daily.totalPrintColor,
+              ),
+              totalCopy: sumCounts(daily.totalCopyMono, daily.totalCopyColor),
+              totalScan: sumCounts(daily.totalScanMono, daily.totalScanColor),
             }
           : null,
       };

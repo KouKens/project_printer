@@ -572,39 +572,46 @@ model PageCountDaily {
   /// 集計対象日。この日に印刷された枚数を pages に持つ
   date DateTime @db.Date
 
-  /// date の終了時点で読んだ累計印刷枚数（prtMarkerLifeCount）
+  /// date の終了時点で読んだ累計印刷枚数（prtMarkerLifeCount）。
+  /// 内訳が取れる機種では **累計モノクロ + 累計カラー** に一致する
   total Int
 
-  /// 同時点の累計モノクロ枚数。内訳を返さない機種は null
+  /// 同時点の累計モノクロ枚数（プリンター + コピー）。内訳を返さない機種は null
   totalMono Int? @map("total_mono")
 
-  /// 同時点の累計カラー枚数。内訳を返さない機種は null
+  /// 同時点の累計カラー枚数（プリンター + コピー）。内訳を返さない機種は null
   totalColor Int? @map("total_color")
 
-  /// 機能ごとの累計。**カラー・モノクロの内訳は機器が持っていない**ので合計だけ。
-  /// RICOH の拡張 MIB から読む（プリンター=1806 / コピー=701）。
-  /// 出さない機種・メーカーは null。0 と区別する
-  totalPrint Int? @map("total_print")
-  totalCopy  Int? @map("total_copy")
-
-  /// スキャナの累計。**手元で読めた RICOH 機はいずれも 0 を返し、
-  /// どの ID がスキャナか特定できていない。** 今は常に null が入る
-  totalScan Int? @map("total_scan")
+  /// 機能 × 色の累計。**画面の「累計プリンター」などはこの 6 つを足して出す。**
+  /// 合計は保存しない（足し忘れて数が合わなくなるのを防ぐため）。
+  /// 出せない機種・機能は null。0 と区別する。
+  ///
+  /// **スキャナは紙に出ないので total にも累計モノクロ・カラーにも入らない。**
+  /// 累計 = プリンター + コピー で、スキャナは読み取り枚数として別に見る
+  totalPrintMono  Int? @map("total_print_mono")
+  totalPrintColor Int? @map("total_print_color")
+  totalCopyMono   Int? @map("total_copy_mono")
+  totalCopyColor  Int? @map("total_copy_color")
+  totalScanMono   Int? @map("total_scan_mono")
+  totalScanColor  Int? @map("total_scan_color")
 
   /// date 当日の印刷枚数。前回値がない初回と、
   /// カウンタが巻き戻った（機器交換・リセット）ときは null
   pages Int?
 
-  /// 同期間のモノクロ枚数。内訳を返さない機種は null
+  /// 同期間のモノクロ枚数。累計モノクロの差分で出す。内訳を返さない機種は null
   monoPages Int? @map("mono_pages")
 
-  /// 同期間のカラー枚数。内訳を返さない機種は null
+  /// 同期間のカラー枚数。累計カラーの差分で出す。内訳を返さない機種は null
   colorPages Int? @map("color_pages")
 
-  /// 同期間の機能ごとの枚数。累計の差分で出す
-  printPages Int? @map("print_pages")
-  copyPages  Int? @map("copy_pages")
-  scanPages  Int? @map("scan_pages")
+  /// 同期間の機能 × 色の枚数。上の累計 6 つの差分で出す
+  printMonoPages  Int? @map("print_mono_pages")
+  printColorPages Int? @map("print_color_pages")
+  copyMonoPages   Int? @map("copy_mono_pages")
+  copyColorPages  Int? @map("copy_color_pages")
+  scanMonoPages   Int? @map("scan_mono_pages")
+  scanColorPages  Int? @map("scan_color_pages")
 
   /// pages が何日分か。1 なら純粋に date 当日の分。
   /// 取得が飛ぶと 2 以上になり、その日数分をまとめた値になる

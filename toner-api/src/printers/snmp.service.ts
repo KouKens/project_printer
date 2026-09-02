@@ -69,41 +69,79 @@ const TABLE = {
 } as const;
 
 /**
- * モノクロ・カラー別の枚数はメーカー拡張 MIB にしかない。
+ * 機能別・色別の枚数はメーカー拡張 MIB にしかない。
  * 標準の prtMarkerTable はどの機種もマーカー 1 本で、内訳を持っていない。
- * どちらの表も「ID の列」と「値の列」を行番号で突き合わせて読む。
+ * どの表も「ID の列」「名前の列」「値の列」を行番号で突き合わせて読む。
  */
 const COUNTER = {
   /** RICOH ricohEngineCounter */
   ricohId: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.2',
+  ricohName: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.5',
   ricohValue: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.9',
-  /** Canon cnPrtCounter */
-  canonId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
-  canonValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
+  /**
+   * Canon の全カウンタ表。**機能別の内訳はこちらにしかない。**
+   * 下の抜粋版と紛らわしいが、末尾が 1.4 と 1.3 で別の表
+   */
+  canonId: '1.3.6.1.4.1.1602.1.11.1.4.1.2',
+  canonName: '1.3.6.1.4.1.1602.1.11.1.4.1.3',
+  canonValue: '1.3.6.1.4.1.1602.1.11.1.4.1.4',
+  /**
+   * 同じ機種が別に持っている抜粋版（iR-ADV は 4 件だけ）。
+   * 全カウンタ表を持たない機種のための受け皿で、総数と黒しか入っていない
+   */
+  canonBriefId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
+  canonBriefName: '1.3.6.1.4.1.1602.1.11.1.3.1.3',
+  canonBriefValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
 } as const;
 
 /**
- * RICOH のカウンタ ID。401 + 402 + 403 = 400 になる。
+ * RICOH のカウンタ ID。名前の列（ricohName）で意味を確かめてある。
  *
- * **400 は「トータル」で、コピー分も含む。** 実機 3 台（SP C341 ×2 / SP C342）で
- * ID 10（トータル）と 400 が完全に一致することを確認した。
+ * **400 は機器の総数ではなく「プリンター機能の総数」**（Counter:Print:Total）で、
+ * 401 + 402 + 403 に等しい。機器の総数は 10（Counter: Machine Total）のほう。
+ * 手元の RICOH 22 台はすべてプリンター専用機なので両者は一致し、
+ * コピー・スキャナのカウンタは表に存在しない。
  *
- * 機能別は合計だけを持つ。プリンター(1806) + コピー(701) ≒ 400 になる
- * （読んでいる最中も機器が動くので数十ずれる）。
- * **機能別のカラー・モノクロ内訳は機器が出していない。**
- * スキャナは手元の機器がいずれも 0 を返し、どの ID か特定できていない
+ * 以前ここで機能別として見ていた 1806 と 701 は別物だった。
+ * 1806 は `Total Prints: <A3,DLT: Total`（A3 未満の総枚数）、
+ * 701 は `No. of Printed Sides in Duplex`（両面印字の面数）で、
+ * たまたま足すと総数に近くなるだけ。**機能別には使えない**
  */
 const RICOH_COUNTER = {
-  total: 400,
-  mono: 401,
-  single: 402,
-  full: 403,
-  print: 1806,
-  copy: 701,
+  /** Counter: Machine Total。複合機ならコピー分も含む */
+  machine: 10,
+  /** Counter:Print:Total */
+  printTotal: 400,
+  /** Counter:Print:Black & White */
+  printMono: 401,
+  /** Counter:Print:Single/Two-col.。単色はカラー側に寄せる */
+  printSingle: 402,
+  /** Counter:Print:Full Color */
+  printFull: 403,
 } as const;
 
-/** Canon のカウンタ ID。カラーは合計から引いて出す */
-const CANON_COUNTER = { total: 101, mono: 108 } as const;
+/**
+ * Canon のカウンタ ID。名前の列（canonName）で意味を確かめてある。
+ *
+ * iR-ADV 8 台すべてで **201 + 301 + 701 = 101** が成り立つ。
+ * 301 はプリント、701 は FAX 受信の印刷で、どちらも「印刷した」ぶん。
+ * 機能を 3 つに分ける都合上、コピー以外はまとめてプリンター側に置く
+ * （プリンター = 総数 − コピー）。この引き算なら FAX 受信の取りこぼしが出ない。
+ *
+ * 色は「フルカラー + 単色」の側しか出ないので、モノクロは引いて出す
+ */
+const CANON_COUNTER = {
+  /** Total 1 = prtMarkerLifeCount */
+  total: 101,
+  /** Total (Black 1) */
+  mono: 108,
+  /** Copy (Total 1) */
+  copyTotal: 201,
+  /** Copy (Full Color + Single Color/1) */
+  copyColor: 232,
+  /** Scan (Total 1)。紙に出ないので総数には入っていない */
+  scanTotal: 501,
+} as const;
 
 /** カラー機なら必ず持っている色 */
 const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
@@ -140,7 +178,36 @@ export type CountSource =
   /** 内訳を取れなかった */
   | 'none';
 
-export type PrinterSnapshot = {
+/**
+ * 累計枚数を **機能 × 色** の 6 つに割ったもの。取れないものは null（0 と区別する）。
+ *
+ * 画面の集計はこの 6 つだけを土台にして、
+ * 「累計プリンター = プリンターモノクロ + プリンターカラー」のように足して出す。
+ * どこかを足し忘れて数が合わなくなるのを防ぐため、合計は保存しない。
+ *
+ * **スキャナは紙に出ないので累計（prtMarkerLifeCount）には入らない。**
+ * 累計 = プリンター + コピー で、スキャナは読み取り枚数として別に見る
+ */
+export type CountMatrix = {
+  printMono: number | null;
+  printColor: number | null;
+  copyMono: number | null;
+  copyColor: number | null;
+  scanMono: number | null;
+  scanColor: number | null;
+};
+
+/** 機能別を 1 つも出せない機種の分。カラー・モノクロだけ入る余地を残す */
+const NO_MATRIX: CountMatrix = {
+  printMono: null,
+  printColor: null,
+  copyMono: null,
+  copyColor: null,
+  scanMono: null,
+  scanColor: null,
+};
+
+export type PrinterSnapshot = CountMatrix & {
   /** 実際に応答があったバージョン */
   version: SnmpVersionKey;
   hostName: string | null;
@@ -153,18 +220,10 @@ export type PrinterSnapshot = {
    * 7 / 8 なら枚、17 ならメートル。返さない機種は null
    */
   counterUnit: number | null;
-  /** 累計のモノクロ枚数。取れない機種は null */
+  /** 累計のモノクロ枚数（プリンター + コピー）。取れない機種は null */
   monoCount: number | null;
-  /** 累計のカラー枚数。取れない機種は null */
+  /** 累計のカラー枚数（プリンター + コピー）。取れない機種は null */
   colorCount: number | null;
-  /**
-   * 機能ごとの累計。合計だけで、カラー・モノクロの内訳は機器が持っていない。
-   * 取れない機種・メーカーは null（0 と区別する）
-   */
-  printCount: number | null;
-  copyCount: number | null;
-  /** どの ID がスキャナか特定できていないため、今は常に null */
-  scanCount: number | null;
   countSource: CountSource;
   supplies: SupplySnapshot[];
   alerts: AlertSnapshot[];
@@ -175,9 +234,10 @@ export type PrinterSnapshot = {
 /**
  * メーカー拡張 MIB のカウンタ表を、そのまま 1 行ずつ返したもの。
  *
- * **どのカウンタ ID がコピー・プリンター・ファクスなのかは機種ごとに違い、
- * 公開されている一覧も無い。** 実機の表を見て決めるしかないので、
- * その材料を出すための読み取り専用の口。集計には使わない
+ * **どのカウンタ ID がコピー・プリンター・ファクスなのかは機種ごとに違う。**
+ * ただしどちらのメーカーも名前の列を持っており（`Counter:Print:Black & White`
+ * `Copy (Full Color + Single Color/1)` など）、そこを読めば意味が分かる。
+ * 機種を足したときに ID を確かめるための読み取り専用の口
  */
 export type CounterDump = {
   version: SnmpVersionKey;
@@ -185,8 +245,11 @@ export type CounterDump = {
   vendor: 'ricoh' | 'canon' | null;
   sysDescr: string | null;
   /** カウンタ ID の昇順 */
-  counters: { id: number; value: number }[];
+  counters: { id: number; name: string | null; value: number }[];
 };
+
+/** カウンタ表の 1 行。名前は機器が付けている英語の見出し */
+type CounterRow = { name: string | null; value: number };
 
 /** 応答がなかった。バージョン違い・コミュニティ名違い・そもそも不在のいずれか */
 export class SnmpUnreachableError extends Error {}
@@ -358,21 +421,18 @@ export class SnmpService {
               session,
               COUNTER.ricohId,
               COUNTER.ricohValue,
+              COUNTER.ricohName,
             )
           : vendor === 'canon'
-            ? await this.readCounterTable(
-                session,
-                COUNTER.canonId,
-                COUNTER.canonValue,
-              )
-            : new Map<number, number>();
+            ? await this.readCanonCounters(session)
+            : new Map<number, CounterRow>();
 
       return {
         version,
         vendor,
         sysDescr,
         counters: [...table.entries()]
-          .map(([id, value]) => ({ id, value }))
+          .map(([id, row]) => ({ id, name: row.name, value: row.value }))
           .sort((a, b) => a.id - b.id),
       };
     } finally {
@@ -570,9 +630,10 @@ export class SnmpService {
   }
 
   /**
-   * モノクロ・カラー別の累計を読む。
+   * 累計を **機能 × 色** に割って読む。
+   *
    * RICOH と Canon は拡張 MIB を持っている。それ以外はカラーの消耗品の有無で
-   * 判断し、モノクロ専用機なら累計を全部モノクロとして扱う。
+   * 判断し、モノクロ専用機なら累計を全部モノクロとして扱う（機能別は出せない）。
    */
   private async readCounts(
     session: Session,
@@ -580,15 +641,8 @@ export class SnmpService {
     total: number | null,
     supplies: SupplySnapshot[],
   ): Promise<
-    Pick<
-      PrinterSnapshot,
-      | 'monoCount'
-      | 'colorCount'
-      | 'printCount'
-      | 'copyCount'
-      | 'scanCount'
-      | 'countSource'
-    >
+    CountMatrix &
+      Pick<PrinterSnapshot, 'monoCount' | 'colorCount' | 'countSource'>
   > {
     const descr = sysDescr ?? '';
 
@@ -597,44 +651,13 @@ export class SnmpService {
         session,
         COUNTER.ricohId,
         COUNTER.ricohValue,
+        COUNTER.ricohName,
       );
-      const mono = counters.get(RICOH_COUNTER.mono);
-
-      if (mono !== undefined) {
-        // 単色はカラー側に寄せる。401 + 402 + 403 = 400 になる
-        const color =
-          (counters.get(RICOH_COUNTER.single) ?? 0) +
-          (counters.get(RICOH_COUNTER.full) ?? 0);
-        return {
-          monoCount: mono,
-          colorCount: color,
-          // 出していない機種は 0 ではなく「取れていない」なので null に倒す
-          printCount: counters.get(RICOH_COUNTER.print) ?? null,
-          copyCount: counters.get(RICOH_COUNTER.copy) ?? null,
-          scanCount: null,
-          countSource: 'vendor',
-        };
-      }
+      const ricoh = this.ricohCounts(counters);
+      if (ricoh) return ricoh;
     } else if (/canon/i.test(descr)) {
-      const counters = await this.readCounterTable(
-        session,
-        COUNTER.canonId,
-        COUNTER.canonValue,
-      );
-      const mono = counters.get(CANON_COUNTER.mono);
-      const sum = counters.get(CANON_COUNTER.total);
-
-      if (mono !== undefined && sum !== undefined) {
-        return {
-          monoCount: mono,
-          colorCount: sum - mono,
-          // iR-ADV が返すのは 4 つだけで、機能別のカウンタは公開していない
-          printCount: null,
-          copyCount: null,
-          scanCount: null,
-          countSource: 'vendor',
-        };
-      }
+      const canon = this.canonCounts(await this.readCanonCounters(session));
+      if (canon) return canon;
     }
 
     // カラーの消耗品を 1 つも持たない機種は、そもそもカラーを刷れない
@@ -645,17 +668,11 @@ export class SnmpService {
     );
 
     // 機能別は拡張 MIB からしか取れないので、ここから先は常に null
-    const noFunctions = {
-      printCount: null,
-      copyCount: null,
-      scanCount: null,
-    };
-
     if (!hasColor && supplies.length > 0 && total !== null) {
       return {
         monoCount: total,
         colorCount: 0,
-        ...noFunctions,
+        ...NO_MATRIX,
         countSource: 'mono-only',
       };
     }
@@ -663,27 +680,144 @@ export class SnmpService {
     return {
       monoCount: null,
       colorCount: null,
-      ...noFunctions,
+      ...NO_MATRIX,
       countSource: 'none',
     };
   }
 
-  /** ID の列と値の列を行番号で突き合わせて、カウンタ ID から値を引けるようにする */
+  /**
+   * RICOH の拡張 MIB から 6 つに割る。表を持たない機種（SP 3610）は null。
+   *
+   * プリンターの内訳（401 / 402 + 403）は表にそのまま入っている。
+   * コピーは機器の総数（10）からプリンターぶんを引いて出す。
+   * **手元の 22 台はすべてプリンター専用機なので、ここは必ず 0 になる。**
+   * 複合機を足したときにコピー分が消えないよう、引き算で拾えるようにしてある。
+   * その場合の内訳は機器が出さないので、まとめてモノクロに寄せる
+   */
+  private ricohCounts(
+    counters: Map<number, CounterRow>,
+  ):
+    | (CountMatrix &
+        Pick<PrinterSnapshot, 'monoCount' | 'colorCount' | 'countSource'>)
+    | null {
+    const printMono = counters.get(RICOH_COUNTER.printMono)?.value;
+    if (printMono === undefined) return null;
+
+    // 単色・2 色はカラー側に寄せる。モノクロ機は 402 / 403 を持たない
+    const printColor =
+      (counters.get(RICOH_COUNTER.printSingle)?.value ?? 0) +
+      (counters.get(RICOH_COUNTER.printFull)?.value ?? 0);
+
+    const printTotal = printMono + printColor;
+    const machine =
+      counters.get(RICOH_COUNTER.machine)?.value ??
+      counters.get(RICOH_COUNTER.printTotal)?.value ??
+      printTotal;
+
+    // 読んでいる最中に機器が動くと負になりうるので、下は 0 で止める
+    const copyMono = Math.max(0, machine - printTotal);
+
+    return {
+      monoCount: printMono + copyMono,
+      colorCount: printColor,
+      printMono,
+      printColor,
+      copyMono,
+      copyColor: 0,
+      // スキャナのカウンタを持つ RICOH 機が手元に無く、ID を特定できていない
+      scanMono: null,
+      scanColor: null,
+      countSource: 'vendor',
+    };
+  }
+
+  /**
+   * Canon の拡張 MIB から 6 つに割る。総数と黒が無ければ null。
+   *
+   * コピーだけが表に分かれているので、**プリンターは引き算で出す**。
+   * こうすると FAX 受信の印刷（701）もプリンター側に入り、
+   * 「プリンター + コピー = 総数」が必ず成り立つ。
+   * スキャナは色の内訳を持たないので、まとめてモノクロに寄せる
+   */
+  private canonCounts(
+    counters: Map<number, CounterRow>,
+  ):
+    | (CountMatrix &
+        Pick<PrinterSnapshot, 'monoCount' | 'colorCount' | 'countSource'>)
+    | null {
+    const total = counters.get(CANON_COUNTER.total)?.value;
+    const mono = counters.get(CANON_COUNTER.mono)?.value;
+    if (total === undefined || mono === undefined) return null;
+
+    const color = total - mono;
+    const copyTotal = counters.get(CANON_COUNTER.copyTotal)?.value;
+    const copyColor = counters.get(CANON_COUNTER.copyColor)?.value;
+    const scanTotal = counters.get(CANON_COUNTER.scanTotal)?.value;
+
+    // 抜粋版の表しか持たない機種はここが欠ける。総数と黒だけ出す
+    const split = copyTotal !== undefined && copyColor !== undefined;
+    const copyMono = split ? copyTotal - copyColor : null;
+
+    return {
+      monoCount: mono,
+      colorCount: color,
+      printMono: copyMono === null ? null : mono - copyMono,
+      printColor: split ? color - copyColor : null,
+      copyMono,
+      copyColor: split ? copyColor : null,
+      scanMono: scanTotal ?? null,
+      scanColor: scanTotal === undefined ? null : 0,
+      countSource: 'vendor',
+    };
+  }
+
+  /**
+   * Canon のカウンタ表。**全カウンタ表を先に見る。**
+   * 機能別が入っているのはこちらだけで、抜粋版には総数と黒しかない
+   */
+  private async readCanonCounters(
+    session: Session,
+  ): Promise<Map<number, CounterRow>> {
+    const full = await this.readCounterTable(
+      session,
+      COUNTER.canonId,
+      COUNTER.canonValue,
+      COUNTER.canonName,
+    );
+    if (full.size > 0) return full;
+
+    return this.readCounterTable(
+      session,
+      COUNTER.canonBriefId,
+      COUNTER.canonBriefValue,
+      COUNTER.canonBriefName,
+    );
+  }
+
+  /**
+   * ID・名前・値の 3 列を行番号で突き合わせて、カウンタ ID から引けるようにする。
+   * 名前は機器が付けている英語の見出しで、ID の意味を確かめるために持つ
+   */
   private async readCounterTable(
     session: Session,
     idBase: string,
     valueBase: string,
-  ): Promise<Map<number, number>> {
-    const [ids, values] = await Promise.all([
+    nameBase: string,
+  ): Promise<Map<number, CounterRow>> {
+    const [ids, values, names] = await Promise.all([
       this.walk(session, idBase),
       this.walk(session, valueBase),
+      this.walk(session, nameBase),
     ]);
 
-    const counters = new Map<number, number>();
+    const counters = new Map<number, CounterRow>();
     for (const [row, varbind] of ids) {
       const id = readCounterId(varbind.value);
       const value = readNumber(values.get(row)?.value ?? null);
-      if (id !== null && value !== null) counters.set(id, value);
+      if (id === null || value === null) continue;
+
+      const label = names.get(row);
+      counters.set(id, { name: label ? readText(label.value) : null, value });
     }
     return counters;
   }

@@ -24,7 +24,15 @@ export type AlertSnapshot = {
     description: string | null;
 };
 export type CountSource = 'vendor' | 'mono-only' | 'none';
-export type PrinterSnapshot = {
+export type CountMatrix = {
+    printMono: number | null;
+    printColor: number | null;
+    copyMono: number | null;
+    copyColor: number | null;
+    scanMono: number | null;
+    scanColor: number | null;
+};
+export type PrinterSnapshot = CountMatrix & {
     version: SnmpVersionKey;
     hostName: string | null;
     model: string | null;
@@ -34,9 +42,6 @@ export type PrinterSnapshot = {
     counterUnit: number | null;
     monoCount: number | null;
     colorCount: number | null;
-    printCount: number | null;
-    copyCount: number | null;
-    scanCount: number | null;
     countSource: CountSource;
     supplies: SupplySnapshot[];
     alerts: AlertSnapshot[];
@@ -48,6 +53,7 @@ export type CounterDump = {
     sysDescr: string | null;
     counters: {
         id: number;
+        name: string | null;
         value: number;
     }[];
 };
@@ -63,6 +69,9 @@ export declare class SnmpService {
     private readConsoleText;
     private readSupplies;
     private readCounts;
+    private ricohCounts;
+    private canonCounts;
+    private readCanonCounters;
     private readCounterTable;
     private get;
     private walk;

@@ -22,21 +22,35 @@ type LedgerAsset = {
   serialNumber: string | null;
 };
 
+/** 機能 × 色の 6 つ。累計にも 1 日分にも同じ形で使う */
+type Matrix = {
+  printMono: number | null;
+  printColor: number | null;
+  copyMono: number | null;
+  copyColor: number | null;
+  scanMono: number | null;
+  scanColor: number | null;
+};
+
 /** 1 台あたりの結果 */
 export type CaptureRow = {
   printerId: number;
   ipAddress: string;
   /** 集計対象日（YYYY-MM-DD） */
   date: string;
-  /** 読み取った累計印刷枚数 */
+  /** 読み取った累計印刷枚数。内訳が取れる機種では累計モノクロ + 累計カラー */
   total: number | null;
   /** 同時点の累計モノクロ・カラー枚数。内訳を返さない機種は null */
   totalMono: number | null;
   totalColor: number | null;
-  /**
-   * 機能ごとの累計。**合計だけで、カラー・モノクロの内訳は機器が持っていない。**
-   * 出さない機種は null（0 と区別する）
-   */
+  /** 同時点の機能 × 色の累計。出せない機種・機能は null（0 と区別する） */
+  totalPrintMono: number | null;
+  totalPrintColor: number | null;
+  totalCopyMono: number | null;
+  totalCopyColor: number | null;
+  totalScanMono: number | null;
+  totalScanColor: number | null;
+  /** 上を足した機能ごとの累計。両方とも取れていないときだけ null */
   totalPrint: number | null;
   totalCopy: number | null;
   totalScan: number | null;
@@ -44,6 +58,12 @@ export type CaptureRow = {
   pages: number | null;
   monoPages: number | null;
   colorPages: number | null;
+  printMonoPages: number | null;
+  printColorPages: number | null;
+  copyMonoPages: number | null;
+  copyColorPages: number | null;
+  scanMonoPages: number | null;
+  scanColorPages: number | null;
   printPages: number | null;
   copyPages: number | null;
   scanPages: number | null;
@@ -61,6 +81,25 @@ function delta(current: number | null, previous: number | null): number | null {
   if (current === null || previous === null) return null;
   const diff = current - previous;
   return diff < 0 ? null : diff;
+}
+
+/**
+ * モノクロとカラーを足して機能ごとの合計にする。
+ * **両方とも取れていないときだけ null。** 片方だけ取れている機種では、
+ * 取れていない側を 0 と見て足す（機器が出さない = その機能でその色は刷れない）
+ */
+function sum(mono: number | null, color: number | null): number | null {
+  if (mono === null && color === null) return null;
+  return (mono ?? 0) + (color ?? 0);
+}
+
+/** 6 つの累計を機能ごとの合計 3 つに畳む。累計にも 1 日分にも同じ形で使う */
+function functionTotals(matrix: Matrix) {
+  return {
+    print: sum(matrix.printMono, matrix.printColor),
+    copy: sum(matrix.copyMono, matrix.copyColor),
+    scan: sum(matrix.scanMono, matrix.scanColor),
+  };
 }
 
 /**
@@ -204,12 +243,24 @@ export class PageCountsService {
       total: null,
       totalMono: null,
       totalColor: null,
+      totalPrintMono: null,
+      totalPrintColor: null,
+      totalCopyMono: null,
+      totalCopyColor: null,
+      totalScanMono: null,
+      totalScanColor: null,
       totalPrint: null,
       totalCopy: null,
       totalScan: null,
       pages: null,
       monoPages: null,
       colorPages: null,
+      printMonoPages: null,
+      printColorPages: null,
+      copyMonoPages: null,
+      copyColorPages: null,
+      scanMonoPages: null,
+      scanColorPages: null,
       printPages: null,
       copyPages: null,
       scanPages: null,
@@ -219,9 +270,7 @@ export class PageCountsService {
     let total: number | null;
     let totalMono: number | null;
     let totalColor: number | null;
-    let totalPrint: number | null;
-    let totalCopy: number | null;
-    let totalScan: number | null;
+    let matrix: Matrix;
 
     try {
       const snapshot = await this.snmp.poll(
@@ -232,9 +281,14 @@ export class PageCountsService {
       total = snapshot.pageCount;
       totalMono = snapshot.monoCount;
       totalColor = snapshot.colorCount;
-      totalPrint = snapshot.printCount;
-      totalCopy = snapshot.copyCount;
-      totalScan = snapshot.scanCount;
+      matrix = {
+        printMono: snapshot.printMono,
+        printColor: snapshot.printColor,
+        copyMono: snapshot.copyMono,
+        copyColor: snapshot.copyColor,
+        scanMono: snapshot.scanMono,
+        scanColor: snapshot.scanColor,
+      };
 
       await this.prisma.printer.update({
         where: { id: printer.id },
@@ -279,9 +333,14 @@ export class PageCountsService {
     let pages: number | null = null;
     let monoPages: number | null = null;
     let colorPages: number | null = null;
-    let printPages: number | null = null;
-    let copyPages: number | null = null;
-    let scanPages: number | null = null;
+    let daily: Matrix = {
+      printMono: null,
+      printColor: null,
+      copyMono: null,
+      copyColor: null,
+      scanMono: null,
+      scanColor: null,
+    };
     let spanDays = 1;
     let note: string | undefined;
 
@@ -292,9 +351,14 @@ export class PageCountsService {
       pages = delta(total, previous.total);
       monoPages = delta(totalMono, previous.totalMono);
       colorPages = delta(totalColor, previous.totalColor);
-      printPages = delta(totalPrint, previous.totalPrint);
-      copyPages = delta(totalCopy, previous.totalCopy);
-      scanPages = delta(totalScan, previous.totalScan);
+      daily = {
+        printMono: delta(matrix.printMono, previous.totalPrintMono),
+        printColor: delta(matrix.printColor, previous.totalPrintColor),
+        copyMono: delta(matrix.copyMono, previous.totalCopyMono),
+        copyColor: delta(matrix.copyColor, previous.totalCopyColor),
+        scanMono: delta(matrix.scanMono, previous.totalScanMono),
+        scanColor: delta(matrix.scanColor, previous.totalScanColor),
+      };
 
       if (pages === null) {
         note = `カウンタが前回（${previous.total}）より小さくなっています。機器交換かリセットの可能性があります`;
@@ -303,19 +367,26 @@ export class PageCountsService {
       }
     }
 
+    // 保存するのは 6 つの内訳だけ。機能ごとの合計は読み出すときに足す
     const values = {
       total,
       totalMono,
       totalColor,
-      totalPrint,
-      totalCopy,
-      totalScan,
+      totalPrintMono: matrix.printMono,
+      totalPrintColor: matrix.printColor,
+      totalCopyMono: matrix.copyMono,
+      totalCopyColor: matrix.copyColor,
+      totalScanMono: matrix.scanMono,
+      totalScanColor: matrix.scanColor,
       pages,
       monoPages,
       colorPages,
-      printPages,
-      copyPages,
-      scanPages,
+      printMonoPages: daily.printMono,
+      printColorPages: daily.printColor,
+      copyMonoPages: daily.copyMono,
+      copyColorPages: daily.copyColor,
+      scanMonoPages: daily.scanMono,
+      scanColorPages: daily.scanColor,
       spanDays,
     };
 
@@ -325,7 +396,21 @@ export class PageCountsService {
       update: { ...values, capturedAt: now },
     });
 
-    return { ...base, ...values, status: 'recorded', note };
+    const cumulative = functionTotals(matrix);
+    const period = functionTotals(daily);
+
+    return {
+      ...base,
+      ...values,
+      totalPrint: cumulative.print,
+      totalCopy: cumulative.copy,
+      totalScan: cumulative.scan,
+      printPages: period.print,
+      copyPages: period.copy,
+      scanPages: period.scan,
+      status: 'recorded',
+      note,
+    };
   }
 
   /**
@@ -370,6 +455,7 @@ export class PageCountsService {
         printerId: row.printerId,
         ipAddress: row.printer.ipAddress,
         model: row.printer.model,
+        ...this.counts(row),
         /**
          * カウンタの単位（prtMarkerCounterUnit）。
          * 7 / 8 なら枚、17 ならメートル。**混ぜて足さないよう画面で分ける**
@@ -379,18 +465,6 @@ export class PageCountsService {
         department: asset?.department ?? null,
         no: asset?.no ?? null,
         date: fromDate(row.date),
-        total: row.total,
-        totalMono: row.totalMono,
-        totalColor: row.totalColor,
-        totalPrint: row.totalPrint,
-        totalCopy: row.totalCopy,
-        totalScan: row.totalScan,
-        pages: row.pages,
-        monoPages: row.monoPages,
-        colorPages: row.colorPages,
-        printPages: row.printPages,
-        copyPages: row.copyPages,
-        scanPages: row.scanPages,
         spanDays: row.spanDays,
         capturedAt: row.capturedAt,
       };
@@ -406,24 +480,85 @@ export class PageCountsService {
 
     return rows.map((row) => ({
       date: fromDate(row.date),
-      pages: row.pages,
-      monoPages: row.monoPages,
-      colorPages: row.colorPages,
-      printPages: row.printPages,
-      copyPages: row.copyPages,
-      scanPages: row.scanPages,
-      total: row.total,
-      totalMono: row.totalMono,
-      totalColor: row.totalColor,
-      totalPrint: row.totalPrint,
-      totalCopy: row.totalCopy,
-      totalScan: row.totalScan,
+      ...this.counts(row),
       spanDays: row.spanDays,
       capturedAt: row.capturedAt,
     }));
   }
 
   // ── 内部ヘルパー ──────────────────────
+
+  /**
+   * 保存してある枚数を画面の形にする。
+   *
+   * DB に持っているのは 6 つの内訳だけで、機能ごとの合計（累計プリンターなど）は
+   * ここで足して出す。**保存した合計と内訳が食い違う余地を作らないため。**
+   * 記録の読み出しは 2 か所あるので、揃えられるようこの 1 か所にまとめる
+   */
+  private counts(row: {
+    total: number;
+    totalMono: number | null;
+    totalColor: number | null;
+    totalPrintMono: number | null;
+    totalPrintColor: number | null;
+    totalCopyMono: number | null;
+    totalCopyColor: number | null;
+    totalScanMono: number | null;
+    totalScanColor: number | null;
+    pages: number | null;
+    monoPages: number | null;
+    colorPages: number | null;
+    printMonoPages: number | null;
+    printColorPages: number | null;
+    copyMonoPages: number | null;
+    copyColorPages: number | null;
+    scanMonoPages: number | null;
+    scanColorPages: number | null;
+  }) {
+    const cumulative = functionTotals({
+      printMono: row.totalPrintMono,
+      printColor: row.totalPrintColor,
+      copyMono: row.totalCopyMono,
+      copyColor: row.totalCopyColor,
+      scanMono: row.totalScanMono,
+      scanColor: row.totalScanColor,
+    });
+    const period = functionTotals({
+      printMono: row.printMonoPages,
+      printColor: row.printColorPages,
+      copyMono: row.copyMonoPages,
+      copyColor: row.copyColorPages,
+      scanMono: row.scanMonoPages,
+      scanColor: row.scanColorPages,
+    });
+
+    return {
+      total: row.total,
+      totalMono: row.totalMono,
+      totalColor: row.totalColor,
+      totalPrintMono: row.totalPrintMono,
+      totalPrintColor: row.totalPrintColor,
+      totalCopyMono: row.totalCopyMono,
+      totalCopyColor: row.totalCopyColor,
+      totalScanMono: row.totalScanMono,
+      totalScanColor: row.totalScanColor,
+      totalPrint: cumulative.print,
+      totalCopy: cumulative.copy,
+      totalScan: cumulative.scan,
+      pages: row.pages,
+      monoPages: row.monoPages,
+      colorPages: row.colorPages,
+      printMonoPages: row.printMonoPages,
+      printColorPages: row.printColorPages,
+      copyMonoPages: row.copyMonoPages,
+      copyColorPages: row.copyColorPages,
+      scanMonoPages: row.scanMonoPages,
+      scanColorPages: row.scanColorPages,
+      printPages: period.print,
+      copyPages: period.copy,
+      scanPages: period.scan,
+    };
+  }
 
   /**
    * 台帳を引くための索引。シリアルと IP の 2 本を作る。

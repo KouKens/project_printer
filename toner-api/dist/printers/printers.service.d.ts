@@ -81,6 +81,7 @@ export declare class PrintersService {
         sysDescr: string | null;
         counters: {
             id: number;
+            name: string | null;
             value: number;
         }[];
         printerId: number;

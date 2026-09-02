@@ -22,6 +22,18 @@ function delta(current, previous) {
     const diff = current - previous;
     return diff < 0 ? null : diff;
 }
+function sum(mono, color) {
+    if (mono === null && color === null)
+        return null;
+    return (mono ?? 0) + (color ?? 0);
+}
+function functionTotals(matrix) {
+    return {
+        print: sum(matrix.printMono, matrix.printColor),
+        copy: sum(matrix.copyMono, matrix.copyColor),
+        scan: sum(matrix.scanMono, matrix.scanColor),
+    };
+}
 function addDays(date, days) {
     const next = new Date(date);
     next.setUTCDate(next.getUTCDate() + days);
@@ -96,12 +108,24 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
             total: null,
             totalMono: null,
             totalColor: null,
+            totalPrintMono: null,
+            totalPrintColor: null,
+            totalCopyMono: null,
+            totalCopyColor: null,
+            totalScanMono: null,
+            totalScanColor: null,
             totalPrint: null,
             totalCopy: null,
             totalScan: null,
             pages: null,
             monoPages: null,
             colorPages: null,
+            printMonoPages: null,
+            printColorPages: null,
+            copyMonoPages: null,
+            copyColorPages: null,
+            scanMonoPages: null,
+            scanColorPages: null,
             printPages: null,
             copyPages: null,
             scanPages: null,
@@ -110,17 +134,20 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
         let total;
         let totalMono;
         let totalColor;
-        let totalPrint;
-        let totalCopy;
-        let totalScan;
+        let matrix;
         try {
             const snapshot = await this.snmp.poll(printer.ipAddress, printer.community, printer.version);
             total = snapshot.pageCount;
             totalMono = snapshot.monoCount;
             totalColor = snapshot.colorCount;
-            totalPrint = snapshot.printCount;
-            totalCopy = snapshot.copyCount;
-            totalScan = snapshot.scanCount;
+            matrix = {
+                printMono: snapshot.printMono,
+                printColor: snapshot.printColor,
+                copyMono: snapshot.copyMono,
+                copyColor: snapshot.copyColor,
+                scanMono: snapshot.scanMono,
+                scanColor: snapshot.scanColor,
+            };
             await this.prisma.printer.update({
                 where: { id: printer.id },
                 data: {
@@ -160,9 +187,14 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
         let pages = null;
         let monoPages = null;
         let colorPages = null;
-        let printPages = null;
-        let copyPages = null;
-        let scanPages = null;
+        let daily = {
+            printMono: null,
+            printColor: null,
+            copyMono: null,
+            copyColor: null,
+            scanMono: null,
+            scanColor: null,
+        };
         let spanDays = 1;
         let note;
         if (!previous) {
@@ -173,9 +205,14 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
             pages = delta(total, previous.total);
             monoPages = delta(totalMono, previous.totalMono);
             colorPages = delta(totalColor, previous.totalColor);
-            printPages = delta(totalPrint, previous.totalPrint);
-            copyPages = delta(totalCopy, previous.totalCopy);
-            scanPages = delta(totalScan, previous.totalScan);
+            daily = {
+                printMono: delta(matrix.printMono, previous.totalPrintMono),
+                printColor: delta(matrix.printColor, previous.totalPrintColor),
+                copyMono: delta(matrix.copyMono, previous.totalCopyMono),
+                copyColor: delta(matrix.copyColor, previous.totalCopyColor),
+                scanMono: delta(matrix.scanMono, previous.totalScanMono),
+                scanColor: delta(matrix.scanColor, previous.totalScanColor),
+            };
             if (pages === null) {
                 note = `カウンタが前回（${previous.total}）より小さくなっています。機器交換かリセットの可能性があります`;
             }
@@ -187,15 +224,21 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
             total,
             totalMono,
             totalColor,
-            totalPrint,
-            totalCopy,
-            totalScan,
+            totalPrintMono: matrix.printMono,
+            totalPrintColor: matrix.printColor,
+            totalCopyMono: matrix.copyMono,
+            totalCopyColor: matrix.copyColor,
+            totalScanMono: matrix.scanMono,
+            totalScanColor: matrix.scanColor,
             pages,
             monoPages,
             colorPages,
-            printPages,
-            copyPages,
-            scanPages,
+            printMonoPages: daily.printMono,
+            printColorPages: daily.printColor,
+            copyMonoPages: daily.copyMono,
+            copyColorPages: daily.copyColor,
+            scanMonoPages: daily.scanMono,
+            scanColorPages: daily.scanColor,
             spanDays,
         };
         await this.prisma.pageCountDaily.upsert({
@@ -203,7 +246,20 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
             create: { printerId: printer.id, date, ...values, capturedAt: now },
             update: { ...values, capturedAt: now },
         });
-        return { ...base, ...values, status: 'recorded', note };
+        const cumulative = functionTotals(matrix);
+        const period = functionTotals(daily);
+        return {
+            ...base,
+            ...values,
+            totalPrint: cumulative.print,
+            totalCopy: cumulative.copy,
+            totalScan: cumulative.scan,
+            printPages: period.print,
+            copyPages: period.copy,
+            scanPages: period.scan,
+            status: 'recorded',
+            note,
+        };
     }
     async findAllDaily(days = 30, from, to) {
         const [rows, assets] = await Promise.all([
@@ -240,22 +296,11 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
                 printerId: row.printerId,
                 ipAddress: row.printer.ipAddress,
                 model: row.printer.model,
+                ...this.counts(row),
                 counterUnit: row.printer.counterUnit,
                 department: asset?.department ?? null,
                 no: asset?.no ?? null,
                 date: (0, date_1.fromDate)(row.date),
-                total: row.total,
-                totalMono: row.totalMono,
-                totalColor: row.totalColor,
-                totalPrint: row.totalPrint,
-                totalCopy: row.totalCopy,
-                totalScan: row.totalScan,
-                pages: row.pages,
-                monoPages: row.monoPages,
-                colorPages: row.colorPages,
-                printPages: row.printPages,
-                copyPages: row.copyPages,
-                scanPages: row.scanPages,
                 spanDays: row.spanDays,
                 capturedAt: row.capturedAt,
             };
@@ -268,21 +313,54 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
         });
         return rows.map((row) => ({
             date: (0, date_1.fromDate)(row.date),
-            pages: row.pages,
-            monoPages: row.monoPages,
-            colorPages: row.colorPages,
-            printPages: row.printPages,
-            copyPages: row.copyPages,
-            scanPages: row.scanPages,
-            total: row.total,
-            totalMono: row.totalMono,
-            totalColor: row.totalColor,
-            totalPrint: row.totalPrint,
-            totalCopy: row.totalCopy,
-            totalScan: row.totalScan,
+            ...this.counts(row),
             spanDays: row.spanDays,
             capturedAt: row.capturedAt,
         }));
+    }
+    counts(row) {
+        const cumulative = functionTotals({
+            printMono: row.totalPrintMono,
+            printColor: row.totalPrintColor,
+            copyMono: row.totalCopyMono,
+            copyColor: row.totalCopyColor,
+            scanMono: row.totalScanMono,
+            scanColor: row.totalScanColor,
+        });
+        const period = functionTotals({
+            printMono: row.printMonoPages,
+            printColor: row.printColorPages,
+            copyMono: row.copyMonoPages,
+            copyColor: row.copyColorPages,
+            scanMono: row.scanMonoPages,
+            scanColor: row.scanColorPages,
+        });
+        return {
+            total: row.total,
+            totalMono: row.totalMono,
+            totalColor: row.totalColor,
+            totalPrintMono: row.totalPrintMono,
+            totalPrintColor: row.totalPrintColor,
+            totalCopyMono: row.totalCopyMono,
+            totalCopyColor: row.totalCopyColor,
+            totalScanMono: row.totalScanMono,
+            totalScanColor: row.totalScanColor,
+            totalPrint: cumulative.print,
+            totalCopy: cumulative.copy,
+            totalScan: cumulative.scan,
+            pages: row.pages,
+            monoPages: row.monoPages,
+            colorPages: row.colorPages,
+            printMonoPages: row.printMonoPages,
+            printColorPages: row.printColorPages,
+            copyMonoPages: row.copyMonoPages,
+            copyColorPages: row.copyColorPages,
+            scanMonoPages: row.scanMonoPages,
+            scanColorPages: row.scanColorPages,
+            printPages: period.print,
+            copyPages: period.copy,
+            scanPages: period.scan,
+        };
     }
     ledgerIndex(assets) {
         const bySerial = new Map();

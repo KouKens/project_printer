@@ -83,20 +83,38 @@ const TABLE = {
 };
 const COUNTER = {
     ricohId: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.2',
+    ricohName: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.5',
     ricohValue: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.9',
-    canonId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
-    canonValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
+    canonId: '1.3.6.1.4.1.1602.1.11.1.4.1.2',
+    canonName: '1.3.6.1.4.1.1602.1.11.1.4.1.3',
+    canonValue: '1.3.6.1.4.1.1602.1.11.1.4.1.4',
+    canonBriefId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
+    canonBriefName: '1.3.6.1.4.1.1602.1.11.1.3.1.3',
+    canonBriefValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
 };
 const RICOH_COUNTER = {
-    total: 400,
-    mono: 401,
-    single: 402,
-    full: 403,
-    print: 1806,
-    copy: 701,
+    machine: 10,
+    printTotal: 400,
+    printMono: 401,
+    printSingle: 402,
+    printFull: 403,
 };
-const CANON_COUNTER = { total: 101, mono: 108 };
+const CANON_COUNTER = {
+    total: 101,
+    mono: 108,
+    copyTotal: 201,
+    copyColor: 232,
+    scanTotal: 501,
+};
 const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
+const NO_MATRIX = {
+    printMono: null,
+    printColor: null,
+    copyMono: null,
+    copyColor: null,
+    scanMono: null,
+    scanColor: null,
+};
 class SnmpUnreachableError extends Error {
 }
 exports.SnmpUnreachableError = SnmpUnreachableError;
@@ -206,16 +224,16 @@ let SnmpService = SnmpService_1 = class SnmpService {
                     ? 'canon'
                     : null;
             const table = vendor === 'ricoh'
-                ? await this.readCounterTable(session, COUNTER.ricohId, COUNTER.ricohValue)
+                ? await this.readCounterTable(session, COUNTER.ricohId, COUNTER.ricohValue, COUNTER.ricohName)
                 : vendor === 'canon'
-                    ? await this.readCounterTable(session, COUNTER.canonId, COUNTER.canonValue)
+                    ? await this.readCanonCounters(session)
                     : new Map();
             return {
                 version,
                 vendor,
                 sysDescr,
                 counters: [...table.entries()]
-                    .map(([id, value]) => ({ id, value }))
+                    .map(([id, row]) => ({ id, name: row.name, value: row.value }))
                     .sort((a, b) => a.id - b.id),
             };
         }
@@ -359,69 +377,99 @@ let SnmpService = SnmpService_1 = class SnmpService {
     async readCounts(session, sysDescr, total, supplies) {
         const descr = sysDescr ?? '';
         if (/ricoh|ipsio/i.test(descr)) {
-            const counters = await this.readCounterTable(session, COUNTER.ricohId, COUNTER.ricohValue);
-            const mono = counters.get(RICOH_COUNTER.mono);
-            if (mono !== undefined) {
-                const color = (counters.get(RICOH_COUNTER.single) ?? 0) +
-                    (counters.get(RICOH_COUNTER.full) ?? 0);
-                return {
-                    monoCount: mono,
-                    colorCount: color,
-                    printCount: counters.get(RICOH_COUNTER.print) ?? null,
-                    copyCount: counters.get(RICOH_COUNTER.copy) ?? null,
-                    scanCount: null,
-                    countSource: 'vendor',
-                };
-            }
+            const counters = await this.readCounterTable(session, COUNTER.ricohId, COUNTER.ricohValue, COUNTER.ricohName);
+            const ricoh = this.ricohCounts(counters);
+            if (ricoh)
+                return ricoh;
         }
         else if (/canon/i.test(descr)) {
-            const counters = await this.readCounterTable(session, COUNTER.canonId, COUNTER.canonValue);
-            const mono = counters.get(CANON_COUNTER.mono);
-            const sum = counters.get(CANON_COUNTER.total);
-            if (mono !== undefined && sum !== undefined) {
-                return {
-                    monoCount: mono,
-                    colorCount: sum - mono,
-                    printCount: null,
-                    copyCount: null,
-                    scanCount: null,
-                    countSource: 'vendor',
-                };
-            }
+            const canon = this.canonCounts(await this.readCanonCounters(session));
+            if (canon)
+                return canon;
         }
         const hasColor = supplies.some((supply) => supply.colorant !== null &&
             COLOR_NAMES.includes(supply.colorant.toLowerCase()));
-        const noFunctions = {
-            printCount: null,
-            copyCount: null,
-            scanCount: null,
-        };
         if (!hasColor && supplies.length > 0 && total !== null) {
             return {
                 monoCount: total,
                 colorCount: 0,
-                ...noFunctions,
+                ...NO_MATRIX,
                 countSource: 'mono-only',
             };
         }
         return {
             monoCount: null,
             colorCount: null,
-            ...noFunctions,
+            ...NO_MATRIX,
             countSource: 'none',
         };
     }
-    async readCounterTable(session, idBase, valueBase) {
-        const [ids, values] = await Promise.all([
+    ricohCounts(counters) {
+        const printMono = counters.get(RICOH_COUNTER.printMono)?.value;
+        if (printMono === undefined)
+            return null;
+        const printColor = (counters.get(RICOH_COUNTER.printSingle)?.value ?? 0) +
+            (counters.get(RICOH_COUNTER.printFull)?.value ?? 0);
+        const printTotal = printMono + printColor;
+        const machine = counters.get(RICOH_COUNTER.machine)?.value ??
+            counters.get(RICOH_COUNTER.printTotal)?.value ??
+            printTotal;
+        const copyMono = Math.max(0, machine - printTotal);
+        return {
+            monoCount: printMono + copyMono,
+            colorCount: printColor,
+            printMono,
+            printColor,
+            copyMono,
+            copyColor: 0,
+            scanMono: null,
+            scanColor: null,
+            countSource: 'vendor',
+        };
+    }
+    canonCounts(counters) {
+        const total = counters.get(CANON_COUNTER.total)?.value;
+        const mono = counters.get(CANON_COUNTER.mono)?.value;
+        if (total === undefined || mono === undefined)
+            return null;
+        const color = total - mono;
+        const copyTotal = counters.get(CANON_COUNTER.copyTotal)?.value;
+        const copyColor = counters.get(CANON_COUNTER.copyColor)?.value;
+        const scanTotal = counters.get(CANON_COUNTER.scanTotal)?.value;
+        const split = copyTotal !== undefined && copyColor !== undefined;
+        const copyMono = split ? copyTotal - copyColor : null;
+        return {
+            monoCount: mono,
+            colorCount: color,
+            printMono: copyMono === null ? null : mono - copyMono,
+            printColor: split ? color - copyColor : null,
+            copyMono,
+            copyColor: split ? copyColor : null,
+            scanMono: scanTotal ?? null,
+            scanColor: scanTotal === undefined ? null : 0,
+            countSource: 'vendor',
+        };
+    }
+    async readCanonCounters(session) {
+        const full = await this.readCounterTable(session, COUNTER.canonId, COUNTER.canonValue, COUNTER.canonName);
+        if (full.size > 0)
+            return full;
+        return this.readCounterTable(session, COUNTER.canonBriefId, COUNTER.canonBriefValue, COUNTER.canonBriefName);
+    }
+    async readCounterTable(session, idBase, valueBase, nameBase) {
+        const [ids, values, names] = await Promise.all([
             this.walk(session, idBase),
             this.walk(session, valueBase),
+            this.walk(session, nameBase),
         ]);
         const counters = new Map();
         for (const [row, varbind] of ids) {
             const id = readCounterId(varbind.value);
             const value = readNumber(values.get(row)?.value ?? null);
-            if (id !== null && value !== null)
-                counters.set(id, value);
+            if (id === null || value === null)
+                continue;
+            const label = names.get(row);
+            counters.set(id, { name: label ? readText(label.value) : null, value });
         }
         return counters;
     }

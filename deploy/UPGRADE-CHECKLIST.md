@@ -11,9 +11,14 @@
 ## 前提（開発端末側で確認済み・2026-09-02）
 
 - `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate diff` で差分なし）
-- 開発側の migration は **38 本**
-- そのうち **15 本が未コミット**（`20260820023108_repair_restored_on_optional` 以降）
-- 破壊的な migration は **1 本だけ** → `20260820050000_maint_vendors`
+- 開発側の migration は **39 本**
+- 破壊的な migration は **2 本**
+  - `20260820050000_maint_vendors` → `printer_assets` の `maint_phones` / `maint_vendor` を DROP
+  - `20260902010000_page_count_function_color_matrix` → `page_count_daily` の
+    `total_print` / `total_copy` / `total_scan` と `print_pages` / `copy_pages` / `scan_pages`
+    を DROP。**退避は不要。** これらは RICOH の拡張 MIB から誤った ID
+    （A3 未満の総枚数と両面印字の面数）を読んでいた列で、残しても使えない。
+    枚数そのもの（`total` / `total_mono` / `total_color`）は消えない
 
 ---
 
@@ -48,7 +53,7 @@ node node_modules\prisma\build\index.js migrate status
 
 控えること。
 
-- [ ] `N migrations found` の **N** = ______ 本（開発側は 38 本）
+- [ ] `N migrations found` の **N** = ______ 本（開発側は 39 本）
 - [ ] 未適用として並んだ migration 名（または `up to date`）
 
 `node` の場所が違う・上が動かない場合はこちらでも分かる。
@@ -106,7 +111,7 @@ cd ..\printer_manager ; npx tsc --noEmit ; npm run build
 
 - [ ] 型チェックが通る
 - [ ] 両方ビルドが通る
-- [ ] コミットした（15 本の migration を含む。本番へ運ぶ実体そのもの）
+- [ ] コミットした（migration を含む。本番へ運ぶ実体そのもの）
 
 ### B-2. 配布物を作る
 
@@ -126,8 +131,10 @@ powershell -ExecutionPolicy Bypass -File deploy\bundle-offline.ps1
 
 ## C. 本番へ適用する前の最終確認
 
-- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（38）の差＝今回入る変更の数を把握した
+- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（39）の差＝今回入る変更の数を把握した
 - [ ] A-3 の分岐を判断した（退避の要否）
+- [ ] 更新後、1 日分の機能別（プリンター・コピー）は**次の取得から**入ることを伝えた
+      （累計の差で出すので、更新した当日は累計だけが埋まる）
 - [ ] 業務時間外か、入力が走らない時間帯を選んだ
 - [ ] `pg_dump -Fc` のバックアップ先と空き容量を決めた
 - [ ] 切り戻し手順を読んだ（[OFFLINE-WINDOWS.md](OFFLINE-WINDOWS.md) §7 の末尾）

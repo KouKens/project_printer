@@ -21,6 +21,11 @@ const printers_service_1 = require("../printers/printers.service");
 function toVendor(vendor) {
     return { id: vendor.id, name: vendor.name, phones: vendor.phones };
 }
+function sumCounts(mono, color) {
+    if (mono === null && color === null)
+        return null;
+    return (mono ?? 0) + (color ?? 0);
+}
 function modelKey(maker, model) {
     const fold = (value) => (value ?? '')
         .normalize('NFKC')
@@ -182,9 +187,9 @@ let PrinterAssetsService = class PrinterAssetsService {
                         total: daily.total,
                         totalMono: daily.totalMono,
                         totalColor: daily.totalColor,
-                        totalPrint: daily.totalPrint,
-                        totalCopy: daily.totalCopy,
-                        totalScan: daily.totalScan,
+                        totalPrint: sumCounts(daily.totalPrintMono, daily.totalPrintColor),
+                        totalCopy: sumCounts(daily.totalCopyMono, daily.totalCopyColor),
+                        totalScan: sumCounts(daily.totalScanMono, daily.totalScanColor),
                     }
                     : null,
             };
