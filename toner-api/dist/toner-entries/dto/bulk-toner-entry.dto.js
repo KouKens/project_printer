@@ -41,6 +41,7 @@ __decorate([
 class BulkTonerEntryDto {
     action;
     userId;
+    companyId;
     items;
     receivedOn;
 }
@@ -57,6 +58,12 @@ __decorate([
     (0, class_validator_1.MaxLength)(64),
     __metadata("design:type", String)
 ], BulkTonerEntryDto.prototype, "userId", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '会社を選んでください' }),
+    (0, class_validator_1.Min)(1, { message: '会社を選んでください' }),
+    __metadata("design:type", Number)
+], BulkTonerEntryDto.prototype, "companyId", void 0);
 __decorate([
     (0, class_validator_1.ArrayNotEmpty)({ message: 'トナーを 1 件以上入力してください' }),
     (0, class_validator_1.ArrayMaxSize)(100, { message: '一度に処理できるのは 100 件までです' }),

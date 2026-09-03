@@ -86,15 +86,18 @@ let PrinterAssetsService = class PrinterAssetsService {
     async create(dto) {
         const saved = await this.prisma.printerAsset.create({
             data: this.toData(dto),
-            include: { maintVendor: true },
+            include: { maintVendor: true, company: true },
         });
         return this.toResponse(saved, await this.vendorsByMaker());
     }
-    async findAll(includeDisabled = false) {
+    async findAll(includeDisabled = false, companyId) {
         const assets = await this.prisma.printerAsset.findMany({
-            where: includeDisabled ? {} : { disabledAt: null },
+            where: {
+                ...(includeDisabled ? {} : { disabledAt: null }),
+                ...(companyId ? { companyId } : {}),
+            },
             orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
-            include: { maintVendor: true },
+            include: { maintVendor: true, company: true },
         });
         const byMaker = await this.vendorsByMaker();
         return assets.map((asset) => this.toResponse(asset, byMaker));
@@ -104,7 +107,7 @@ let PrinterAssetsService = class PrinterAssetsService {
             this.prisma.printerAsset.findMany({
                 where: { disabledAt: null },
                 orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
-                include: { maintVendor: true },
+                include: { maintVendor: true, company: true },
             }),
             this.prisma.printer.findMany({
                 include: {
@@ -197,10 +200,10 @@ let PrinterAssetsService = class PrinterAssetsService {
             };
         });
     }
-    async findByModel() {
+    async findByModel(companyId) {
         const [assets, printers] = await Promise.all([
             this.prisma.printerAsset.findMany({
-                where: { disabledAt: null },
+                where: { disabledAt: null, companyId },
                 orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
                 select: {
                     id: true,
@@ -219,7 +222,10 @@ let PrinterAssetsService = class PrinterAssetsService {
                                     color: true,
                                     recycled: true,
                                     alertThreshold: true,
-                                    stock: { select: { quantity: true } },
+                                    stocks: {
+                                        where: { companyId },
+                                        select: { quantity: true },
+                                    },
                                     prices: {
                                         orderBy: { effectiveFrom: 'desc' },
                                         select: { price: true, effectiveFrom: true },
@@ -307,7 +313,7 @@ let PrinterAssetsService = class PrinterAssetsService {
                     recycled: toner.recycled,
                     alertThreshold: toner.alertThreshold,
                     price: current?.price ?? null,
-                    stock: toner.stock?.quantity ?? 0,
+                    stock: toner.stocks[0]?.quantity ?? 0,
                     assetCount: 1,
                     printers: printersOf(toner.id, key),
                 });
@@ -354,7 +360,7 @@ let PrinterAssetsService = class PrinterAssetsService {
     async findOne(id) {
         const asset = await this.prisma.printerAsset.findUnique({
             where: { id },
-            include: { maintVendor: true },
+            include: { maintVendor: true, company: true },
         });
         if (!asset) {
             throw new common_1.NotFoundException(`ID ${id} の端末情報は登録されていません`);
@@ -366,7 +372,7 @@ let PrinterAssetsService = class PrinterAssetsService {
         const saved = await this.prisma.printerAsset.update({
             where: { id },
             data: this.toData(dto),
-            include: { maintVendor: true },
+            include: { maintVendor: true, company: true },
         });
         return this.toResponse(saved, await this.vendorsByMaker());
     }
@@ -415,7 +421,7 @@ let PrinterAssetsService = class PrinterAssetsService {
         const saved = await this.prisma.printerAsset.update({
             where: { id },
             data: { updatedAt: new Date() },
-            include: { maintVendor: true },
+            include: { maintVendor: true, company: true },
         });
         return this.toResponse(saved, await this.vendorsByMaker());
     }
@@ -424,9 +430,46 @@ let PrinterAssetsService = class PrinterAssetsService {
         const saved = await this.prisma.printerAsset.update({
             where: { id },
             data: { disabledAt: disabled ? new Date() : null },
-            include: { maintVendor: true },
+            include: { maintVendor: true, company: true },
         });
         return this.toResponse(saved, await this.vendorsByMaker());
+    }
+    async remove(id) {
+        const asset = await this.prisma.printerAsset.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                no: true,
+                department: true,
+                model: true,
+                serialNumber: true,
+                disabledAt: true,
+                _count: { select: { repairs: true, toners: true } },
+            },
+        });
+        if (!asset) {
+            throw new common_1.NotFoundException(`ID ${id} の機器は登録されていません`);
+        }
+        const label = [
+            asset.no ? `No.${asset.no}` : null,
+            asset.department,
+            asset.model,
+        ]
+            .filter(Boolean)
+            .join(' / ');
+        if (asset.disabledAt === null) {
+            throw new common_1.BadRequestException(`${label} はまだ有効です。先に無効にしてから削除してください`);
+        }
+        if (asset._count.repairs > 0) {
+            throw new common_1.BadRequestException(`${label} には修理履歴が ${asset._count.repairs} 件あり、削除すると一緒に消えます。` +
+                '無効のままにしておけば、一覧と選択肢からは外れたまま履歴が残ります');
+        }
+        await this.prisma.printerAsset.delete({ where: { id } });
+        return {
+            id,
+            deleted: true,
+            removed: { toners: asset._count.toners },
+        };
     }
     async fillSerial(id, current, fromPrinter) {
         const serialNumber = (0, text_1.toText)(fromPrinter);
@@ -479,6 +522,7 @@ let PrinterAssetsService = class PrinterAssetsService {
     }
     toData(dto) {
         return {
+            companyId: dto.companyId,
             department: (0, text_1.toText)(dto.department),
             no: (0, text_1.toText)(dto.no),
             ipAddress: (0, text_1.toText)(dto.ipAddress),
@@ -521,6 +565,10 @@ let PrinterAssetsService = class PrinterAssetsService {
     toResponse(asset, byMaker) {
         return {
             id: asset.id,
+            companyId: asset.companyId,
+            company: asset.company
+                ? { id: asset.company.id, name: asset.company.name }
+                : null,
             department: asset.department,
             no: asset.no,
             ipAddress: asset.ipAddress,

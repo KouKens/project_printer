@@ -63,6 +63,9 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
     get printerAsset(): Prisma.PrinterAssetDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
+    get company(): Prisma.CompanyDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
     get maintVendor(): Prisma.MaintVendorDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;

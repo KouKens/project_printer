@@ -5,6 +5,7 @@ import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
 import './DataTable.css';
 import './ModelTonerScreen.css';
+import { useCompany } from '../lib/company';
 
 /** そのトナーを使っているプリンター 1 台。同じトナーを使う別機種の台も含む */
 type TonerPrinter = {
@@ -410,6 +411,8 @@ function AssetRows({ row }: { row: Row }) {
 }
 
 export default function ModelTonerScreen() {
+  // 機種も在庫も、右上で選んでいる会社の分だけを数える
+  const { companyId } = useCompany();
   const [rows, setRows] = useState<Row[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: 'maker',
@@ -422,13 +425,17 @@ export default function ModelTonerScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // 会社が決まるまで待つ。決まる前に叩くと API が 400 で断る
+    if (companyId === null) return;
     try {
-      setRows(await request<Row[]>('/printer-assets/by-model'));
+      setRows(
+        await request<Row[]>(`/printer-assets/by-model?companyId=${companyId}`),
+      );
       setError(null);
     } catch (err) {
       setError((err as Error).message);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     void load();

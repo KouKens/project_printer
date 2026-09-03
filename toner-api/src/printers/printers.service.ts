@@ -281,6 +281,37 @@ export class PrintersService {
     }
   }
 
+  /**
+   * 消耗品・警告の表をそのまま返す。**調べるための口。**
+   *
+   * 一覧に定着やドラムが出ないとき、機器がその行を持っていないのか、
+   * 応答が落ちて表が途中で切れたのかを、列ごとの行数と complete で見分ける
+   */
+  async dumpSupplies(id: number) {
+    const printer = await this.prisma.printer.findUnique({ where: { id } });
+    if (!printer) {
+      throw new NotFoundException(`ID ${id} のプリンターは登録されていません`);
+    }
+
+    try {
+      return {
+        printerId: printer.id,
+        ipAddress: printer.ipAddress,
+        model: printer.model,
+        ...(await this.snmp.dumpSupplies(
+          printer.ipAddress,
+          printer.community,
+          printer.version,
+        )),
+      };
+    } catch (error) {
+      if (error instanceof SnmpUnreachableError) {
+        throw new ServiceUnavailableException(error.message);
+      }
+      throw error;
+    }
+  }
+
   /** 登録済みの機器を取り直す */
   async poll(id: number) {
     const printer = await this.prisma.printer.findUnique({ where: { id } });
@@ -619,6 +650,11 @@ export class PrintersService {
    * ただし今回 1 つも読めなかったときは**消さずに前回の残量を残す**。
    * 機器情報は取れても消耗品の表だけ途中で切れることがあり、
    * そこで消すと一覧から残量が消えてしまう。
+   *
+   * **表が途中で切れたときも同じく前回を残す。** 消耗品の表は
+   * トナー・廃トナー・ドラム・定着の順に並ぶので、切れたぶんで上書きすると
+   * 「ドラムも定着も無い機器」になってしまう。読めた行が新しいとは限らない。
+   * ただし前回が無いなら、途中まででも出したほうが分かる
    */
   private async replaceReadings(
     tx: Tx,
@@ -626,6 +662,16 @@ export class PrintersService {
     snapshot: PrinterSnapshot,
   ) {
     if (snapshot.supplies.length === 0) return;
+
+    if (!snapshot.suppliesComplete) {
+      const previous = await tx.supplyReading.count({ where: { printerId } });
+      if (previous > 0) {
+        this.logger.warn(
+          `プリンター ${printerId}: 消耗品の表が途中で切れたので前回の残量を残します`,
+        );
+        return;
+      }
+    }
 
     await tx.supplyReading.deleteMany({ where: { printerId } });
 

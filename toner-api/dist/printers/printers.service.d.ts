@@ -88,6 +88,17 @@ export declare class PrintersService {
         ipAddress: string;
         model: string | null;
     }>;
+    dumpSupplies(id: number): Promise<{
+        version: SnmpVersionKey;
+        sysDescr: string | null;
+        columns: import("./snmp.service").ColumnStatus[];
+        supplies: import("./snmp.service").SupplySnapshot[];
+        alerts: import("./snmp.service").AlertSnapshot[];
+        consoleText: string | null;
+        printerId: number;
+        ipAddress: string;
+        model: string | null;
+    }>;
     poll(id: number): Promise<{
         id: number;
         ipAddress: string;

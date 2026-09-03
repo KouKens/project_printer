@@ -43,6 +43,15 @@ export class BulkTonerOrderDto {
   @MaxLength(64)
   userId?: string;
 
+  /**
+   * どの会社の注文か。**必須。まとめた全件に同じ会社が入る。**
+   * 1 回の発注が会社をまたぐことは無いので、明細ごとには持たせない
+   */
+  @Type(() => Number)
+  @IsInt({ message: '会社を選んでください' })
+  @Min(1, { message: '会社を選んでください' })
+  companyId: number;
+
   /** 次回搬入日（YYYY-MM-DD）。任意。まとめた全件に同じ日付が入る */
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {

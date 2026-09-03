@@ -1,4 +1,5 @@
 export declare class CreatePrinterAssetDto {
+    companyId: number;
     department?: string | null;
     no?: string | null;
     ipAddress?: string | null;

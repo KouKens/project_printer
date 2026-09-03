@@ -29,6 +29,7 @@ let TonerEntriesService = class TonerEntriesService {
                 results.push(await this.apply(tx, {
                     action: dto.action,
                     userId: dto.userId,
+                    companyId: dto.companyId,
                     tonerId: item.tonerId,
                     name: item.name,
                     quantity: item.quantity,
@@ -59,14 +60,13 @@ let TonerEntriesService = class TonerEntriesService {
             data: {
                 id: dto.tonerId,
                 name: dto.name?.trim() || null,
-                stock: { create: {} },
             },
-            include: { stock: true },
         });
         await tx.tonerEntry.create({
             data: {
                 userId: dto.userId,
                 tonerId: dto.tonerId,
+                companyId: dto.companyId,
                 action: 'REGISTER',
                 quantity: 0,
                 balance: 0,
@@ -84,18 +84,16 @@ let TonerEntriesService = class TonerEntriesService {
     }
     async receive(tx, dto) {
         const count = dto.quantity ?? 1;
-        const toner = await this.requireToner(tx, dto.tonerId);
-        const stock = await tx.tonerStock.update({
-            where: { tonerId: dto.tonerId },
-            data: {
-                quantity: { increment: count },
-                received: { increment: count },
-            },
+        const toner = await this.requireToner(tx, dto.tonerId, dto.companyId);
+        const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+            quantity: count,
+            received: count,
         });
         await tx.tonerEntry.create({
             data: {
                 userId: dto.userId,
                 tonerId: dto.tonerId,
+                companyId: dto.companyId,
                 action: 'RECEIVE',
                 quantity: count,
                 balance: stock.quantity,
@@ -106,19 +104,19 @@ let TonerEntriesService = class TonerEntriesService {
     }
     async issue(tx, dto) {
         const count = dto.quantity ?? 1;
-        const toner = await this.requireToner(tx, dto.tonerId);
+        const toner = await this.requireToner(tx, dto.tonerId, dto.companyId);
         const current = toner.stock?.quantity ?? 0;
         if (current < count) {
             throw new common_1.UnprocessableEntityException(`在庫が足りません。${dto.tonerId} の在庫は ${current} 本です`);
         }
-        const stock = await tx.tonerStock.update({
-            where: { tonerId: dto.tonerId },
-            data: { quantity: { decrement: count } },
+        const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+            quantity: -count,
         });
         await tx.tonerEntry.create({
             data: {
                 userId: dto.userId,
                 tonerId: dto.tonerId,
+                companyId: dto.companyId,
                 action: 'ISSUE',
                 quantity: count,
                 balance: stock.quantity,
@@ -128,7 +126,7 @@ let TonerEntriesService = class TonerEntriesService {
     }
     async dispose(tx, dto) {
         const count = dto.quantity ?? 1;
-        const toner = await this.requireToner(tx, dto.tonerId);
+        const toner = await this.requireToner(tx, dto.tonerId, dto.companyId);
         const received = toner.stock?.received ?? 0;
         const disposed = toner.stock?.disposed ?? 0;
         const allowance = received - disposed;
@@ -137,14 +135,14 @@ let TonerEntriesService = class TonerEntriesService {
                 ? `${dto.tonerId} は廃棄できる本数がありません（搬入 ${received} 本／廃棄済み ${disposed} 本）`
                 : `廃棄できるのは ${allowance} 本までです（搬入 ${received} 本／廃棄済み ${disposed} 本）`);
         }
-        const stock = await tx.tonerStock.update({
-            where: { tonerId: dto.tonerId },
-            data: { disposed: { increment: count } },
+        const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+            disposed: count,
         });
         await tx.tonerEntry.create({
             data: {
                 userId: dto.userId,
                 tonerId: dto.tonerId,
+                companyId: dto.companyId,
                 action: 'DISPOSE',
                 quantity: count,
                 balance: stock.quantity,
@@ -157,10 +155,10 @@ let TonerEntriesService = class TonerEntriesService {
         return this.prisma.$transaction(async (tx) => {
             const toners = await tx.toner.findMany({
                 where: { id: { in: dto.counts.map((count) => count.tonerId) } },
-                include: { stock: true },
+                include: { stocks: { where: { companyId: dto.companyId } } },
             });
             const known = new Map(toners.map((toner) => [toner.id, toner]));
-            const quantities = new Map(toners.map((toner) => [toner.id, toner.stock?.quantity ?? 0]));
+            const quantities = new Map(toners.map((toner) => [toner.id, toner.stocks[0]?.quantity ?? 0]));
             const rows = [];
             for (const count of dto.counts) {
                 const toner = known.get(count.tonerId);
@@ -189,8 +187,17 @@ let TonerEntriesService = class TonerEntriesService {
                     continue;
                 }
                 await tx.tonerStock.upsert({
-                    where: { tonerId: toner.id },
-                    create: { tonerId: toner.id, quantity: count.counted },
+                    where: {
+                        tonerId_companyId: {
+                            tonerId: toner.id,
+                            companyId: dto.companyId,
+                        },
+                    },
+                    create: {
+                        tonerId: toner.id,
+                        companyId: dto.companyId,
+                        quantity: count.counted,
+                    },
                     update: { quantity: count.counted },
                 });
                 quantities.set(toner.id, count.counted);
@@ -198,6 +205,7 @@ let TonerEntriesService = class TonerEntriesService {
                     data: {
                         userId,
                         tonerId: toner.id,
+                        companyId: dto.companyId,
                         action: 'ADJUST',
                         quantity: Math.abs(diff),
                         balance: count.counted,
@@ -215,20 +223,23 @@ let TonerEntriesService = class TonerEntriesService {
             return rows;
         });
     }
-    async findStock() {
+    async findStock(companyId) {
         const toners = await this.prisma.toner.findMany({
-            include: { stock: true },
+            include: { stocks: { where: { companyId } } },
             orderBy: { id: 'asc' },
         });
-        return toners.map((t) => ({
-            id: t.id,
-            name: t.name,
-            color: t.color,
-            quantity: t.stock?.quantity ?? 0,
-            received: t.stock?.received ?? 0,
-            disposed: t.stock?.disposed ?? 0,
-            updatedAt: t.stock?.updatedAt ?? t.updatedAt,
-        }));
+        return toners.map((t) => {
+            const stock = t.stocks[0] ?? null;
+            return {
+                id: t.id,
+                name: t.name,
+                color: t.color,
+                quantity: stock?.quantity ?? 0,
+                received: stock?.received ?? 0,
+                disposed: stock?.disposed ?? 0,
+                updatedAt: stock?.updatedAt ?? t.updatedAt,
+            };
+        });
     }
     async remove(id) {
         return this.prisma.$transaction(async (tx) => {
@@ -242,9 +253,13 @@ let TonerEntriesService = class TonerEntriesService {
             if (entry.action === 'ADJUST') {
                 throw new common_1.UnprocessableEntityException('棚卸しの調整は取り消せません。数え直して棚卸しをやり直してください');
             }
-            const stock = await tx.tonerStock.findUnique({
-                where: { tonerId: entry.tonerId },
-            });
+            const stockKey = {
+                tonerId_companyId: {
+                    tonerId: entry.tonerId,
+                    companyId: entry.companyId,
+                },
+            };
+            const stock = await tx.tonerStock.findUnique({ where: stockKey });
             const quantity = stock?.quantity ?? 0;
             const received = stock?.received ?? 0;
             const disposed = stock?.disposed ?? 0;
@@ -258,7 +273,7 @@ let TonerEntriesService = class TonerEntriesService {
                     throw new common_1.UnprocessableEntityException(`取り消せません。廃棄済み ${disposed} 本が搬入累計を上回ります`);
                 }
                 await tx.tonerStock.update({
-                    where: { tonerId: entry.tonerId },
+                    where: stockKey,
                     data: {
                         quantity: { decrement: count },
                         received: { decrement: count },
@@ -267,20 +282,18 @@ let TonerEntriesService = class TonerEntriesService {
             }
             else if (entry.action === 'ISSUE') {
                 await tx.tonerStock.update({
-                    where: { tonerId: entry.tonerId },
+                    where: stockKey,
                     data: { quantity: { increment: count } },
                 });
             }
             else if (entry.action === 'DISPOSE') {
                 await tx.tonerStock.update({
-                    where: { tonerId: entry.tonerId },
+                    where: stockKey,
                     data: { disposed: { decrement: Math.min(count, disposed) } },
                 });
             }
             await tx.tonerEntry.delete({ where: { id } });
-            const after = await tx.tonerStock.findUnique({
-                where: { tonerId: entry.tonerId },
-            });
+            const after = await tx.tonerStock.findUnique({ where: stockKey });
             return {
                 id,
                 tonerId: entry.tonerId,
@@ -309,6 +322,7 @@ let TonerEntriesService = class TonerEntriesService {
                 createdAt: { gte: from },
                 ...(params.action ? { action: params.action } : {}),
                 ...(params.tonerId ? { tonerId: params.tonerId } : {}),
+                ...(params.companyId ? { companyId: params.companyId } : {}),
             },
             orderBy: { createdAt: 'desc' },
             take: 1000,
@@ -318,6 +332,7 @@ let TonerEntriesService = class TonerEntriesService {
             id: row.id,
             userId: row.userId,
             tonerId: row.tonerId,
+            companyId: row.companyId,
             name: row.toner.name,
             color: row.toner.color,
             action: row.action,
@@ -327,15 +342,38 @@ let TonerEntriesService = class TonerEntriesService {
             createdAt: row.createdAt,
         }));
     }
-    async requireToner(tx, tonerId) {
+    async requireToner(tx, tonerId, companyId) {
         const toner = await tx.toner.findUnique({
             where: { id: tonerId },
-            include: { stock: true },
+            include: { stocks: { where: { companyId } } },
         });
         if (!toner) {
             throw new common_1.NotFoundException(`${tonerId} は未登録です。先に登録を行ってください`);
         }
-        return toner;
+        return { ...toner, stock: toner.stocks[0] ?? null };
+    }
+    bumpStock(tx, tonerId, companyId, delta) {
+        return tx.tonerStock.upsert({
+            where: { tonerId_companyId: { tonerId, companyId } },
+            create: {
+                tonerId,
+                companyId,
+                quantity: delta.quantity ?? 0,
+                received: delta.received ?? 0,
+                disposed: delta.disposed ?? 0,
+            },
+            update: {
+                ...(delta.quantity === undefined
+                    ? {}
+                    : { quantity: { increment: delta.quantity } }),
+                ...(delta.received === undefined
+                    ? {}
+                    : { received: { increment: delta.received } }),
+                ...(delta.disposed === undefined
+                    ? {}
+                    : { disposed: { increment: delta.disposed } }),
+            },
+        });
     }
     toResult(id, name, action, quantity, stock) {
         return {

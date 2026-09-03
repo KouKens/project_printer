@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.RepairRecordScalarFieldEnum = exports.SupplyReadingScalarFieldEnum = exports.PageCountDailyScalarFieldEnum = exports.MaintVendorScalarFieldEnum = exports.PrinterAssetScalarFieldEnum = exports.PrinterAlertScalarFieldEnum = exports.PrinterScalarFieldEnum = exports.TonerInvoiceLineScalarFieldEnum = exports.TonerInvoiceScalarFieldEnum = exports.TonerOrderScalarFieldEnum = exports.TonerEntryScalarFieldEnum = exports.TonerStockScalarFieldEnum = exports.TonerPriceScalarFieldEnum = exports.TonerPrinterScalarFieldEnum = exports.TonerScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.Decimal = void 0;
+exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.RepairRecordScalarFieldEnum = exports.SupplyReadingScalarFieldEnum = exports.PageCountDailyScalarFieldEnum = exports.MaintVendorScalarFieldEnum = exports.CompanyScalarFieldEnum = exports.PrinterAssetScalarFieldEnum = exports.PrinterAlertScalarFieldEnum = exports.PrinterScalarFieldEnum = exports.TonerInvoiceLineScalarFieldEnum = exports.TonerInvoiceScalarFieldEnum = exports.TonerOrderScalarFieldEnum = exports.TonerEntryScalarFieldEnum = exports.TonerStockScalarFieldEnum = exports.TonerPriceScalarFieldEnum = exports.TonerPrinterScalarFieldEnum = exports.TonerScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.Decimal = void 0;
 const runtime = __importStar(require("@prisma/client/runtime/index-browser"));
 exports.Decimal = runtime.Decimal;
 exports.NullTypes = {
@@ -56,6 +56,7 @@ exports.ModelName = {
     Printer: 'Printer',
     PrinterAlert: 'PrinterAlert',
     PrinterAsset: 'PrinterAsset',
+    Company: 'Company',
     MaintVendor: 'MaintVendor',
     PageCountDaily: 'PageCountDaily',
     SupplyReading: 'SupplyReading',
@@ -93,6 +94,7 @@ exports.TonerPriceScalarFieldEnum = {
 };
 exports.TonerStockScalarFieldEnum = {
     tonerId: 'tonerId',
+    companyId: 'companyId',
     quantity: 'quantity',
     received: 'received',
     disposed: 'disposed',
@@ -103,6 +105,7 @@ exports.TonerEntryScalarFieldEnum = {
     userId: 'userId',
     tonerId: 'tonerId',
     action: 'action',
+    companyId: 'companyId',
     quantity: 'quantity',
     balance: 'balance',
     receivedOn: 'receivedOn',
@@ -111,6 +114,7 @@ exports.TonerEntryScalarFieldEnum = {
 exports.TonerOrderScalarFieldEnum = {
     id: 'id',
     tonerId: 'tonerId',
+    companyId: 'companyId',
     userId: 'userId',
     quantity: 'quantity',
     orderedAt: 'orderedAt',
@@ -172,6 +176,7 @@ exports.PrinterAlertScalarFieldEnum = {
 };
 exports.PrinterAssetScalarFieldEnum = {
     id: 'id',
+    companyId: 'companyId',
     department: 'department',
     no: 'no',
     ipAddress: 'ipAddress',
@@ -190,6 +195,15 @@ exports.PrinterAssetScalarFieldEnum = {
     note: 'note',
     disabledAt: 'disabledAt',
     countLayout: 'countLayout',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.CompanyScalarFieldEnum = {
+    id: 'id',
+    name: 'name',
+    sortOrder: 'sortOrder',
+    note: 'note',
+    disabledAt: 'disabledAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };

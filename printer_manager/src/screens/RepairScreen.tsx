@@ -82,6 +82,8 @@ type Repair = {
   id: number;
   assignee: string | null;
   printerAssetId: number;
+  /** 台帳の会社名。API が添えて返す */
+  company: string | null;
   department: string | null;
   no: string | null;
   maker: string | null;
@@ -99,6 +101,8 @@ type Repair = {
 /** 選択肢に出す台帳の 1 件 */
 type Asset = {
   id: number;
+  /** 持っている会社。修理は全社まとめて見るので、どこの機器かを呼び名に出す */
+  company: { id: number; name: string } | null;
   department: string | null;
   no: string | null;
   ipAddress: string | null;
@@ -146,8 +150,16 @@ const blankToNull = (value: string) => (value.trim() === '' ? null : value);
 const WIDE_SPACE = '　';
 
 /** 台帳の呼び名。部署と No. で人が識別できるようにする */
-const assetLabel = (asset: Pick<Asset, 'department' | 'no' | 'maker' | 'model'>) =>
+const assetLabel = (asset: {
+  /** 台帳は { id, name }、修理履歴は会社名の文字列で持っている */
+  company: { name: string } | string | null
+  department: string | null
+  no: string | null
+  maker: string | null
+  model: string | null
+}) =>
   [
+    typeof asset.company === 'string' ? asset.company : (asset.company?.name ?? null),
     asset.department ?? '（部署なし）',
     asset.no ? `No.${asset.no}` : null,
     [asset.maker, asset.model].filter(Boolean).join(' ') || null,
@@ -162,6 +174,7 @@ const assetLabel = (asset: Pick<Asset, 'department' | 'no' | 'maker' | 'model'>)
  */
 const haystack = (asset: Asset, toners: string[]) =>
   [
+    asset.company?.name ?? null,
     asset.department,
     asset.no ? `No.${asset.no}` : null,
     asset.ipAddress,

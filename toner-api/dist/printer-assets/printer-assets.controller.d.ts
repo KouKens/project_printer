@@ -5,6 +5,11 @@ export declare class PrinterAssetsController {
     constructor(service: PrinterAssetsService);
     create(dto: CreatePrinterAssetDto): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -42,8 +47,13 @@ export declare class PrinterAssetsController {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    findAll(includeDisabled?: string): Promise<{
+    findAll(includeDisabled?: string, companyId?: string): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -140,6 +150,11 @@ export declare class PrinterAssetsController {
             totalScan: number | null;
         } | null;
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -177,7 +192,7 @@ export declare class PrinterAssetsController {
         createdAt: Date;
         updatedAt: Date;
     }[]>;
-    findByModel(): Promise<{
+    findByModel(companyId: number): Promise<{
         key: string;
         maker: string | null;
         model: string | null;
@@ -219,6 +234,11 @@ export declare class PrinterAssetsController {
     }[]>;
     findOne(id: number): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -258,6 +278,11 @@ export declare class PrinterAssetsController {
     }>;
     update(id: number, dto: CreatePrinterAssetDto): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -355,6 +380,11 @@ export declare class PrinterAssetsController {
     }>;
     touch(id: number): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -394,6 +424,11 @@ export declare class PrinterAssetsController {
     }>;
     disable(id: number): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -433,6 +468,11 @@ export declare class PrinterAssetsController {
     }>;
     enable(id: number): Promise<{
         id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
         department: string | null;
         no: string | null;
         ipAddress: string | null;
@@ -469,5 +509,12 @@ export declare class PrinterAssetsController {
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
+    }>;
+    remove(id: number): Promise<{
+        id: number;
+        deleted: boolean;
+        removed: {
+            toners: number;
+        };
     }>;
 }

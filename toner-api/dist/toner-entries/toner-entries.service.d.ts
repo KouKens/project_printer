@@ -32,7 +32,7 @@ export declare class TonerEntriesService {
     private issue;
     private dispose;
     stockTake(dto: StockTakeDto): Promise<StockTakeRow[]>;
-    findStock(): Promise<{
+    findStock(companyId: number): Promise<{
         id: string;
         name: string | null;
         color: string | null;
@@ -59,6 +59,7 @@ export declare class TonerEntriesService {
         id: number;
         createdAt: Date;
         tonerId: string;
+        companyId: number;
         quantity: number;
         userId: string;
         action: import("../generated/prisma/enums").TonerAction;
@@ -69,10 +70,12 @@ export declare class TonerEntriesService {
         days?: number;
         action?: string;
         tonerId?: string;
+        companyId?: number;
     }): Promise<{
         id: number;
         userId: string;
         tonerId: string;
+        companyId: number;
         name: string | null;
         color: string | null;
         action: import("../generated/prisma/enums").TonerAction;
@@ -82,5 +85,6 @@ export declare class TonerEntriesService {
         createdAt: Date;
     }[]>;
     private requireToner;
+    private bumpStock;
     private toResult;
 }

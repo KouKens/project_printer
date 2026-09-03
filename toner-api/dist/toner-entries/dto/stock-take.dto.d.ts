@@ -4,5 +4,6 @@ export declare class StockTakeCountDto {
 }
 export declare class StockTakeDto {
     userId?: string;
+    companyId: number;
     counts: StockTakeCountDto[];
 }

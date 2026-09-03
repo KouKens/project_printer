@@ -7,6 +7,7 @@ export declare class TonerOrdersController {
     create(dto: CreateTonerOrderDto): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -17,6 +18,7 @@ export declare class TonerOrdersController {
     createMany(dto: BulkTonerOrderDto): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -29,9 +31,10 @@ export declare class TonerOrdersController {
         tonerId: string;
         quantity: number;
     }>;
-    findAll(): Promise<{
+    findAll(companyId?: string): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -39,9 +42,10 @@ export declare class TonerOrdersController {
         deliveryOn: string | null;
         status: string;
     }[]>;
-    findPending(): Promise<{
+    findPending(companyId?: string): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;

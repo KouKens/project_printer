@@ -32,6 +32,7 @@ __decorate([
 ], StockTakeCountDto.prototype, "counted", void 0);
 class StockTakeDto {
     userId;
+    companyId;
     counts;
 }
 exports.StockTakeDto = StockTakeDto;
@@ -41,6 +42,12 @@ __decorate([
     (0, class_validator_1.MaxLength)(64),
     __metadata("design:type", String)
 ], StockTakeDto.prototype, "userId", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '会社を選んでください' }),
+    (0, class_validator_1.Min)(1, { message: '会社を選んでください' }),
+    __metadata("design:type", Number)
+], StockTakeDto.prototype, "companyId", void 0);
 __decorate([
     (0, class_validator_1.ArrayNotEmpty)({ message: '実数を 1 件以上入力してください' }),
     (0, class_validator_1.ArrayMaxSize)(500, { message: '一度に送れるのは 500 件までです' }),

@@ -29,6 +29,7 @@ function toResponse(order) {
     return {
         id: order.id,
         tonerId: order.tonerId,
+        companyId: order.companyId,
         userId: order.userId,
         name: order.toner.name,
         quantity: order.quantity,
@@ -63,6 +64,7 @@ let TonerOrdersService = class TonerOrdersService {
         const order = await this.prisma.tonerOrder.create({
             data: {
                 tonerId: dto.tonerId,
+                companyId: dto.companyId,
                 userId: dto.userId ?? null,
                 quantity: dto.quantity,
                 orderedAt,
@@ -72,9 +74,9 @@ let TonerOrdersService = class TonerOrdersService {
         });
         return toResponse(order);
     }
-    async findPending() {
+    async findPending(companyId) {
         const orders = await this.prisma.tonerOrder.findMany({
-            where: { status: 'PENDING' },
+            where: { status: 'PENDING', ...(companyId ? { companyId } : {}) },
             orderBy: { orderedAt: 'asc' },
             include: { toner: { select: { name: true } } },
         });
@@ -99,6 +101,7 @@ let TonerOrdersService = class TonerOrdersService {
                 const order = await tx.tonerOrder.create({
                     data: {
                         tonerId: item.tonerId,
+                        companyId: dto.companyId,
                         userId: dto.userId ?? null,
                         quantity: item.quantity,
                         orderedAt,
@@ -189,8 +192,9 @@ let TonerOrdersService = class TonerOrdersService {
         await this.prisma.tonerOrder.delete({ where: { id } });
         return { id, tonerId: order.tonerId, quantity: order.quantity };
     }
-    async findAll() {
+    async findAll(companyId) {
         const orders = await this.prisma.tonerOrder.findMany({
+            ...(companyId ? { where: { companyId } } : {}),
             orderBy: { orderedAt: 'desc' },
             take: 50,
             include: { toner: { select: { name: true } } },

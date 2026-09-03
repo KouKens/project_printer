@@ -9,6 +9,7 @@ export type * from './models/TonerInvoiceLine.js';
 export type * from './models/Printer.js';
 export type * from './models/PrinterAlert.js';
 export type * from './models/PrinterAsset.js';
+export type * from './models/Company.js';
 export type * from './models/MaintVendor.js';
 export type * from './models/PageCountDaily.js';
 export type * from './models/SupplyReading.js';

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -43,8 +44,8 @@ export class TonersController {
   }
 
   /**
-   * 使わなくなった品番を無効にする。**削除は用意していない。**
-   * 消すと受付の履歴・注文・請求書から相手が居なくなるため
+   * 使わなくなった品番を無効にする。**普段はこちらを使う。**
+   * 受付の履歴・注文・請求書から指されていても、記録を残したまま外せる
    */
   @Post(':id/disable')
   disable(@Param('id') id: string) {
@@ -55,6 +56,17 @@ export class TonersController {
   @Post(':id/enable')
   enable(@Param('id') id: string) {
     return this.service.setDisabled(id, false);
+  }
+
+  /**
+   * 品番を完全に消す。**登録し間違えたものの後始末用。**
+   *
+   * 無効にしたものだけ、参照が 1 つも無いときだけ通る。
+   * 何かから指されているときは、何が残っているかを添えて 400 で返す
+   */
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.service.remove(id);
   }
 
   /** 価格の履歴。新しい順 */

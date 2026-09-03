@@ -36,6 +36,15 @@ export class StockTakeDto {
   @MaxLength(64)
   userId?: string;
 
+  /**
+   * どの会社の受け払いか。**必須。**
+   * 在庫は「品番 × 会社」なので、動かす先をここで決める
+   */
+  @Type(() => Number)
+  @IsInt({ message: '会社を選んでください' })
+  @Min(1, { message: '会社を選んでください' })
+  companyId: number;
+
   /** 数えた行だけ送る。差が無い行が混ざっていても構わない（記録しない） */
   @ArrayNotEmpty({ message: '実数を 1 件以上入力してください' })
   @ArrayMaxSize(500, { message: '一度に送れるのは 500 件までです' })

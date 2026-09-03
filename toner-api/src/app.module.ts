@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CompaniesModule } from './companies/companies.module';
 import { CostsModule } from './costs/costs.module';
 import { MaintVendorsModule } from './maint-vendors/maint-vendors.module';
 import { PrinterAssetsModule } from './printer-assets/printer-assets.module';
@@ -19,6 +20,7 @@ import { TonersModule } from './toners/toners.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     PrismaModule,
+    CompaniesModule,
     TonerEntriesModule,
     TonerInvoicesModule,
     TonerOrdersModule,

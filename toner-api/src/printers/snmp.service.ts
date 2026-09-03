@@ -92,6 +92,16 @@ const COUNTER = {
   canonBriefId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
   canonBriefName: '1.3.6.1.4.1.1602.1.11.1.3.1.3',
   canonBriefValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
+  /**
+   * EPSON の用紙サイズ別カウンタ。**上の 2 社と作りが違う。**
+   *
+   * ID も名前も無く、行は用紙サイズ（A3/Ledger・A4/Letter …）で、
+   * 列が意味を表す。ここで使うのは総ページ数（列 4）とカラーページ数（列 5）で、
+   * どちらも全用紙サイズを足して 1 台ぶんにする。
+   * 機能別（プリンター・コピー・スキャン）の列は無い
+   */
+  epsonTotal: '1.3.6.1.4.1.1248.1.2.2.6.1.1.4',
+  epsonColor: '1.3.6.1.4.1.1248.1.2.2.6.1.1.5',
 } as const;
 
 /**
@@ -143,6 +153,20 @@ const CANON_COUNTER = {
   scanTotal: 501,
 } as const;
 
+/**
+ * EPSON の表と `prtMarkerLifeCount` のずれをどこまで許すか（ページ）。
+ *
+ * **エプソンは私有 MIB を公開していない。** RICOH や Canon と違って
+ * 名前の列も無いので、列の意味は「総ページ数の合計が prtMarkerLifeCount と
+ * 一致すること」でしか確かめられない。そこで毎回それを確かめ、
+ * 合わなければ読まなかったことにする（ファーム更新で列の意味が変わったら、
+ * 黙って別の数字を貯め続けるより読めないほうがよい）。
+ *
+ * 累計は poll の最初、この表は最後に読むので、その間に印刷されると数ページずれる。
+ * 25ipm の機種で数秒ぶんを見込んで 10 ページまでは許す
+ */
+const EPSON_TOTAL_TOLERANCE = 10;
+
 /** カラー機なら必ず持っている色 */
 const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
 
@@ -156,6 +180,53 @@ export type SupplySnapshot = {
   level: number;
   maxCapacity: number;
   percent: number | null;
+};
+
+/**
+ * 表を 1 列歩いた結果。
+ *
+ * **complete が false なら途中で切れている。** 取れた行だけを黙って使うと、
+ * 「表の後ろが無い機器」に見えてしまう（下の walk のコメント参照）
+ */
+type WalkResult = {
+  rows: Map<string, Varbind>;
+  complete: boolean;
+};
+
+/** 表の 1 列を何行読めたか。**調べるための情報**で、集計には使わない */
+export type ColumnStatus = {
+  name: string;
+  oid: string;
+  rows: number;
+  complete: boolean;
+};
+
+/** 消耗品の表として歩く列。dump でも同じ順で歩く */
+const SUPPLY_COLUMNS = [
+  { name: '説明', oid: TABLE.supplyDescription },
+  { name: '残量', oid: TABLE.supplyLevel },
+  { name: '最大容量', oid: TABLE.supplyMaxCapacity },
+  { name: '色番号', oid: TABLE.supplyColorantIndex },
+  { name: '色名', oid: TABLE.colorantValue },
+  { name: '種別', oid: TABLE.supplyType },
+  { name: '分類', oid: TABLE.supplyClass },
+] as const;
+
+/** 警告の表として歩く列 */
+const ALERT_COLUMNS = [
+  { name: '重大度', oid: TABLE.alertSeverity },
+  { name: '区分', oid: TABLE.alertGroup },
+  { name: '対象行', oid: TABLE.alertGroupIndex },
+  { name: 'コード', oid: TABLE.alertCode },
+  { name: '説明', oid: TABLE.alertDescription },
+] as const;
+
+/** 消耗品の表を読んだ結果。切れていたかどうかを添えて返す */
+type SupplyRead = {
+  supplies: SupplySnapshot[];
+  /** 7 列すべてを歩き切れたか。false なら保存側で前回の値を残す */
+  complete: boolean;
+  columns: ColumnStatus[];
 };
 
 /** 機器が出している警告 1 件 */
@@ -226,8 +297,31 @@ export type PrinterSnapshot = CountMatrix & {
   colorCount: number | null;
   countSource: CountSource;
   supplies: SupplySnapshot[];
+  /**
+   * 消耗品の表を最後まで読めたか。
+   *
+   * **false のときの supplies は表の途中まで**で、残りが無いのか読めなかったのかは
+   * 区別できない。そのまま保存すると、読めた行だけが残って
+   * 「ドラムも定着も無い機器」に見えるので、保存側で前回の値を残す
+   */
+  suppliesComplete: boolean;
   alerts: AlertSnapshot[];
   /** 操作パネルの表示文字 */
+  consoleText: string | null;
+};
+
+/**
+ * 消耗品・警告の表をそのまま返したもの。**調べるための口。**
+ *
+ * 列ごとに何行読めたかを添える。機器が持っていないのか、
+ * 応答が落ちて途中で切れたのかは、行数と complete を並べないと分からない
+ */
+export type SupplyDump = {
+  version: SnmpVersionKey;
+  sysDescr: string | null;
+  columns: ColumnStatus[];
+  supplies: SupplySnapshot[];
+  alerts: AlertSnapshot[];
   consoleText: string | null;
 };
 
@@ -460,30 +554,30 @@ export class SnmpService {
       // 生存確認を兼ねる。ここが無反応ならこのバージョンでは話せない
       const sysName = await this.get(session, SCALAR.sysName);
 
-      const [sysDescr, hrDeviceDescr, serialNumber, pageCount, counterUnit] =
-        await Promise.all([
-          this.get(session, SCALAR.sysDescr),
-          this.get(session, SCALAR.hrDeviceDescr),
-          this.get(session, SCALAR.serialNumber),
-          this.get(session, SCALAR.pageCount),
-          this.get(session, SCALAR.counterUnit),
-        ]);
+      const sysDescr = await this.get(session, SCALAR.sysDescr);
+      const hrDeviceDescr = await this.get(session, SCALAR.hrDeviceDescr);
+      const serialNumber = await this.get(session, SCALAR.serialNumber);
+      const pageCount = await this.get(session, SCALAR.pageCount);
+      const counterUnit = await this.get(session, SCALAR.counterUnit);
 
-      const [macs, supplies, alerts, consoleText] = await Promise.all([
-        this.walk(session, TABLE.ifPhysAddress),
-        this.readSupplies(session),
-        this.readAlerts(session),
-        this.readConsoleText(session),
-      ]);
+      const macs = await this.walk(session, TABLE.ifPhysAddress);
+      const supplies = await this.readSupplies(session);
+      const alerts = await this.readAlerts(session);
+      const consoleText = await this.readConsoleText(session);
 
       const macAddress =
-        Array.from(macs.values())
+        Array.from(macs.rows.values())
           .map((varbind) => readMac(varbind.value))
           .find((mac) => mac !== null) ?? null;
 
       const total = pageCount ? readNumber(pageCount.value) : null;
       const descr = sysDescr ? readText(sysDescr.value) : null;
-      const counts = await this.readCounts(session, descr, total, supplies);
+      const counts = await this.readCounts(
+        session,
+        descr,
+        total,
+        supplies.supplies,
+      );
 
       return {
         version,
@@ -497,7 +591,72 @@ export class SnmpService {
         pageCount: total,
         counterUnit: counterUnit ? readNumber(counterUnit.value) : null,
         ...counts,
-        supplies,
+        supplies: supplies.supplies,
+        suppliesComplete: supplies.complete,
+        alerts,
+        consoleText,
+      };
+    } finally {
+      session.close();
+    }
+  }
+
+  /**
+   * 消耗品・警告の表をそのまま読む。**調べるための口。**
+   *
+   * 一覧に出ない部品があるとき、機器が持っていないのか、
+   * 応答が落ちて表が途中で切れたのかを列ごとの行数で見分けるために使う
+   */
+  async dumpSupplies(
+    ipAddress: string,
+    community: string,
+    preferred: SnmpVersionKey = 'V1',
+  ): Promise<SupplyDump> {
+    const order: SnmpVersionKey[] =
+      preferred === 'V1' ? ['V1', 'V2C'] : ['V2C', 'V1'];
+
+    for (const version of order) {
+      try {
+        return await this.dumpSuppliesWith(ipAddress, community, version);
+      } catch (error) {
+        if (!(error instanceof SnmpUnreachableError)) throw error;
+        this.logger.debug(`${ipAddress}: SNMP ${version} は応答なし`);
+      }
+    }
+
+    throw new SnmpUnreachableError(
+      `${ipAddress} から SNMP の応答がありません。IP アドレス・コミュニティ名・機器側の SNMP 設定を確認してください`,
+    );
+  }
+
+  private async dumpSuppliesWith(
+    ipAddress: string,
+    community: string,
+    version: SnmpVersionKey,
+  ): Promise<SupplyDump> {
+    const session = snmp.createSession(ipAddress, community, {
+      version: version === 'V1' ? snmp.Version1 : snmp.Version2c,
+      timeout: TIMEOUT_MS,
+      retries: RETRIES,
+    });
+    session.on('error', (error) => {
+      this.logger.debug(`${ipAddress}: セッションエラー ${error.message}`);
+    });
+
+    try {
+      // 生存確認を兼ねる。ここが無反応ならこのバージョンでは話せない
+      await this.get(session, SCALAR.sysName);
+      const sysDescrRaw = await this.get(session, SCALAR.sysDescr);
+
+      const supplies = await this.readSupplies(session);
+      const alerts = await this.readAlerts(session);
+      const consoleText = await this.readConsoleText(session);
+
+      return {
+        version,
+        sysDescr: sysDescrRaw ? readText(sysDescrRaw.value) : null,
+        columns: supplies.columns,
+        supplies: supplies.supplies,
         alerts,
         consoleText,
       };
@@ -512,30 +671,26 @@ export class SnmpService {
    */
   private async readAlerts(session: Session): Promise<AlertSnapshot[]> {
     const [severities, groups, groupIndexes, codes, descriptions] =
-      await Promise.all([
-        this.walk(session, TABLE.alertSeverity),
-        this.walk(session, TABLE.alertGroup),
-        this.walk(session, TABLE.alertGroupIndex),
-        this.walk(session, TABLE.alertCode),
-        this.walk(session, TABLE.alertDescription),
-      ]);
+      await this.walkAll(session, ALERT_COLUMNS);
 
     const alerts: AlertSnapshot[] = [];
 
-    for (const [suffix, varbind] of descriptions) {
+    for (const [suffix, varbind] of descriptions.rows) {
       const alertIndex = lastIndexOf(suffix);
       if (alertIndex === null) continue;
 
       // -1 は「対象を特定できない」の意味なので、null に寄せる
-      const rawGroupIndex = readNumber(groupIndexes.get(suffix)?.value ?? null);
+      const rawGroupIndex = readNumber(
+        groupIndexes.rows.get(suffix)?.value ?? null,
+      );
 
       alerts.push({
         alertIndex,
-        severity: readNumber(severities.get(suffix)?.value ?? null),
-        alertGroup: readNumber(groups.get(suffix)?.value ?? null),
+        severity: readNumber(severities.rows.get(suffix)?.value ?? null),
+        alertGroup: readNumber(groups.rows.get(suffix)?.value ?? null),
         groupIndex:
           rawGroupIndex !== null && rawGroupIndex > 0 ? rawGroupIndex : null,
-        code: readNumber(codes.get(suffix)?.value ?? null),
+        code: readNumber(codes.rows.get(suffix)?.value ?? null),
         description: readText(varbind.value),
       });
     }
@@ -548,7 +703,7 @@ export class SnmpService {
 
   /** 操作パネルの表示。複数行に分かれるので繋げる */
   private async readConsoleText(session: Session): Promise<string | null> {
-    const rows = await this.walk(session, TABLE.consoleText);
+    const { rows } = await this.walk(session, TABLE.consoleText);
 
     const lines = [...rows.entries()]
       .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
@@ -558,8 +713,8 @@ export class SnmpService {
     return lines.length > 0 ? lines.join(' / ') : null;
   }
 
-  /** 消耗品の表をまとめて読む */
-  private async readSupplies(session: Session): Promise<SupplySnapshot[]> {
+  /** 消耗品の表をまとめて読む。列は 1 本ずつ順に歩く（walkAll のコメント参照） */
+  private async readSupplies(session: Session): Promise<SupplyRead> {
     const [
       descriptions,
       levels,
@@ -568,43 +723,54 @@ export class SnmpService {
       colorantValues,
       types,
       classes,
-    ] = await Promise.all([
-      this.walk(session, TABLE.supplyDescription),
-      this.walk(session, TABLE.supplyLevel),
-      this.walk(session, TABLE.supplyMaxCapacity),
-      this.walk(session, TABLE.supplyColorantIndex),
-      this.walk(session, TABLE.colorantValue),
-      this.walk(session, TABLE.supplyType),
-      this.walk(session, TABLE.supplyClass),
-    ]);
+    ] = await this.walkAll(session, SUPPLY_COLUMNS);
 
     // prtMarkerColorantTable は色番号で引く。末尾の添字だけ見れば足りる
     const colorants = new Map<number, string>();
-    for (const [suffix, varbind] of colorantValues) {
+    for (const [suffix, varbind] of colorantValues.rows) {
       const index = lastIndexOf(suffix);
       const name = readText(varbind.value);
       if (index !== null && name) colorants.set(index, name);
     }
 
+    /*
+     * 行は「どれか 1 列にでも出てきた添字」。
+     *
+     * 説明の列だけを見て並べると、**説明を返さない行はまるごと落ちる**。
+     * 残量も種別も返しているのに一覧から消えてしまうので、列を寄せ集めてから引く。
+     * 色名（prtMarkerColorantTable）は別の表なので、行を決める側には入れない
+     */
+    const suffixes = new Set<string>([
+      ...descriptions.rows.keys(),
+      ...levels.rows.keys(),
+      ...capacities.rows.keys(),
+      ...colorantIndexes.rows.keys(),
+      ...types.rows.keys(),
+      ...classes.rows.keys(),
+    ]);
+
     const supplies: SupplySnapshot[] = [];
 
-    for (const [suffix, varbind] of descriptions) {
+    for (const suffix of suffixes) {
       const supplyIndex = lastIndexOf(suffix);
       if (supplyIndex === null) continue;
 
-      const name = readText(varbind.value) ?? `消耗品 ${supplyIndex}`;
-      const level = readNumber(levels.get(suffix)?.value ?? null) ?? -1;
+      const description = descriptions.rows.get(suffix);
+      const name =
+        (description ? readText(description.value) : null) ??
+        `消耗品 ${supplyIndex}`;
+      const level = readNumber(levels.rows.get(suffix)?.value ?? null) ?? -1;
       const maxCapacity =
-        readNumber(capacities.get(suffix)?.value ?? null) ?? -1;
+        readNumber(capacities.rows.get(suffix)?.value ?? null) ?? -1;
       const colorantIndex = readNumber(
-        colorantIndexes.get(suffix)?.value ?? null,
+        colorantIndexes.rows.get(suffix)?.value ?? null,
       );
 
       supplies.push({
         supplyIndex,
         name,
-        supplyType: readNumber(types.get(suffix)?.value ?? null),
-        supplyClass: readNumber(classes.get(suffix)?.value ?? null),
+        supplyType: readNumber(types.rows.get(suffix)?.value ?? null),
+        supplyClass: readNumber(classes.rows.get(suffix)?.value ?? null),
         colorant:
           colorantIndex !== null
             ? (colorants.get(colorantIndex) ?? null)
@@ -626,7 +792,26 @@ export class SnmpService {
       });
     }
 
-    return supplies;
+    const results = [
+      descriptions,
+      levels,
+      capacities,
+      colorantIndexes,
+      colorantValues,
+      types,
+      classes,
+    ];
+
+    return {
+      supplies,
+      complete: results.every((result) => result.complete),
+      columns: SUPPLY_COLUMNS.map((column, position) => ({
+        name: column.name,
+        oid: column.oid,
+        rows: results[position].rows.size,
+        complete: results[position].complete,
+      })),
+    };
   }
 
   /**
@@ -658,6 +843,9 @@ export class SnmpService {
     } else if (/canon/i.test(descr)) {
       const canon = this.canonCounts(await this.readCanonCounters(session));
       if (canon) return canon;
+    } else if (/epson/i.test(descr)) {
+      const epson = await this.epsonCounts(session, total);
+      if (epson) return epson;
     }
 
     // カラーの消耗品を 1 つも持たない機種は、そもそもカラーを刷れない
@@ -772,6 +960,65 @@ export class SnmpService {
   }
 
   /**
+   * EPSON の用紙サイズ別カウンタ表から、累計のモノクロ・カラーを出す。
+   *
+   * **機能別（プリンター・コピー・スキャン）の列は無い。** 手元の PX-M791FT の
+   * 拡張 MIB を歩いた限り、用紙サイズ別と給紙装置別しか持っていないので、
+   * 出せるのは色の 2 つだけになる。
+   *
+   * モノクロ = 総ページ数 − カラーページ数。RICOH・Canon と同じく、
+   * **足し合わせの土台はメーカーの表の総数**にする（prtMarkerLifeCount ではない）。
+   *
+   * カラーの列（列 5）は**モノクロ専用機には存在しない**。手元の PX-S381L 4 台は
+   * 1 行も返さず、カラーの PX-M791FT 2 台だけが返す。そのため列が無いことを
+   * 「カラー 0」と読むと、モノクロ機を誤ってカラー機として扱うことになる。
+   * ここでは列が無ければ読めなかったこととし、モノクロ専用機の判定は
+   * 呼び出し元の「カラーの消耗品を持たない」に任せる
+   */
+  private async epsonCounts(
+    session: Session,
+    lifeCount: number | null,
+  ): Promise<
+    | (CountMatrix &
+        Pick<PrinterSnapshot, 'monoCount' | 'colorCount' | 'countSource'>)
+    | null
+  > {
+    const [totals, colors] = await this.walkAll(session, [
+      { name: '総ページ数', oid: COUNTER.epsonTotal },
+      { name: 'カラーページ数', oid: COUNTER.epsonColor },
+    ]);
+
+    // 途中で切れた表を足すと少なく出る。読めなかったことにして次回に回す
+    if (!totals.complete || !colors.complete) return null;
+    if (totals.rows.size === 0 || colors.rows.size === 0) return null;
+
+    const total = sumRows(totals.rows);
+    const color = sumRows(colors.rows);
+    if (total === null || color === null) return null;
+
+    // 列の意味が変わっていないかを毎回確かめる（EPSON_TOTAL_TOLERANCE 参照）
+    if (
+      lifeCount !== null &&
+      Math.abs(total - lifeCount) > EPSON_TOTAL_TOLERANCE
+    ) {
+      this.logger.warn(
+        `EPSON の総ページ数 ${total} が累計 ${lifeCount} と合いません。色の内訳は読みません`,
+      );
+      return null;
+    }
+
+    if (color > total) return null;
+
+    return {
+      monoCount: total - color,
+      colorCount: color,
+      // 機能別の列を持たないので、6 つはすべて空のまま
+      ...NO_MATRIX,
+      countSource: 'vendor',
+    };
+  }
+
+  /**
    * Canon のカウンタ表。**全カウンタ表を先に見る。**
    * 機能別が入っているのはこちらだけで、抜粋版には総数と黒しかない
    */
@@ -804,19 +1051,19 @@ export class SnmpService {
     valueBase: string,
     nameBase: string,
   ): Promise<Map<number, CounterRow>> {
-    const [ids, values, names] = await Promise.all([
-      this.walk(session, idBase),
-      this.walk(session, valueBase),
-      this.walk(session, nameBase),
+    const [ids, values, names] = await this.walkAll(session, [
+      { name: 'ID', oid: idBase },
+      { name: '値', oid: valueBase },
+      { name: '名前', oid: nameBase },
     ]);
 
     const counters = new Map<number, CounterRow>();
-    for (const [row, varbind] of ids) {
+    for (const [row, varbind] of ids.rows) {
       const id = readCounterId(varbind.value);
-      const value = readNumber(values.get(row)?.value ?? null);
+      const value = readNumber(values.rows.get(row)?.value ?? null);
       if (id === null || value === null) continue;
 
-      const label = names.get(row);
+      const label = names.rows.get(row);
       counters.set(id, { name: label ? readText(label.value) : null, value });
     }
     return counters;
@@ -851,11 +1098,50 @@ export class SnmpService {
   }
 
   /**
-   * 表を歩く。キーは base より後ろの添字（例 "1.2"）。
-   * 途中で切れても取れたところまで返す。消耗品が読めなくても
-   * 機器情報だけは残したい。
+   * 表を何本かまとめて歩く。**1 台に同時に投げない。**
+   *
+   * 以前は Promise.all で 14 本を一度に投げていた。歩くのは 1 本につき
+   * 1 往復ずつなので、機器には常に 14 件の要求が同時に届くことになる。
+   * SNMP は UDP で、返事が 1 つ落ちれば net-snmp はそこで歩くのをやめるため、
+   * **表の後ろが黙って欠ける**。手元の Canon（同一セグメント）でも
+   * 12 回に 1 回は再送が要り、遠いセグメントでは再送も落ちて欠けていた。
+   * 1 本ずつなら 1 台あたり 50ms → 300ms 程度で済み、台ごとの並行は残せる
    */
-  private walk(session: Session, base: string): Promise<Map<string, Varbind>> {
+  private async walkAll(
+    session: Session,
+    columns: readonly { name: string; oid: string }[],
+  ): Promise<WalkResult[]> {
+    const results: WalkResult[] = [];
+    for (const column of columns) {
+      results.push(await this.walk(session, column.oid));
+    }
+    return results;
+  }
+
+  /**
+   * 表を歩く。キーは base より後ろの添字（例 "1.2"）。
+   *
+   * **途中で切れたかどうかを返す。** 消耗品の表はトナー・廃トナー・ドラム・定着の
+   * 順に並ぶので、切れたぶんはそのまま「ドラムも定着も無い機器」に見える。
+   * 取れたところまでを黙って返していたのがこれの原因だった。
+   * 1 度だけ引き直し、それでも切れたときは complete を false で知らせる
+   */
+  private async walk(session: Session, base: string): Promise<WalkResult> {
+    const first = await this.walkOnce(session, base);
+    if (first.complete) return first;
+
+    this.logger.debug(`${base} が途中で切れました。引き直します`);
+    const retry = await this.walkOnce(session, base);
+
+    // 引き直しも切れたら、多く読めたほうを使う
+    return retry.complete || retry.rows.size >= first.rows.size ? retry : first;
+  }
+
+  /**
+   * 1 回だけ歩く。最後まで行けたかを complete に入れる。
+   * v1 の終端（noSuchName）は正常な終わりで、エラーとしては返ってこない
+   */
+  private walkOnce(session: Session, base: string): Promise<WalkResult> {
     return new Promise((resolve) => {
       const rows = new Map<string, Varbind>();
 
@@ -869,7 +1155,7 @@ export class SnmpService {
             rows.set(varbind.oid.slice(base.length + 1), varbind);
           }
         },
-        () => resolve(rows),
+        (error) => resolve({ rows, complete: !error }),
       );
     });
   }
@@ -889,6 +1175,22 @@ function readCounterId(value: Varbind['value']): number | null {
 
   const parsed = Number(text);
   return Number.isInteger(parsed) ? parsed : null;
+}
+
+/**
+ * 列の全行を足す。1 行でも数として読めなければ null。
+ *
+ * EPSON の表は行が用紙サイズなので、1 台ぶんの枚数にするには足す必要がある。
+ * 読めない行を 0 として飛ばすと、その用紙サイズのぶんだけ黙って少なく出る
+ */
+function sumRows(rows: Map<string, Varbind>): number | null {
+  let sum = 0;
+  for (const varbind of rows.values()) {
+    const value = readNumber(varbind.value);
+    if (value === null) return null;
+    sum += value;
+  }
+  return sum;
 }
 
 /** "1.2" → 2。表の添字は末尾が行番号 */

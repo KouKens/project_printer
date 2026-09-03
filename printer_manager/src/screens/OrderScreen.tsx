@@ -17,6 +17,7 @@ import {
   staffIdError,
   staffIdToSend,
 } from '../lib/staffId'
+import { useCompany } from '../lib/company'
 
 /** この画面で扱う操作。発注の記録と、届いたものを在庫に加える搬入 */
 type OrderMode = 'ORDER' | 'RECEIVE'
@@ -174,6 +175,8 @@ const listFormat = new Intl.DateTimeFormat('ja-JP', {
 })
 
 export default function OrderScreen() {
+  // 注文も搬入も、右上で選んでいる会社の分だけを扱う
+  const { companyId } = useCompany()
   const [mode, setMode] = useState<OrderMode>('ORDER')
   const [values, setValues] = useState<FormValues>(emptyValues)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -213,11 +216,11 @@ export default function OrderScreen() {
 
   const loadOrders = useCallback(async () => {
     try {
-      setOrders(await fetchPendingOrders())
+      setOrders(companyId === null ? [] : await fetchPendingOrders(companyId))
     } catch {
       // 一覧は補助情報。取得に失敗しても入力は続けられる
     }
-  }, [])
+  }, [companyId])
 
   useEffect(() => {
     void loadOrders()
@@ -381,6 +384,7 @@ export default function OrderScreen() {
           await submitBulkOrder({
             orderedAt: new Date(trimmed.orderedAt).toISOString(),
             userId: staffIdToSend(trimmed.userId),
+            companyId,
             ...(trimmed.deliveryOn ? { deliveryOn: trimmed.deliveryOn } : {}),
             items: items.map((item) => ({
               tonerId: item.tonerId,
@@ -395,6 +399,7 @@ export default function OrderScreen() {
           await submitBulkEntry({
             action: 'RECEIVE',
             userId: staffIdToSend(trimmed.userId),
+            companyId,
             receivedOn: trimmed.receivedOn,
             items: items.map((item) => ({
               tonerId: item.tonerId,
@@ -439,6 +444,7 @@ export default function OrderScreen() {
           // datetime-local はローカル時刻なので、UTC に直して送る
           orderedAt: new Date(trimmed.orderedAt).toISOString(),
           userId: staffIdToSend(trimmed.userId),
+          companyId,
           tonerId: trimmed.tonerId,
           quantity: count,
           // 未定なら送らない。突き合わせでは「日付なし」の行にまとまる
@@ -453,6 +459,7 @@ export default function OrderScreen() {
         const result = await submitEntry({
           action: 'RECEIVE',
           userId: staffIdToSend(trimmed.userId),
+          companyId,
           tonerId: trimmed.tonerId,
           quantity: count,
           receivedOn: trimmed.receivedOn,

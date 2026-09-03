@@ -12,6 +12,7 @@ import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import './DataTable.css';
 import './DeliveryScreen.css';
+import { useCompany } from '../lib/company'
 
 /** 受付の区分の呼び名。棚卸しの調整も履歴には出てくる */
 const ACTION_LABEL: Record<string, string> = {
@@ -106,6 +107,8 @@ const signed = (value: number) =>
   value > 0 ? `+${num.format(value)}` : num.format(value);
 
 export default function DeliveryScreen() {
+  // 入出庫は会社ごとに見る
+  const { companyId } = useCompany()
   const [checks, setChecks] = useState<DeliveryCheckRow[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -131,8 +134,8 @@ export default function DeliveryScreen() {
     try {
       const [check, history, orderRows] = await Promise.all([
         fetchDeliveryCheck(days),
-        fetchEntryHistory(days, action || undefined),
-        fetchOrders(),
+        fetchEntryHistory(days, action || undefined, companyId ?? undefined),
+        companyId === null ? Promise.resolve([]) : fetchOrders(companyId),
       ]);
       setChecks(check);
       setEntries(history);
@@ -141,7 +144,7 @@ export default function DeliveryScreen() {
     } catch (err) {
       setError((err as Error).message);
     }
-  }, [days, action]);
+  }, [days, action, companyId]);
 
   useEffect(() => {
     void load();

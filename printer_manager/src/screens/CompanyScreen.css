@@ -1,0 +1,188 @@
+/*
+ * 会社登録。作りは保守登録・トナー登録と揃えてある。
+ * 無効にした会社は下に別枠で置き、上の一覧と地続きに見えないよう淡くする
+ */
+.cp {
+  --line: #d6dce3;
+  --accent: #0b7fa8;
+  --danger: #b23a3a;
+  --muted: #8b95a3;
+  display: grid;
+  gap: 18px;
+}
+
+.cp-form,
+.cp-list {
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.cp h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.cp-hint {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-2, #5b6573);
+}
+
+.cp-form label {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  max-width: 620px;
+}
+
+.cp-form label span {
+  font-size: 13px;
+}
+
+.cp-form input {
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink, #15191f);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.cp-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.cp-actions button {
+  padding: 7px 18px;
+  font: inherit;
+  font-size: 13px;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cp-actions button.cp-sub {
+  color: var(--accent);
+  background: transparent;
+}
+
+.cp-actions button:disabled {
+  color: #fff;
+  background: #a7b3bd;
+  border-color: #a7b3bd;
+  cursor: not-allowed;
+}
+
+.cp-actions button.cp-sub:disabled {
+  color: #a7b3bd;
+  background: transparent;
+}
+
+.cp-editing {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cp-msg {
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 13px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+.cp-msg-error {
+  color: var(--danger);
+  background: #fdf1f1;
+  border-color: var(--danger);
+}
+
+.cp-msg-ok {
+  color: #1d6b3f;
+  background: #eef8f1;
+  border-color: #9ecdb1;
+}
+
+.cp-table-wrap {
+  overflow-x: auto;
+}
+
+.cp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cp-table th,
+.cp-table td {
+  padding: 7px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.cp-table th {
+  font-weight: 600;
+  color: var(--ink-2, #5b6573);
+  background: #f5f7f9;
+}
+
+.cp-table .cp-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-ops {
+  display: flex;
+  gap: 6px;
+}
+
+.cp-ops button {
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cp-ops button:disabled {
+  color: #a7b3bd;
+  cursor: not-allowed;
+}
+
+/* 取り消せない操作。並ぶ他のボタンと色で分ける */
+.cp-ops .cp-danger {
+  color: var(--danger);
+}
+
+.cp-ops .cp-danger:hover:not(:disabled) {
+  background: #fdf1f1;
+}
+
+/* 無効にした会社。上の一覧と地続きに見えないよう淡くする */
+.cp-disabled {
+  background: #fbfcfd;
+  border-style: dashed;
+}
+
+.cp-disabled h2 {
+  color: var(--muted);
+}
+
+.cp-disabled .cp-table tbody td {
+  color: #7c8b98;
+}

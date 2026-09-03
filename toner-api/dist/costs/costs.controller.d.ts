@@ -24,6 +24,8 @@ export declare class CostsController {
         };
         printers: {
             id: number;
+            companyId: number;
+            company: string;
             no: string | null;
             department: string | null;
             maker: string | null;

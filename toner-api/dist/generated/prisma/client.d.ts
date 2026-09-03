@@ -17,6 +17,7 @@ export type TonerInvoiceLine = Prisma.TonerInvoiceLineModel;
 export type Printer = Prisma.PrinterModel;
 export type PrinterAlert = Prisma.PrinterAlertModel;
 export type PrinterAsset = Prisma.PrinterAssetModel;
+export type Company = Prisma.CompanyModel;
 export type MaintVendor = Prisma.MaintVendorModel;
 export type PageCountDaily = Prisma.PageCountDailyModel;
 export type SupplyReading = Prisma.SupplyReadingModel;

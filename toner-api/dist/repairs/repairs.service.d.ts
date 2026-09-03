@@ -7,6 +7,8 @@ export declare class RepairsService {
         id: number;
         assignee: string | null;
         printerAssetId: number;
+        companyId: number | null;
+        company: string | null;
         department: string | null;
         no: string | null;
         maker: string | null;
@@ -25,6 +27,8 @@ export declare class RepairsService {
         id: number;
         assignee: string | null;
         printerAssetId: number;
+        companyId: number | null;
+        company: string | null;
         department: string | null;
         no: string | null;
         maker: string | null;
@@ -43,6 +47,8 @@ export declare class RepairsService {
         id: number;
         assignee: string | null;
         printerAssetId: number;
+        companyId: number | null;
+        company: string | null;
         department: string | null;
         no: string | null;
         maker: string | null;
@@ -61,6 +67,8 @@ export declare class RepairsService {
         id: number;
         assignee: string | null;
         printerAssetId: number;
+        companyId: number | null;
+        company: string | null;
         department: string | null;
         no: string | null;
         maker: string | null;

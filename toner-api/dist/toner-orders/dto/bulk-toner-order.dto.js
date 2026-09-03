@@ -33,6 +33,7 @@ __decorate([
 class BulkTonerOrderDto {
     orderedAt;
     userId;
+    companyId;
     deliveryOn;
     items;
 }
@@ -47,6 +48,12 @@ __decorate([
     (0, class_validator_1.MaxLength)(64),
     __metadata("design:type", String)
 ], BulkTonerOrderDto.prototype, "userId", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '会社を選んでください' }),
+    (0, class_validator_1.Min)(1, { message: '会社を選んでください' }),
+    __metadata("design:type", Number)
+], BulkTonerOrderDto.prototype, "companyId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.Matches)(/^\d{4}-\d{2}-\d{2}$/, {

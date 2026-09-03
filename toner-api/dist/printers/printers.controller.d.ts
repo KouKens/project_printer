@@ -109,6 +109,17 @@ export declare class PrintersController {
         ipAddress: string;
         model: string | null;
     }>;
+    dumpSupplies(id: number): Promise<{
+        version: import("./snmp.service").SnmpVersionKey;
+        sysDescr: string | null;
+        columns: import("./snmp.service").ColumnStatus[];
+        supplies: import("./snmp.service").SupplySnapshot[];
+        alerts: import("./snmp.service").AlertSnapshot[];
+        consoleText: string | null;
+        printerId: number;
+        ipAddress: string;
+        model: string | null;
+    }>;
     createMany(dto: BulkCreatePrintersDto): Promise<import("./printers.service").BulkResultRow[]>;
     pollAll(): Promise<import("./printers.service").PollResultRow[]>;
     capture(): Promise<import("./page-counts.service").CaptureRow[]>;

@@ -13,13 +13,27 @@ import { UpdateTonerDto } from './dto/update-toner.dto';
 
 type PriceRow = { price: number; effectiveFrom: Date; note: string | null };
 
+/**
+ * 会社ごとに分かれている在庫を足す。
+ *
+ * **品番マスタ（Toner）は全社共通**なので、1 品番に会社の数だけ在庫の行が付く。
+ * トナー登録は会社で分けない画面なので、ここでは全社の合計を出す。
+ * 会社ごとの数が要る画面（トナー個数状況・受付）は、会社で絞った行を直接見る
+ */
+function sumStock(stocks: { quantity: number }[]): number {
+  return stocks.reduce((total, stock) => total + stock.quantity, 0);
+}
+
 @Injectable()
 export class TonersService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * マスタを登録する。
-   * 在庫の行も同時に作る。受付画面の搬入・持ち出しが在庫を前提にしているため。
+   * マスタを登録する。**品番マスタは全社共通。**
+   *
+   * 在庫の行はここでは作らない。在庫は「品番 × 会社」で持つので、
+   * どの会社の分かは搬入して初めて決まる（受付側で upsert する）。
+   * 行が無い組み合わせは在庫 0 と同じ意味
    */
   async create(dto: CreateTonerDto) {
     const id = dto.id.trim();
@@ -40,7 +54,6 @@ export class TonersService {
           recycled: dto.recycled ?? false,
           alertThreshold: dto.alertThreshold ?? null,
           yieldPages: dto.yieldPages ?? null,
-          stock: { create: {} },
           printers: {
             create: (dto.printerAssetIds ?? []).map((printerAssetId) => ({
               printerAssetId,
@@ -77,7 +90,7 @@ export class TonersService {
       where: includeDisabled ? {} : { disabledAt: null },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
       include: {
-        stock: true,
+        stocks: true,
         prices: { orderBy: { effectiveFrom: 'desc' } },
         printers: {
           include: {
@@ -103,7 +116,7 @@ export class TonersService {
     const toner = await this.prisma.toner.findUnique({
       where: { id },
       include: {
-        stock: true,
+        stocks: true,
         prices: { orderBy: { effectiveFrom: 'desc' } },
         printers: {
           include: {
@@ -222,6 +235,85 @@ export class TonersService {
     return this.findOne(id);
   }
 
+  /**
+   * 品番を完全に消す。**無効にしたものだけ、参照が 1 つも無いときだけ。**
+   *
+   * 無効（`disabledAt`）が普段の止め方で、こちらは登録し間違えた品番の後始末。
+   * 受付の履歴・注文・請求書の明細は品番を指しており、消すと相手が居なくなる。
+   * DB 側も外部キーで拒否するが、**その手前で何が残っているかを数えて文面にする**
+   * （制約違反の英語がそのまま画面に出ても、何を直せばよいか分からないため）。
+   *
+   * 在庫が残っているものも止める。数えた本数が消えるのは記録の欠けと同じで、
+   * 廃棄したいなら受付で処理してからにする。
+   *
+   * 価格の履歴と機器の紐づけは道連れで消えてよい（Cascade）。
+   * どちらも品番そのものの付随情報で、品番が無くなれば意味を持たない
+   */
+  async remove(id: string) {
+    const toner = await this.prisma.toner.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            entries: true,
+            orders: true,
+            invoiceLines: true,
+            printers: true,
+            prices: true,
+          },
+        },
+        stocks: true,
+      },
+    });
+
+    if (!toner) {
+      throw new NotFoundException(`${id} は登録されていません`);
+    }
+
+    // 先に無効にしてもらう。一覧から消えた状態を見てから消す 2 段構えにする
+    if (toner.disabledAt === null) {
+      throw new BadRequestException(
+        `${id} はまだ有効です。先に無効にしてから削除してください`,
+      );
+    }
+
+    const blockers: string[] = [];
+    if (toner._count.entries > 0) {
+      blockers.push(`受付の履歴 ${toner._count.entries} 件`);
+    }
+    if (toner._count.orders > 0) {
+      blockers.push(`注文 ${toner._count.orders} 件`);
+    }
+    if (toner._count.invoiceLines > 0) {
+      blockers.push(`請求書の明細 ${toner._count.invoiceLines} 件`);
+    }
+
+    // 在庫は会社ごとに行が分かれている。どこかに残っていれば消せない
+    const quantity = sumStock(toner.stocks);
+    if (quantity > 0) {
+      blockers.push(`在庫 ${quantity} 本`);
+    }
+
+    if (blockers.length > 0) {
+      throw new BadRequestException(
+        `${id} は${blockers.join('・')}から参照されているため削除できません。` +
+          '無効のままにしておけば、一覧と選択肢からは外れたまま記録が残ります',
+      );
+    }
+
+    await this.prisma.toner.delete({ where: { id } });
+
+    return {
+      id,
+      deleted: true,
+      /** 道連れで消えたもの。何が無くなったかを画面で知らせる */
+      removed: {
+        prices: toner._count.prices,
+        printers: toner._count.printers,
+      },
+    };
+  }
+
   /** 価格の履歴。新しい順 */
   async findPrices(id: string) {
     const toner = await this.prisma.toner.findUnique({
@@ -297,7 +389,8 @@ export class TonersService {
     disabledAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
-    stock: { quantity: number } | null;
+    /** 会社ごとの在庫。**品番マスタは全社共通**なので会社の数だけ並ぶ */
+    stocks: { quantity: number }[];
     prices: (PriceRow & { id: number; createdAt: Date })[];
     printers: {
       asset: {
@@ -334,7 +427,8 @@ export class TonersService {
       priceCount: toner.prices.length,
       /** 無効にした日時。null なら有効。画面はこれで一覧を 2 つに分ける */
       disabledAt: toner.disabledAt,
-      stock: toner.stock?.quantity ?? 0,
+      /** 全社を合わせた在庫。会社ごとの数はトナー個数状況で見る */
+      stock: sumStock(toner.stocks),
       printers: toner.printers.map((link) => ({
         id: link.asset.id,
         department: link.asset.department,

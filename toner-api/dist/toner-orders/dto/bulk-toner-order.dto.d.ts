@@ -5,6 +5,7 @@ export declare class BulkTonerOrderItemDto {
 export declare class BulkTonerOrderDto {
     orderedAt: string;
     userId?: string;
+    companyId: number;
     deliveryOn?: string;
     items: BulkTonerOrderItemDto[];
 }

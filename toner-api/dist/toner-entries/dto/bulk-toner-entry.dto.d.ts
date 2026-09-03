@@ -7,6 +7,7 @@ export declare class BulkTonerEntryItemDto {
 export declare class BulkTonerEntryDto {
     action: TonerActionInput;
     userId: string;
+    companyId: number;
     items: BulkTonerEntryItemDto[];
     receivedOn?: string;
 }

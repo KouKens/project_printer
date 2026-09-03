@@ -33,6 +33,7 @@ function statusOf(
 function toResponse(order: {
   id: number;
   tonerId: string;
+  companyId: number;
   userId: string | null;
   quantity: number;
   orderedAt: Date;
@@ -43,6 +44,8 @@ function toResponse(order: {
   return {
     id: order.id,
     tonerId: order.tonerId,
+    /** どの会社の注文か。注文・搬入は会社ごとに見る */
+    companyId: order.companyId,
     /** 注文した人。この列を足す前の注文は null */
     userId: order.userId,
     name: order.toner.name,
@@ -88,6 +91,7 @@ export class TonerOrdersService {
     const order = await this.prisma.tonerOrder.create({
       data: {
         tonerId: dto.tonerId,
+        companyId: dto.companyId,
         userId: dto.userId ?? null,
         quantity: dto.quantity,
         orderedAt,
@@ -100,9 +104,9 @@ export class TonerOrdersService {
   }
 
   /** 未入荷の注文。古いものから並べる */
-  async findPending() {
+  async findPending(companyId?: number) {
     const orders = await this.prisma.tonerOrder.findMany({
-      where: { status: 'PENDING' },
+      where: { status: 'PENDING', ...(companyId ? { companyId } : {}) },
       orderBy: { orderedAt: 'asc' },
       include: { toner: { select: { name: true } } },
     });
@@ -137,6 +141,7 @@ export class TonerOrdersService {
         const order = await tx.tonerOrder.create({
           data: {
             tonerId: item.tonerId,
+            companyId: dto.companyId,
             userId: dto.userId ?? null,
             quantity: item.quantity,
             orderedAt,
@@ -295,8 +300,9 @@ export class TonerOrdersService {
   }
 
   /** 注文履歴（直近 50 件） */
-  async findAll() {
+  async findAll(companyId?: number) {
     const orders = await this.prisma.tonerOrder.findMany({
+      ...(companyId ? { where: { companyId } } : {}),
       orderBy: { orderedAt: 'desc' },
       take: 50,
       include: { toner: { select: { name: true } } },

@@ -108,6 +108,8 @@
   border-radius: 4px;
   cursor: pointer;
 }
+/* 表示中が 0 台のときと、すでに全部選んであるときは押せない */
+.tn-printers-head button:disabled { color: #a7b3bd; cursor: not-allowed; }
 /* 42 台あるので箱の中でスクロールさせる。ページが伸びると入力欄が遠くなる */
 .tn-printer-list {
   display: grid;

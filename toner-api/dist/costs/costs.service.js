@@ -38,6 +38,7 @@ let CostsService = class CostsService {
                 orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
                 select: {
                     id: true,
+                    company: { select: { id: true, name: true } },
                     department: true,
                     no: true,
                     ipAddress: true,
@@ -221,6 +222,8 @@ let CostsService = class CostsService {
             const total = (tonerCost ?? 0) + (body ?? 0) + (maint ?? 0) + repair.cost;
             return {
                 id: asset.id,
+                companyId: asset.company?.id ?? null,
+                company: asset.company?.name ?? null,
                 no: asset.no,
                 department: asset.department,
                 maker: asset.maker,

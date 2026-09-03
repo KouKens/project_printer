@@ -140,8 +140,15 @@ export function submitEntry(payload: Record<string, unknown>) {
   return post<EntryResult>(`${API}/toner-entries`, payload)
 }
 
-export function fetchStock() {
-  return get<StockRow[]>(`${API}/toner-entries/stock`, '在庫を取得できませんでした')
+/**
+ * 在庫の一覧。**会社ごと。**
+ * 会社を渡さないと API が 400 で断る（他社の数を混ぜないため）
+ */
+export function fetchStock(companyId: number) {
+  return get<StockRow[]>(
+    `${API}/toner-entries/stock?companyId=${companyId}`,
+    '在庫を取得できませんでした',
+  )
 }
 
 /** 同じ区分の複数行をまとめて送る。1 行でも通らなければ全体が取り消される */
@@ -165,18 +172,30 @@ export function submitBulkOrder(payload: Record<string, unknown>) {
   return post<OrderResult[]>(`${API}/toner-orders/bulk`, payload)
 }
 
-export function fetchPendingOrders() {
-  return get<OrderRow[]>(`${API}/toner-orders/pending`, '注文を取得できませんでした')
+/** 未入荷の注文。**会社ごと** */
+export function fetchPendingOrders(companyId: number) {
+  return get<OrderRow[]>(
+    `${API}/toner-orders/pending?companyId=${companyId}`,
+    '注文を取得できませんでした',
+  )
 }
 
-/** 注文履歴（直近 50 件） */
-export function fetchOrders() {
-  return get<OrderRow[]>(`${API}/toner-orders`, '注文を取得できませんでした')
+/** 注文履歴（直近 50 件）。**会社ごと** */
+export function fetchOrders(companyId: number) {
+  return get<OrderRow[]>(
+    `${API}/toner-orders?companyId=${companyId}`,
+    '注文を取得できませんでした',
+  )
 }
 
-/** 受付の履歴。区分で絞れる */
-export function fetchEntryHistory(days: number, action?: string) {
-  const query = `days=${days}${action ? `&action=${action}` : ''}`
+/**
+ * 受付の履歴。区分で絞れる。
+ * `companyId` を渡すとその会社の分だけ（トナー入出状況は会社ごとに見る）
+ */
+export function fetchEntryHistory(days: number, action?: string, companyId?: number) {
+  const query =
+    `days=${days}${action ? `&action=${action}` : ''}` +
+    `${companyId ? `&companyId=${companyId}` : ''}`
   return get<EntryRow[]>(
     `${API}/toner-entries/history?${query}`,
     '受付の履歴を取得できませんでした',

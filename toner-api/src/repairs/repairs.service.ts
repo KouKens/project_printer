@@ -27,6 +27,8 @@ type RepairRow = {
   createdAt: Date;
   updatedAt: Date;
   asset?: {
+    /** 持っている会社。修理は全社まとめて見るので、列として出す */
+    company: { id: number; name: string } | null;
     department: string | null;
     no: string | null;
     maker: string | null;
@@ -44,7 +46,7 @@ export class RepairsService {
 
     const saved = await this.prisma.repairRecord.create({
       data: this.toData(dto),
-      include: { asset: true },
+      include: { asset: { include: { company: true } } },
     });
     return this.toResponse(saved);
   }
@@ -59,7 +61,7 @@ export class RepairsService {
         { occurredOn: { sort: 'desc', nulls: 'last' } },
         { id: 'desc' },
       ],
-      include: { asset: true },
+      include: { asset: { include: { company: true } } },
     });
     return rows.map((row) => this.toResponse(row));
   }
@@ -67,7 +69,7 @@ export class RepairsService {
   async findOne(id: number) {
     const row = await this.prisma.repairRecord.findUnique({
       where: { id },
-      include: { asset: true },
+      include: { asset: { include: { company: true } } },
     });
     if (!row) {
       throw new NotFoundException(`ID ${id} の修理履歴は登録されていません`);
@@ -83,7 +85,7 @@ export class RepairsService {
     const saved = await this.prisma.repairRecord.update({
       where: { id },
       data: this.toData(dto),
-      include: { asset: true },
+      include: { asset: { include: { company: true } } },
     });
     return this.toResponse(saved);
   }
@@ -152,6 +154,8 @@ export class RepairsService {
       assignee: row.assignee,
       printerAssetId: row.printerAssetId,
       // 一覧でそのまま出せるよう、台帳側の呼び名も添える
+      companyId: row.asset?.company?.id ?? null,
+      company: row.asset?.company?.name ?? null,
       department: row.asset?.department ?? null,
       no: row.asset?.no ?? null,
       maker: row.asset?.maker ?? null,

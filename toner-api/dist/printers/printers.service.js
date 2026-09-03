@@ -133,6 +133,26 @@ let PrintersService = PrintersService_1 = class PrintersService {
             throw error;
         }
     }
+    async dumpSupplies(id) {
+        const printer = await this.prisma.printer.findUnique({ where: { id } });
+        if (!printer) {
+            throw new common_1.NotFoundException(`ID ${id} のプリンターは登録されていません`);
+        }
+        try {
+            return {
+                printerId: printer.id,
+                ipAddress: printer.ipAddress,
+                model: printer.model,
+                ...(await this.snmp.dumpSupplies(printer.ipAddress, printer.community, printer.version)),
+            };
+        }
+        catch (error) {
+            if (error instanceof snmp_service_1.SnmpUnreachableError) {
+                throw new common_1.ServiceUnavailableException(error.message);
+            }
+            throw error;
+        }
+    }
     async poll(id) {
         const printer = await this.prisma.printer.findUnique({ where: { id } });
         if (!printer) {
@@ -362,6 +382,13 @@ let PrintersService = PrintersService_1 = class PrintersService {
     async replaceReadings(tx, printerId, snapshot) {
         if (snapshot.supplies.length === 0)
             return;
+        if (!snapshot.suppliesComplete) {
+            const previous = await tx.supplyReading.count({ where: { printerId } });
+            if (previous > 0) {
+                this.logger.warn(`プリンター ${printerId}: 消耗品の表が途中で切れたので前回の残量を残します`);
+                return;
+            }
+        }
         await tx.supplyReading.deleteMany({ where: { printerId } });
         await tx.supplyReading.createMany({
             data: snapshot.supplies.map((supply) => ({

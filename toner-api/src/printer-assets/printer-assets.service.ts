@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { fromDate, toDate, today } from '../common/date';
 import { toText } from '../common/text';
@@ -212,6 +216,9 @@ export type SerialFill =
 
 type AssetRow = {
   id: number;
+  /** 持っている会社。全社表示の画面はこれを列に出す */
+  companyId: number;
+  company?: { id: number; name: string } | null;
   maintVendor?: VendorSlice | null;
   department: string | null;
   no: string | null;
@@ -246,7 +253,7 @@ export class PrinterAssetsService {
   async create(dto: CreatePrinterAssetDto) {
     const saved = await this.prisma.printerAsset.create({
       data: this.toData(dto),
-      include: { maintVendor: true },
+      include: { maintVendor: true, company: true },
     });
     return this.toResponse(saved, await this.vendorsByMaker());
   }
@@ -258,11 +265,14 @@ export class PrinterAssetsService {
    * ここで外しておけば「使っていない機器を選べてしまう」場所が残らない。
    * 無効の分まで要るのはプリンター登録の画面だけで、そこだけ true を渡す
    */
-  async findAll(includeDisabled = false) {
+  async findAll(includeDisabled = false, companyId?: number) {
     const assets = await this.prisma.printerAsset.findMany({
-      where: includeDisabled ? {} : { disabledAt: null },
+      where: {
+        ...(includeDisabled ? {} : { disabledAt: null }),
+        ...(companyId ? { companyId } : {}),
+      },
       orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
-      include: { maintVendor: true },
+      include: { maintVendor: true, company: true },
     });
     const byMaker = await this.vendorsByMaker();
     return assets.map((asset) => this.toResponse(asset, byMaker));
@@ -281,7 +291,7 @@ export class PrinterAssetsService {
       this.prisma.printerAsset.findMany({
         where: { disabledAt: null },
         orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
-        include: { maintVendor: true },
+        include: { maintVendor: true, company: true },
       }),
       this.prisma.printer.findMany({
         include: {
@@ -405,12 +415,16 @@ export class PrinterAssetsService {
    * **同じ機種でも台ごとに紐づけが違うことがある**（1 台だけ登録し忘れているなど）。
    * まとめると差が見えなくなるので、台ごとの紐づけも assets に残し、
    * 揃っていない機種は mixed で示す。
+   *
+   * **会社ごとに見る画面（トナー個数状況）から呼ばれる。** 機種も在庫も
+   * その会社の分だけを数える。品番マスタは全社共通なので、
+   * 在庫は「品番 × 会社」の行から取り出す
    */
-  async findByModel() {
+  async findByModel(companyId: number) {
     const [assets, printers] = await Promise.all([
       // 無効にした台は数えない。機種ごとの台数が実態と合わなくなる
       this.prisma.printerAsset.findMany({
-        where: { disabledAt: null },
+        where: { disabledAt: null, companyId },
         orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
         select: {
           id: true,
@@ -429,7 +443,11 @@ export class PrinterAssetsService {
                   color: true,
                   recycled: true,
                   alertThreshold: true,
-                  stock: { select: { quantity: true } },
+                  // 在庫は「品番 × 会社」。この会社の行だけを取り出す
+                  stocks: {
+                    where: { companyId },
+                    select: { quantity: true },
+                  },
                   prices: {
                     orderBy: { effectiveFrom: 'desc' },
                     select: { price: true, effectiveFrom: true },
@@ -537,7 +555,8 @@ export class PrinterAssetsService {
           recycled: toner.recycled,
           alertThreshold: toner.alertThreshold,
           price: current?.price ?? null,
-          stock: toner.stock?.quantity ?? 0,
+          // 会社で絞ってあるので 0 件か 1 件。行が無ければ在庫 0
+          stock: toner.stocks[0]?.quantity ?? 0,
           /** その機種のうち、このトナーを紐づけている台数 */
           assetCount: 1,
           /** このトナーを使っている台。他機種の台も含む */
@@ -614,7 +633,7 @@ export class PrinterAssetsService {
   async findOne(id: number) {
     const asset = await this.prisma.printerAsset.findUnique({
       where: { id },
-      include: { maintVendor: true },
+      include: { maintVendor: true, company: true },
     });
     if (!asset) {
       throw new NotFoundException(`ID ${id} の端末情報は登録されていません`);
@@ -628,7 +647,7 @@ export class PrinterAssetsService {
     const saved = await this.prisma.printerAsset.update({
       where: { id },
       data: this.toData(dto),
-      include: { maintVendor: true },
+      include: { maintVendor: true, company: true },
     });
     return this.toResponse(saved, await this.vendorsByMaker());
   }
@@ -704,13 +723,13 @@ export class PrinterAssetsService {
     const saved = await this.prisma.printerAsset.update({
       where: { id },
       data: { updatedAt: new Date() },
-      include: { maintVendor: true },
+      include: { maintVendor: true, company: true },
     });
     return this.toResponse(saved, await this.vendorsByMaker());
   }
 
   /**
-   * 使わなくなった台を無効にする／元に戻す。**削除の代わり。**
+   * 使わなくなった台を無効にする／元に戻す。**普段はこちらを使う。**
    *
    * 台帳を消すと、その機器の修理履歴が道連れで消える（onDelete: Cascade）。
    * トナーの紐づけも同じ。入れ替えた機器の履歴は残しておきたいので、
@@ -726,9 +745,72 @@ export class PrinterAssetsService {
     const saved = await this.prisma.printerAsset.update({
       where: { id },
       data: { disabledAt: disabled ? new Date() : null },
-      include: { maintVendor: true },
+      include: { maintVendor: true, company: true },
     });
     return this.toResponse(saved, await this.vendorsByMaker());
+  }
+
+  /**
+   * 台帳から完全に消す。**無効にしたものだけ、修理履歴が無いときだけ。**
+   *
+   * 無効（`disabledAt`）が普段の止め方で、こちらは登録し間違えた行の後始末。
+   *
+   * **修理履歴は外部キーが Cascade なので、止めないと黙って道連れで消える。**
+   * DB は拒否してくれないので、ここで数えて断るしかない。
+   * 機器を入れ替えたのなら消さずに無効のままにする（履歴は台に紐づく記録で、
+   * 台帳の行が消えると何を直したのかを辿れなくなる）。
+   *
+   * トナーの紐づけは道連れで消えてよい。どのトナーを使う台かという対応表で、
+   * 台が無くなれば意味を持たない。トナーのマスタ自体は残る
+   */
+  async remove(id: number) {
+    const asset = await this.prisma.printerAsset.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        no: true,
+        department: true,
+        model: true,
+        serialNumber: true,
+        disabledAt: true,
+        _count: { select: { repairs: true, toners: true } },
+      },
+    });
+
+    if (!asset) {
+      throw new NotFoundException(`ID ${id} の機器は登録されていません`);
+    }
+
+    const label = [
+      asset.no ? `No.${asset.no}` : null,
+      asset.department,
+      asset.model,
+    ]
+      .filter(Boolean)
+      .join(' / ');
+
+    // 先に無効にしてもらう。一覧から消えた状態を見てから消す 2 段構えにする
+    if (asset.disabledAt === null) {
+      throw new BadRequestException(
+        `${label} はまだ有効です。先に無効にしてから削除してください`,
+      );
+    }
+
+    if (asset._count.repairs > 0) {
+      throw new BadRequestException(
+        `${label} には修理履歴が ${asset._count.repairs} 件あり、削除すると一緒に消えます。` +
+          '無効のままにしておけば、一覧と選択肢からは外れたまま履歴が残ります',
+      );
+    }
+
+    await this.prisma.printerAsset.delete({ where: { id } });
+
+    return {
+      id,
+      deleted: true,
+      /** 道連れで消えたもの。何が無くなったかを画面で知らせる */
+      removed: { toners: asset._count.toners },
+    };
   }
 
   // ── 内部ヘルパー ──────────────────────
@@ -836,6 +918,7 @@ export class PrinterAssetsService {
 
   private toData(dto: CreatePrinterAssetDto) {
     return {
+      companyId: dto.companyId,
       department: toText(dto.department),
       no: toText(dto.no),
       ipAddress: toText(dto.ipAddress),
@@ -886,6 +969,11 @@ export class PrinterAssetsService {
   private toResponse(asset: AssetRow, byMaker: Map<string, VendorSlice>) {
     return {
       id: asset.id,
+      companyId: asset.companyId,
+      /** 会社名。プリンター状況・修理など全社で見る画面の列になる */
+      company: asset.company
+        ? { id: asset.company.id, name: asset.company.name }
+        : null,
       department: asset.department,
       no: asset.no,
       ipAddress: asset.ipAddress,

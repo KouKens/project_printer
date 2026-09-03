@@ -43,7 +43,11 @@ export type TonerPrinter = Prisma.TonerPrinterModel
 export type TonerPrice = Prisma.TonerPriceModel
 /**
  * Model TonerStock
- * 在庫テーブル（品番ごとの現在数と累計）
+ * 在庫テーブル（**品番 × 会社**ごとの現在数と累計）
+ * 
+ * **会社ごとに数える単位はここ。** 品番マスタ（Toner）は全社で共通なので、
+ * 「A 社の P500H が 3 本、B 社の P500H が 1 本」を分けて持てるのはこの表だけ。
+ * 行が無い組み合わせは在庫 0 と同じ意味（受け入れて初めて行ができる）
  */
 export type TonerStock = Prisma.TonerStockModel
 /**
@@ -92,12 +96,32 @@ export type PrinterAlert = Prisma.PrinterAlertModel
  */
 export type PrinterAsset = Prisma.PrinterAssetModel
 /**
- * Model MaintVendor
+ * Model Company
  * 保守を頼んでいる業者。
  * 
  * 台帳に会社名と電話番号を直接持たせると、同じ業者を見ている機器のぶんだけ
  * 同じ番号を writing することになり、番号が変わったときに直し漏れる。
  * マスタにして台帳から参照する。
+ * 機器とトナーを持っている会社。
+ * 
+ * **在庫と受け払いを分ける単位。** 同じグループの別法人がそれぞれ機器を持ち、
+ * トナーを自分の分だけ数えたいので、持ち出し・搬入・棚卸・注文・請求書は
+ * この単位で集計する。逆に、機器の状態・印刷枚数・修理履歴は
+ * 全社まとめて見る（どこで何が起きているかは横断で見たいため）。
+ * 
+ * **品番マスタ（Toner）は会社で分けない。** 同じ品番を各社が使うので、
+ * マスタと価格の履歴は 1 か所にまとめ、**在庫（TonerStock）を
+ * 「品番 × 会社」で持つ**ことで会社ごとの数になる。
+ * その会社が使う品番は、会社の機器に紐づいたトナーから引ける。
+ * 
+ * **これは「見せない」仕組みではない。** 認証を持たないシステムなので、
+ * 画面のセレクタで切り替えるだけで誰でも他社を見られる。
+ * 閲覧を本当に制限するならログインが要る
+ */
+export type Company = Prisma.CompanyModel
+/**
+ * Model MaintVendor
+ * 
  */
 export type MaintVendor = Prisma.MaintVendorModel
 /**

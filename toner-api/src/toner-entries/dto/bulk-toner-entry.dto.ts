@@ -52,6 +52,15 @@ export class BulkTonerEntryDto {
   @MaxLength(64)
   userId: string;
 
+  /**
+   * どの会社の受け払いか。**必須。**
+   * 在庫は「品番 × 会社」なので、動かす先をここで決める
+   */
+  @Type(() => Number)
+  @IsInt({ message: '会社を選んでください' })
+  @Min(1, { message: '会社を選んでください' })
+  companyId: number;
+
   /** 窓口で一度に扱う本数を超えない上限にしてある */
   @ArrayNotEmpty({ message: 'トナーを 1 件以上入力してください' })
   @ArrayMaxSize(100, { message: '一度に処理できるのは 100 件までです' })

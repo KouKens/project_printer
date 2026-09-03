@@ -159,6 +159,38 @@
   outline-offset: -3px;
 }
 
+/*
+ * 会社の切り替え。在庫と受け払いを分ける単位なので、
+ * どの画面からも見える位置（時計の手前）に置く
+ */
+.station__company {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.station__company-label {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.station__company select {
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  max-width: 220px;
+}
+
+.station__company select:disabled {
+  color: #a7b3bd;
+  cursor: not-allowed;
+}
+
 .station__clock {
   margin: 0;
   display: flex;
@@ -851,7 +883,7 @@
     padding: 12px 0 8px;
   }
 
-  .station__clock {
+  .station__company {
     margin-left: auto;
   }
 

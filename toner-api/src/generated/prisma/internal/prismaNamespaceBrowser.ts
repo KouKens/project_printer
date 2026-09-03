@@ -62,6 +62,7 @@ export const ModelName = {
   Printer: 'Printer',
   PrinterAlert: 'PrinterAlert',
   PrinterAsset: 'PrinterAsset',
+  Company: 'Company',
   MaintVendor: 'MaintVendor',
   PageCountDaily: 'PageCountDaily',
   SupplyReading: 'SupplyReading',
@@ -122,6 +123,7 @@ export type TonerPriceScalarFieldEnum = (typeof TonerPriceScalarFieldEnum)[keyof
 
 export const TonerStockScalarFieldEnum = {
   tonerId: 'tonerId',
+  companyId: 'companyId',
   quantity: 'quantity',
   received: 'received',
   disposed: 'disposed',
@@ -136,6 +138,7 @@ export const TonerEntryScalarFieldEnum = {
   userId: 'userId',
   tonerId: 'tonerId',
   action: 'action',
+  companyId: 'companyId',
   quantity: 'quantity',
   balance: 'balance',
   receivedOn: 'receivedOn',
@@ -148,6 +151,7 @@ export type TonerEntryScalarFieldEnum = (typeof TonerEntryScalarFieldEnum)[keyof
 export const TonerOrderScalarFieldEnum = {
   id: 'id',
   tonerId: 'tonerId',
+  companyId: 'companyId',
   userId: 'userId',
   quantity: 'quantity',
   orderedAt: 'orderedAt',
@@ -229,6 +233,7 @@ export type PrinterAlertScalarFieldEnum = (typeof PrinterAlertScalarFieldEnum)[k
 
 export const PrinterAssetScalarFieldEnum = {
   id: 'id',
+  companyId: 'companyId',
   department: 'department',
   no: 'no',
   ipAddress: 'ipAddress',
@@ -252,6 +257,19 @@ export const PrinterAssetScalarFieldEnum = {
 } as const
 
 export type PrinterAssetScalarFieldEnum = (typeof PrinterAssetScalarFieldEnum)[keyof typeof PrinterAssetScalarFieldEnum]
+
+
+export const CompanyScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  sortOrder: 'sortOrder',
+  note: 'note',
+  disabledAt: 'disabledAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CompanyScalarFieldEnum = (typeof CompanyScalarFieldEnum)[keyof typeof CompanyScalarFieldEnum]
 
 
 export const MaintVendorScalarFieldEnum = {

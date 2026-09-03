@@ -22,6 +22,15 @@ export class CreateTonerOrderDto {
   @MaxLength(64)
   userId?: string;
 
+  /**
+   * どの会社の注文か。**必須。**
+   * 搬入して在庫になる先と揃えるために持つ
+   */
+  @Type(() => Number)
+  @IsInt({ message: '会社を選んでください' })
+  @Min(1, { message: '会社を選んでください' })
+  companyId: number;
+
   @IsString()
   @IsNotEmpty({ message: 'トナーIDを入力してください' })
   @MaxLength(64)

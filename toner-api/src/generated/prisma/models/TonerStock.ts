@@ -14,7 +14,11 @@ import type * as Prisma from "../internal/prismaNamespace.js"
 
 /**
  * Model TonerStock
- * 在庫テーブル（品番ごとの現在数と累計）
+ * 在庫テーブル（**品番 × 会社**ごとの現在数と累計）
+ * 
+ * **会社ごとに数える単位はここ。** 品番マスタ（Toner）は全社で共通なので、
+ * 「A 社の P500H が 3 本、B 社の P500H が 1 本」を分けて持てるのはこの表だけ。
+ * 行が無い組み合わせは在庫 0 と同じ意味（受け入れて初めて行ができる）
  */
 export type TonerStockModel = runtime.Types.Result.DefaultSelection<Prisma.$TonerStockPayload>
 
@@ -27,12 +31,14 @@ export type AggregateTonerStock = {
 }
 
 export type TonerStockAvgAggregateOutputType = {
+  companyId: number | null
   quantity: number | null
   received: number | null
   disposed: number | null
 }
 
 export type TonerStockSumAggregateOutputType = {
+  companyId: number | null
   quantity: number | null
   received: number | null
   disposed: number | null
@@ -40,6 +46,7 @@ export type TonerStockSumAggregateOutputType = {
 
 export type TonerStockMinAggregateOutputType = {
   tonerId: string | null
+  companyId: number | null
   quantity: number | null
   received: number | null
   disposed: number | null
@@ -48,6 +55,7 @@ export type TonerStockMinAggregateOutputType = {
 
 export type TonerStockMaxAggregateOutputType = {
   tonerId: string | null
+  companyId: number | null
   quantity: number | null
   received: number | null
   disposed: number | null
@@ -56,6 +64,7 @@ export type TonerStockMaxAggregateOutputType = {
 
 export type TonerStockCountAggregateOutputType = {
   tonerId: number
+  companyId: number
   quantity: number
   received: number
   disposed: number
@@ -65,12 +74,14 @@ export type TonerStockCountAggregateOutputType = {
 
 
 export type TonerStockAvgAggregateInputType = {
+  companyId?: true
   quantity?: true
   received?: true
   disposed?: true
 }
 
 export type TonerStockSumAggregateInputType = {
+  companyId?: true
   quantity?: true
   received?: true
   disposed?: true
@@ -78,6 +89,7 @@ export type TonerStockSumAggregateInputType = {
 
 export type TonerStockMinAggregateInputType = {
   tonerId?: true
+  companyId?: true
   quantity?: true
   received?: true
   disposed?: true
@@ -86,6 +98,7 @@ export type TonerStockMinAggregateInputType = {
 
 export type TonerStockMaxAggregateInputType = {
   tonerId?: true
+  companyId?: true
   quantity?: true
   received?: true
   disposed?: true
@@ -94,6 +107,7 @@ export type TonerStockMaxAggregateInputType = {
 
 export type TonerStockCountAggregateInputType = {
   tonerId?: true
+  companyId?: true
   quantity?: true
   received?: true
   disposed?: true
@@ -189,6 +203,7 @@ export type TonerStockGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 
 export type TonerStockGroupByOutputType = {
   tonerId: string
+  companyId: number
   quantity: number
   received: number
   disposed: number
@@ -220,36 +235,44 @@ export type TonerStockWhereInput = {
   OR?: Prisma.TonerStockWhereInput[]
   NOT?: Prisma.TonerStockWhereInput | Prisma.TonerStockWhereInput[]
   tonerId?: Prisma.StringFilter<"TonerStock"> | string
+  companyId?: Prisma.IntFilter<"TonerStock"> | number
   quantity?: Prisma.IntFilter<"TonerStock"> | number
   received?: Prisma.IntFilter<"TonerStock"> | number
   disposed?: Prisma.IntFilter<"TonerStock"> | number
   updatedAt?: Prisma.DateTimeFilter<"TonerStock"> | Date | string
+  company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   toner?: Prisma.XOR<Prisma.TonerScalarRelationFilter, Prisma.TonerWhereInput>
 }
 
 export type TonerStockOrderByWithRelationInput = {
   tonerId?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  company?: Prisma.CompanyOrderByWithRelationInput
   toner?: Prisma.TonerOrderByWithRelationInput
 }
 
 export type TonerStockWhereUniqueInput = Prisma.AtLeast<{
-  tonerId?: string
+  tonerId_companyId?: Prisma.TonerStockTonerIdCompanyIdCompoundUniqueInput
   AND?: Prisma.TonerStockWhereInput | Prisma.TonerStockWhereInput[]
   OR?: Prisma.TonerStockWhereInput[]
   NOT?: Prisma.TonerStockWhereInput | Prisma.TonerStockWhereInput[]
+  tonerId?: Prisma.StringFilter<"TonerStock"> | string
+  companyId?: Prisma.IntFilter<"TonerStock"> | number
   quantity?: Prisma.IntFilter<"TonerStock"> | number
   received?: Prisma.IntFilter<"TonerStock"> | number
   disposed?: Prisma.IntFilter<"TonerStock"> | number
   updatedAt?: Prisma.DateTimeFilter<"TonerStock"> | Date | string
+  company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   toner?: Prisma.XOR<Prisma.TonerScalarRelationFilter, Prisma.TonerWhereInput>
-}, "tonerId">
+}, "tonerId_companyId">
 
 export type TonerStockOrderByWithAggregationInput = {
   tonerId?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
@@ -266,6 +289,7 @@ export type TonerStockScalarWhereWithAggregatesInput = {
   OR?: Prisma.TonerStockScalarWhereWithAggregatesInput[]
   NOT?: Prisma.TonerStockScalarWhereWithAggregatesInput | Prisma.TonerStockScalarWhereWithAggregatesInput[]
   tonerId?: Prisma.StringWithAggregatesFilter<"TonerStock"> | string
+  companyId?: Prisma.IntWithAggregatesFilter<"TonerStock"> | number
   quantity?: Prisma.IntWithAggregatesFilter<"TonerStock"> | number
   received?: Prisma.IntWithAggregatesFilter<"TonerStock"> | number
   disposed?: Prisma.IntWithAggregatesFilter<"TonerStock"> | number
@@ -277,11 +301,13 @@ export type TonerStockCreateInput = {
   received?: number
   disposed?: number
   updatedAt?: Date | string
-  toner: Prisma.TonerCreateNestedOneWithoutStockInput
+  company: Prisma.CompanyCreateNestedOneWithoutStocksInput
+  toner: Prisma.TonerCreateNestedOneWithoutStocksInput
 }
 
 export type TonerStockUncheckedCreateInput = {
   tonerId: string
+  companyId: number
   quantity?: number
   received?: number
   disposed?: number
@@ -293,11 +319,13 @@ export type TonerStockUpdateInput = {
   received?: Prisma.IntFieldUpdateOperationsInput | number
   disposed?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  toner?: Prisma.TonerUpdateOneRequiredWithoutStockNestedInput
+  company?: Prisma.CompanyUpdateOneRequiredWithoutStocksNestedInput
+  toner?: Prisma.TonerUpdateOneRequiredWithoutStocksNestedInput
 }
 
 export type TonerStockUncheckedUpdateInput = {
   tonerId?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   received?: Prisma.IntFieldUpdateOperationsInput | number
   disposed?: Prisma.IntFieldUpdateOperationsInput | number
@@ -306,6 +334,7 @@ export type TonerStockUncheckedUpdateInput = {
 
 export type TonerStockCreateManyInput = {
   tonerId: string
+  companyId: number
   quantity?: number
   received?: number
   disposed?: number
@@ -321,19 +350,31 @@ export type TonerStockUpdateManyMutationInput = {
 
 export type TonerStockUncheckedUpdateManyInput = {
   tonerId?: Prisma.StringFieldUpdateOperationsInput | string
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   received?: Prisma.IntFieldUpdateOperationsInput | number
   disposed?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
-export type TonerStockNullableScalarRelationFilter = {
-  is?: Prisma.TonerStockWhereInput | null
-  isNot?: Prisma.TonerStockWhereInput | null
+export type TonerStockListRelationFilter = {
+  every?: Prisma.TonerStockWhereInput
+  some?: Prisma.TonerStockWhereInput
+  none?: Prisma.TonerStockWhereInput
+}
+
+export type TonerStockOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
+}
+
+export type TonerStockTonerIdCompanyIdCompoundUniqueInput = {
+  tonerId: string
+  companyId: number
 }
 
 export type TonerStockCountOrderByAggregateInput = {
   tonerId?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
@@ -341,6 +382,7 @@ export type TonerStockCountOrderByAggregateInput = {
 }
 
 export type TonerStockAvgOrderByAggregateInput = {
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
@@ -348,6 +390,7 @@ export type TonerStockAvgOrderByAggregateInput = {
 
 export type TonerStockMaxOrderByAggregateInput = {
   tonerId?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
@@ -356,6 +399,7 @@ export type TonerStockMaxOrderByAggregateInput = {
 
 export type TonerStockMinOrderByAggregateInput = {
   tonerId?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
@@ -363,41 +407,94 @@ export type TonerStockMinOrderByAggregateInput = {
 }
 
 export type TonerStockSumOrderByAggregateInput = {
+  companyId?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   received?: Prisma.SortOrder
   disposed?: Prisma.SortOrder
 }
 
-export type TonerStockCreateNestedOneWithoutTonerInput = {
-  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
-  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput
-  connect?: Prisma.TonerStockWhereUniqueInput
+export type TonerStockCreateNestedManyWithoutTonerInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput> | Prisma.TonerStockCreateWithoutTonerInput[] | Prisma.TonerStockUncheckedCreateWithoutTonerInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput | Prisma.TonerStockCreateOrConnectWithoutTonerInput[]
+  createMany?: Prisma.TonerStockCreateManyTonerInputEnvelope
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
 }
 
-export type TonerStockUncheckedCreateNestedOneWithoutTonerInput = {
-  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
-  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput
-  connect?: Prisma.TonerStockWhereUniqueInput
+export type TonerStockUncheckedCreateNestedManyWithoutTonerInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput> | Prisma.TonerStockCreateWithoutTonerInput[] | Prisma.TonerStockUncheckedCreateWithoutTonerInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput | Prisma.TonerStockCreateOrConnectWithoutTonerInput[]
+  createMany?: Prisma.TonerStockCreateManyTonerInputEnvelope
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
 }
 
-export type TonerStockUpdateOneWithoutTonerNestedInput = {
-  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
-  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput
-  upsert?: Prisma.TonerStockUpsertWithoutTonerInput
-  disconnect?: Prisma.TonerStockWhereInput | boolean
-  delete?: Prisma.TonerStockWhereInput | boolean
-  connect?: Prisma.TonerStockWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.TonerStockUpdateToOneWithWhereWithoutTonerInput, Prisma.TonerStockUpdateWithoutTonerInput>, Prisma.TonerStockUncheckedUpdateWithoutTonerInput>
+export type TonerStockUpdateManyWithoutTonerNestedInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput> | Prisma.TonerStockCreateWithoutTonerInput[] | Prisma.TonerStockUncheckedCreateWithoutTonerInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput | Prisma.TonerStockCreateOrConnectWithoutTonerInput[]
+  upsert?: Prisma.TonerStockUpsertWithWhereUniqueWithoutTonerInput | Prisma.TonerStockUpsertWithWhereUniqueWithoutTonerInput[]
+  createMany?: Prisma.TonerStockCreateManyTonerInputEnvelope
+  set?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  disconnect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  delete?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  update?: Prisma.TonerStockUpdateWithWhereUniqueWithoutTonerInput | Prisma.TonerStockUpdateWithWhereUniqueWithoutTonerInput[]
+  updateMany?: Prisma.TonerStockUpdateManyWithWhereWithoutTonerInput | Prisma.TonerStockUpdateManyWithWhereWithoutTonerInput[]
+  deleteMany?: Prisma.TonerStockScalarWhereInput | Prisma.TonerStockScalarWhereInput[]
 }
 
-export type TonerStockUncheckedUpdateOneWithoutTonerNestedInput = {
-  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
-  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput
-  upsert?: Prisma.TonerStockUpsertWithoutTonerInput
-  disconnect?: Prisma.TonerStockWhereInput | boolean
-  delete?: Prisma.TonerStockWhereInput | boolean
-  connect?: Prisma.TonerStockWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.TonerStockUpdateToOneWithWhereWithoutTonerInput, Prisma.TonerStockUpdateWithoutTonerInput>, Prisma.TonerStockUncheckedUpdateWithoutTonerInput>
+export type TonerStockUncheckedUpdateManyWithoutTonerNestedInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput> | Prisma.TonerStockCreateWithoutTonerInput[] | Prisma.TonerStockUncheckedCreateWithoutTonerInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutTonerInput | Prisma.TonerStockCreateOrConnectWithoutTonerInput[]
+  upsert?: Prisma.TonerStockUpsertWithWhereUniqueWithoutTonerInput | Prisma.TonerStockUpsertWithWhereUniqueWithoutTonerInput[]
+  createMany?: Prisma.TonerStockCreateManyTonerInputEnvelope
+  set?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  disconnect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  delete?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  update?: Prisma.TonerStockUpdateWithWhereUniqueWithoutTonerInput | Prisma.TonerStockUpdateWithWhereUniqueWithoutTonerInput[]
+  updateMany?: Prisma.TonerStockUpdateManyWithWhereWithoutTonerInput | Prisma.TonerStockUpdateManyWithWhereWithoutTonerInput[]
+  deleteMany?: Prisma.TonerStockScalarWhereInput | Prisma.TonerStockScalarWhereInput[]
+}
+
+export type TonerStockCreateNestedManyWithoutCompanyInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutCompanyInput, Prisma.TonerStockUncheckedCreateWithoutCompanyInput> | Prisma.TonerStockCreateWithoutCompanyInput[] | Prisma.TonerStockUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutCompanyInput | Prisma.TonerStockCreateOrConnectWithoutCompanyInput[]
+  createMany?: Prisma.TonerStockCreateManyCompanyInputEnvelope
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+}
+
+export type TonerStockUncheckedCreateNestedManyWithoutCompanyInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutCompanyInput, Prisma.TonerStockUncheckedCreateWithoutCompanyInput> | Prisma.TonerStockCreateWithoutCompanyInput[] | Prisma.TonerStockUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutCompanyInput | Prisma.TonerStockCreateOrConnectWithoutCompanyInput[]
+  createMany?: Prisma.TonerStockCreateManyCompanyInputEnvelope
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+}
+
+export type TonerStockUpdateManyWithoutCompanyNestedInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutCompanyInput, Prisma.TonerStockUncheckedCreateWithoutCompanyInput> | Prisma.TonerStockCreateWithoutCompanyInput[] | Prisma.TonerStockUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutCompanyInput | Prisma.TonerStockCreateOrConnectWithoutCompanyInput[]
+  upsert?: Prisma.TonerStockUpsertWithWhereUniqueWithoutCompanyInput | Prisma.TonerStockUpsertWithWhereUniqueWithoutCompanyInput[]
+  createMany?: Prisma.TonerStockCreateManyCompanyInputEnvelope
+  set?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  disconnect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  delete?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  update?: Prisma.TonerStockUpdateWithWhereUniqueWithoutCompanyInput | Prisma.TonerStockUpdateWithWhereUniqueWithoutCompanyInput[]
+  updateMany?: Prisma.TonerStockUpdateManyWithWhereWithoutCompanyInput | Prisma.TonerStockUpdateManyWithWhereWithoutCompanyInput[]
+  deleteMany?: Prisma.TonerStockScalarWhereInput | Prisma.TonerStockScalarWhereInput[]
+}
+
+export type TonerStockUncheckedUpdateManyWithoutCompanyNestedInput = {
+  create?: Prisma.XOR<Prisma.TonerStockCreateWithoutCompanyInput, Prisma.TonerStockUncheckedCreateWithoutCompanyInput> | Prisma.TonerStockCreateWithoutCompanyInput[] | Prisma.TonerStockUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.TonerStockCreateOrConnectWithoutCompanyInput | Prisma.TonerStockCreateOrConnectWithoutCompanyInput[]
+  upsert?: Prisma.TonerStockUpsertWithWhereUniqueWithoutCompanyInput | Prisma.TonerStockUpsertWithWhereUniqueWithoutCompanyInput[]
+  createMany?: Prisma.TonerStockCreateManyCompanyInputEnvelope
+  set?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  disconnect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  delete?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  connect?: Prisma.TonerStockWhereUniqueInput | Prisma.TonerStockWhereUniqueInput[]
+  update?: Prisma.TonerStockUpdateWithWhereUniqueWithoutCompanyInput | Prisma.TonerStockUpdateWithWhereUniqueWithoutCompanyInput[]
+  updateMany?: Prisma.TonerStockUpdateManyWithWhereWithoutCompanyInput | Prisma.TonerStockUpdateManyWithWhereWithoutCompanyInput[]
+  deleteMany?: Prisma.TonerStockScalarWhereInput | Prisma.TonerStockScalarWhereInput[]
 }
 
 export type TonerStockCreateWithoutTonerInput = {
@@ -405,9 +502,11 @@ export type TonerStockCreateWithoutTonerInput = {
   received?: number
   disposed?: number
   updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutStocksInput
 }
 
 export type TonerStockUncheckedCreateWithoutTonerInput = {
+  companyId: number
   quantity?: number
   received?: number
   disposed?: number
@@ -419,15 +518,87 @@ export type TonerStockCreateOrConnectWithoutTonerInput = {
   create: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
 }
 
-export type TonerStockUpsertWithoutTonerInput = {
-  update: Prisma.XOR<Prisma.TonerStockUpdateWithoutTonerInput, Prisma.TonerStockUncheckedUpdateWithoutTonerInput>
-  create: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
-  where?: Prisma.TonerStockWhereInput
+export type TonerStockCreateManyTonerInputEnvelope = {
+  data: Prisma.TonerStockCreateManyTonerInput | Prisma.TonerStockCreateManyTonerInput[]
+  skipDuplicates?: boolean
 }
 
-export type TonerStockUpdateToOneWithWhereWithoutTonerInput = {
-  where?: Prisma.TonerStockWhereInput
+export type TonerStockUpsertWithWhereUniqueWithoutTonerInput = {
+  where: Prisma.TonerStockWhereUniqueInput
+  update: Prisma.XOR<Prisma.TonerStockUpdateWithoutTonerInput, Prisma.TonerStockUncheckedUpdateWithoutTonerInput>
+  create: Prisma.XOR<Prisma.TonerStockCreateWithoutTonerInput, Prisma.TonerStockUncheckedCreateWithoutTonerInput>
+}
+
+export type TonerStockUpdateWithWhereUniqueWithoutTonerInput = {
+  where: Prisma.TonerStockWhereUniqueInput
   data: Prisma.XOR<Prisma.TonerStockUpdateWithoutTonerInput, Prisma.TonerStockUncheckedUpdateWithoutTonerInput>
+}
+
+export type TonerStockUpdateManyWithWhereWithoutTonerInput = {
+  where: Prisma.TonerStockScalarWhereInput
+  data: Prisma.XOR<Prisma.TonerStockUpdateManyMutationInput, Prisma.TonerStockUncheckedUpdateManyWithoutTonerInput>
+}
+
+export type TonerStockScalarWhereInput = {
+  AND?: Prisma.TonerStockScalarWhereInput | Prisma.TonerStockScalarWhereInput[]
+  OR?: Prisma.TonerStockScalarWhereInput[]
+  NOT?: Prisma.TonerStockScalarWhereInput | Prisma.TonerStockScalarWhereInput[]
+  tonerId?: Prisma.StringFilter<"TonerStock"> | string
+  companyId?: Prisma.IntFilter<"TonerStock"> | number
+  quantity?: Prisma.IntFilter<"TonerStock"> | number
+  received?: Prisma.IntFilter<"TonerStock"> | number
+  disposed?: Prisma.IntFilter<"TonerStock"> | number
+  updatedAt?: Prisma.DateTimeFilter<"TonerStock"> | Date | string
+}
+
+export type TonerStockCreateWithoutCompanyInput = {
+  quantity?: number
+  received?: number
+  disposed?: number
+  updatedAt?: Date | string
+  toner: Prisma.TonerCreateNestedOneWithoutStocksInput
+}
+
+export type TonerStockUncheckedCreateWithoutCompanyInput = {
+  tonerId: string
+  quantity?: number
+  received?: number
+  disposed?: number
+  updatedAt?: Date | string
+}
+
+export type TonerStockCreateOrConnectWithoutCompanyInput = {
+  where: Prisma.TonerStockWhereUniqueInput
+  create: Prisma.XOR<Prisma.TonerStockCreateWithoutCompanyInput, Prisma.TonerStockUncheckedCreateWithoutCompanyInput>
+}
+
+export type TonerStockCreateManyCompanyInputEnvelope = {
+  data: Prisma.TonerStockCreateManyCompanyInput | Prisma.TonerStockCreateManyCompanyInput[]
+  skipDuplicates?: boolean
+}
+
+export type TonerStockUpsertWithWhereUniqueWithoutCompanyInput = {
+  where: Prisma.TonerStockWhereUniqueInput
+  update: Prisma.XOR<Prisma.TonerStockUpdateWithoutCompanyInput, Prisma.TonerStockUncheckedUpdateWithoutCompanyInput>
+  create: Prisma.XOR<Prisma.TonerStockCreateWithoutCompanyInput, Prisma.TonerStockUncheckedCreateWithoutCompanyInput>
+}
+
+export type TonerStockUpdateWithWhereUniqueWithoutCompanyInput = {
+  where: Prisma.TonerStockWhereUniqueInput
+  data: Prisma.XOR<Prisma.TonerStockUpdateWithoutCompanyInput, Prisma.TonerStockUncheckedUpdateWithoutCompanyInput>
+}
+
+export type TonerStockUpdateManyWithWhereWithoutCompanyInput = {
+  where: Prisma.TonerStockScalarWhereInput
+  data: Prisma.XOR<Prisma.TonerStockUpdateManyMutationInput, Prisma.TonerStockUncheckedUpdateManyWithoutCompanyInput>
+}
+
+export type TonerStockCreateManyTonerInput = {
+  companyId: number
+  quantity?: number
+  received?: number
+  disposed?: number
+  updatedAt?: Date | string
 }
 
 export type TonerStockUpdateWithoutTonerInput = {
@@ -435,9 +606,51 @@ export type TonerStockUpdateWithoutTonerInput = {
   received?: Prisma.IntFieldUpdateOperationsInput | number
   disposed?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutStocksNestedInput
 }
 
 export type TonerStockUncheckedUpdateWithoutTonerInput = {
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  received?: Prisma.IntFieldUpdateOperationsInput | number
+  disposed?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type TonerStockUncheckedUpdateManyWithoutTonerInput = {
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  received?: Prisma.IntFieldUpdateOperationsInput | number
+  disposed?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type TonerStockCreateManyCompanyInput = {
+  tonerId: string
+  quantity?: number
+  received?: number
+  disposed?: number
+  updatedAt?: Date | string
+}
+
+export type TonerStockUpdateWithoutCompanyInput = {
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  received?: Prisma.IntFieldUpdateOperationsInput | number
+  disposed?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  toner?: Prisma.TonerUpdateOneRequiredWithoutStocksNestedInput
+}
+
+export type TonerStockUncheckedUpdateWithoutCompanyInput = {
+  tonerId?: Prisma.StringFieldUpdateOperationsInput | string
+  quantity?: Prisma.IntFieldUpdateOperationsInput | number
+  received?: Prisma.IntFieldUpdateOperationsInput | number
+  disposed?: Prisma.IntFieldUpdateOperationsInput | number
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type TonerStockUncheckedUpdateManyWithoutCompanyInput = {
+  tonerId?: Prisma.StringFieldUpdateOperationsInput | string
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   received?: Prisma.IntFieldUpdateOperationsInput | number
   disposed?: Prisma.IntFieldUpdateOperationsInput | number
@@ -448,57 +661,69 @@ export type TonerStockUncheckedUpdateWithoutTonerInput = {
 
 export type TonerStockSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   tonerId?: boolean
+  companyId?: boolean
   quantity?: boolean
   received?: boolean
   disposed?: boolean
   updatedAt?: boolean
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tonerStock"]>
 
 export type TonerStockSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   tonerId?: boolean
+  companyId?: boolean
   quantity?: boolean
   received?: boolean
   disposed?: boolean
   updatedAt?: boolean
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tonerStock"]>
 
 export type TonerStockSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   tonerId?: boolean
+  companyId?: boolean
   quantity?: boolean
   received?: boolean
   disposed?: boolean
   updatedAt?: boolean
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tonerStock"]>
 
 export type TonerStockSelectScalar = {
   tonerId?: boolean
+  companyId?: boolean
   quantity?: boolean
   received?: boolean
   disposed?: boolean
   updatedAt?: boolean
 }
 
-export type TonerStockOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"tonerId" | "quantity" | "received" | "disposed" | "updatedAt", ExtArgs["result"]["tonerStock"]>
+export type TonerStockOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"tonerId" | "companyId" | "quantity" | "received" | "disposed" | "updatedAt", ExtArgs["result"]["tonerStock"]>
 export type TonerStockInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>
 }
 export type TonerStockIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>
 }
 export type TonerStockIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>
 }
 
 export type $TonerStockPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TonerStock"
   objects: {
+    company: Prisma.$CompanyPayload<ExtArgs>
     toner: Prisma.$TonerPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     tonerId: string
+    companyId: number
     /**
      * 現在庫。搬入で増え、持ち出しで減る
      */
@@ -906,6 +1131,7 @@ readonly fields: TonerStockFieldRefs;
  */
 export interface Prisma__TonerStockClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  company<T extends Prisma.CompanyDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompanyDefaultArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   toner<T extends Prisma.TonerDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TonerDefaultArgs<ExtArgs>>): Prisma.Prisma__TonerClient<runtime.Types.Result.GetResult<Prisma.$TonerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -937,6 +1163,7 @@ export interface Prisma__TonerStockClient<T, Null = never, ExtArgs extends runti
  */
 export interface TonerStockFieldRefs {
   readonly tonerId: Prisma.FieldRef<"TonerStock", 'String'>
+  readonly companyId: Prisma.FieldRef<"TonerStock", 'Int'>
   readonly quantity: Prisma.FieldRef<"TonerStock", 'Int'>
   readonly received: Prisma.FieldRef<"TonerStock", 'Int'>
   readonly disposed: Prisma.FieldRef<"TonerStock", 'Int'>

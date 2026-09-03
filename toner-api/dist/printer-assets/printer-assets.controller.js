@@ -24,14 +24,14 @@ let PrinterAssetsController = class PrinterAssetsController {
     create(dto) {
         return this.service.create(dto);
     }
-    findAll(includeDisabled) {
-        return this.service.findAll(includeDisabled === '1');
+    findAll(includeDisabled, companyId) {
+        return this.service.findAll(includeDisabled === '1', companyId ? Number(companyId) : undefined);
     }
     findOverview() {
         return this.service.findOverview();
     }
-    findByModel() {
-        return this.service.findByModel();
+    findByModel(companyId) {
+        return this.service.findByModel(companyId);
     }
     findOne(id) {
         return this.service.findOne(id);
@@ -51,6 +51,9 @@ let PrinterAssetsController = class PrinterAssetsController {
     enable(id) {
         return this.service.setDisabled(id, false);
     }
+    remove(id) {
+        return this.service.remove(id);
+    }
 };
 exports.PrinterAssetsController = PrinterAssetsController;
 __decorate([
@@ -63,8 +66,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('includeDisabled')),
+    __param(1, (0, common_1.Query)('companyId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], PrinterAssetsController.prototype, "findAll", null);
 __decorate([
@@ -75,8 +79,9 @@ __decorate([
 ], PrinterAssetsController.prototype, "findOverview", null);
 __decorate([
     (0, common_1.Get)('by-model'),
+    __param(0, (0, common_1.Query)('companyId', common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], PrinterAssetsController.prototype, "findByModel", null);
 __decorate([
@@ -122,6 +127,13 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], PrinterAssetsController.prototype, "enable", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], PrinterAssetsController.prototype, "remove", null);
 exports.PrinterAssetsController = PrinterAssetsController = __decorate([
     (0, common_1.Controller)('printer-assets'),
     __metadata("design:paramtypes", [printer_assets_service_1.PrinterAssetsService])

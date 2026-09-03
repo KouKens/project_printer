@@ -8,6 +8,7 @@ export declare class TonerOrdersService {
     create(dto: CreateTonerOrderDto): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -15,9 +16,10 @@ export declare class TonerOrdersService {
         deliveryOn: string | null;
         status: string;
     }>;
-    findPending(): Promise<{
+    findPending(companyId?: number): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -28,6 +30,7 @@ export declare class TonerOrdersService {
     bulk(dto: BulkTonerOrderDto): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -63,9 +66,10 @@ export declare class TonerOrdersService {
         tonerId: string;
         quantity: number;
     }>;
-    findAll(): Promise<{
+    findAll(companyId?: number): Promise<{
         id: number;
         tonerId: string;
+        companyId: number;
         userId: string | null;
         name: string | null;
         quantity: number;

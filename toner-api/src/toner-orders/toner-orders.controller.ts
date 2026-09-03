@@ -35,15 +35,17 @@ export class TonerOrdersController {
   }
 
   /** 注文履歴 */
+  /** 注文履歴。`companyId` を付けるとその会社の分だけ */
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query('companyId') companyId?: string) {
+    return this.service.findAll(companyId ? Number(companyId) : undefined);
   }
 
   /** 未入荷の注文 */
+  /** 未入荷の注文。`companyId` を付けるとその会社の分だけ */
   @Get('pending')
-  findPending() {
-    return this.service.findPending();
+  findPending(@Query('companyId') companyId?: string) {
+    return this.service.findPending(companyId ? Number(companyId) : undefined);
   }
 
   /**

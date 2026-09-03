@@ -5,6 +5,7 @@ import { num, orNull } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
+import { useCompany } from '../lib/company';
 import { refreshAsset } from '../lib/refresh';
 import './AssetScreen.css';
 
@@ -22,6 +23,12 @@ type CountLayout = 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
 
 /** 台帳の手入力項目。こちらは DB に保存する */
 type Asset = {
+  /**
+   * 持っている会社。**必須。**
+   * トナーの在庫と受け払いをこの単位で数えるので、機器には必ず持たせる。
+   * 入力欄の値なので、他の欄と同じく文字列で持つ
+   */
+  companyId: string;
   department: string;
   no: string;
   ipAddress: string;
@@ -57,6 +64,9 @@ type SavedAsset = {
   maker: string | null;
   model: string | null;
   serialNumber: string | null;
+  /** 持っている会社。在庫と受け払いを分ける単位 */
+  companyId: number;
+  company: { id: number; name: string } | null;
   purchasedOn: string | null;
   purchasePrice: number | null;
   contractNo: string | null;
@@ -89,6 +99,7 @@ type SavedAsset = {
 };
 
 const EMPTY: Asset = {
+  companyId: '',
   department: '',
   no: '',
   ipAddress: '',
@@ -139,6 +150,8 @@ type Probe = {
 type SortKey = Exclude<keyof SavedAsset, 'id' | 'effectiveVendor'> | 'maintStatus';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
+  // 全社をまとめて出す画面なので、どこの機器かが分かるよう会社を先頭に置く
+  { key: 'company', label: '会社', kind: 'text' },
   { key: 'department', label: '部署', kind: 'text' },
   { key: 'no', label: 'No.', kind: 'text' },
   { key: 'ipAddress', label: 'IP アドレス', kind: 'ip' },
@@ -160,6 +173,8 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 
 function toPayload(asset: Asset) {
   return {
+    // 会社は必須。空のまま送ると API が 400 で断る
+    companyId: asset.companyId === '' ? null : Number(asset.companyId),
     department: orNull(asset.department),
     no: orNull(asset.no),
     ipAddress: orNull(asset.ipAddress),
@@ -184,6 +199,7 @@ function toPayload(asset: Asset) {
 
 function toForm(saved: SavedAsset): Asset {
   return {
+    companyId: String(saved.companyId),
     department: saved.department ?? '',
     no: saved.no ?? '',
     ipAddress: saved.ipAddress ?? '',
@@ -214,6 +230,7 @@ function compare(input: string, actual: string | null): 'same' | 'diff' | null {
 }
 
 export default function AssetScreen() {
+  const { companies, companyId: selectedCompanyId } = useCompany();
   const [asset, setAsset] = useState<Asset>(EMPTY);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saved, setSaved] = useState<SavedAsset[]>([]);
@@ -268,7 +285,9 @@ export default function AssetScreen() {
           ? maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract)
           : sort.key === 'maintVendor'
             ? (row.effectiveVendor?.name ?? null)
-            : row[sort.key],
+            : sort.key === 'company'
+              ? (row.company?.name ?? null)
+              : row[sort.key],
       column?.kind ?? 'text',
       sort.dir,
       (row) => row.id,
@@ -402,7 +421,7 @@ export default function AssetScreen() {
   };
 
   /**
-   * 使わなくなった台を無効にする／元に戻す。**削除は用意していない。**
+   * 使わなくなった台を無効にする／元に戻す。**普段はこちらを使う。**
    *
    * 台帳を消すと、その機器の修理履歴まで道連れで消える。入れ替えた機器の履歴も
    * 残しておきたいので、消さずに下の別枠へ移す。いつでも元に戻せる。
@@ -446,8 +465,67 @@ export default function AssetScreen() {
     }
   };
 
+  /**
+   * 無効にした台を台帳から完全に消す。**登録し間違えた行の後始末。**
+   *
+   * 普段は無効のままにしておけばよく、これは戻す必要が無いと分かっている行だけ。
+   * 元に戻せないうえ、**修理履歴があると道連れで消える**ので API 側が断る。
+   * ここでは押す前に何が起きるかを文面に出す
+   */
+  const remove = async (row: SavedAsset) => {
+    const label = `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`;
+
+    if (
+      !window.confirm(
+        `${label}（${row.maker ?? ''} ${row.model ?? ''}）を台帳から完全に削除します。\n\n` +
+          'この操作は元に戻せません。トナーとの紐づけも一緒に消えます。\n' +
+          '\n修理履歴がある機器は削除できません。\n' +
+          '記録を残したまま一覧から外しておきたいだけなら、無効のままにしておいてください。',
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await request(`/printer-assets/${row.id}`, { method: 'DELETE' });
+      setNotice(`${label} を削除しました`);
+      if (editingId === row.id) {
+        setAsset(EMPTY);
+        setEditingId(null);
+      }
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 新規入力の初期値。会社だけは右上で選んでいるものを入れておく */
+  const blank = useCallback(
+    (): Asset => ({
+      ...EMPTY,
+      companyId: selectedCompanyId === null ? '' : String(selectedCompanyId),
+    }),
+    [selectedCompanyId],
+  );
+
+  /*
+   * 会社の一覧が届く前に画面が立ち上がるので、届いてから初期値を入れる。
+   * 入力の途中や編集中は触らない（選び直したものを勝手に戻さないため）
+   */
+  useEffect(() => {
+    if (editingId !== null || selectedCompanyId === null) return;
+    setAsset((prev) =>
+      prev.companyId === '' ? { ...prev, companyId: String(selectedCompanyId) } : prev,
+    );
+  }, [selectedCompanyId, editingId]);
+
   const clear = () => {
-    setAsset(EMPTY);
+    setAsset(blank());
     setEditingId(null);
     setProbe(null);
     setError(null);
@@ -472,6 +550,8 @@ export default function AssetScreen() {
       : null;
 
   const cellOf = (row: SavedAsset, key: SortKey) => {
+    if (key === 'company') return row.company?.name ?? '—';
+    if (key === 'companyId') return row.company?.name ?? '—';
     if (key === 'maintStatus')
       return maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract) ?? '—';
     if (key === 'maintVendor') {
@@ -518,6 +598,26 @@ export default function AssetScreen() {
         <label>
           <span>部署</span>
           <input value={asset.department} onChange={(e) => set('department')(e.target.value)} />
+        </label>
+
+        {/*
+          * 会社は必須。トナーの在庫と受け払いをこの単位で数えるため。
+          * 新規のときは画面右上で選んでいる会社を初期値にする
+          */}
+        <label>
+          <span>会社</span>
+          <select
+            value={asset.companyId}
+            onChange={(e) => set('companyId')(e.target.value)}
+            title="この機器を持っている会社です。トナーの在庫と受け払いがこの単位で分かれます"
+          >
+            <option value="">選んでください</option>
+            {companies.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label>
@@ -921,12 +1021,17 @@ export default function AssetScreen() {
             使わなくなった機器です。<strong>記録は消えていません。</strong>
             プリンター状況・修理履歴・トナー登録・保守登録の一覧と選択肢からは外れています。
             「元に戻す」を押せば、そのまま元の一覧に戻ります。
+            <br />
+            登録し間違えた機器は「削除」で台帳から完全に消せます。<strong>元に戻せません。</strong>
+            <strong>修理履歴がある機器は削除できません</strong>
+            （消すと履歴まで道連れになるため。そのまま無効にしておけば履歴が残ります）。
           </p>
 
           <div className="as-table-wrap">
             <table className="as-table">
               <thead>
                 <tr>
+                  <th>会社</th>
                   <th>部署</th>
                   <th>No.</th>
                   <th>IP アドレス</th>
@@ -940,6 +1045,7 @@ export default function AssetScreen() {
               <tbody>
                 {disabled.map((row) => (
                   <tr key={row.id}>
+                    <td>{row.company?.name ?? '—'}</td>
                     <td>{row.department ?? '—'}</td>
                     <td>{row.no ?? '—'}</td>
                     <td className="as-mono">{row.ipAddress ?? '—'}</td>
@@ -959,6 +1065,15 @@ export default function AssetScreen() {
                         title="元の一覧に戻します"
                       >
                         元に戻す
+                      </button>
+                      <button
+                        className="as-del"
+                        onClick={() => void remove(row)}
+                        disabled={busy}
+                        type="button"
+                        title="台帳から完全に削除します。元に戻せません。修理履歴がある機器は削除できません"
+                      >
+                        削除
                       </button>
                     </td>
                   </tr>

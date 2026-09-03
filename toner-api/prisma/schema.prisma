@@ -159,7 +159,8 @@ model Toner {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  stock        TonerStock?
+  /// 会社ごとの在庫。**品番マスタは全社共通**なので、ここは会社の数だけ並ぶ
+  stocks       TonerStock[]
   entries      TonerEntry[]
   orders       TonerOrder[]
   printers     TonerPrinter[]
@@ -216,9 +217,15 @@ model TonerPrice {
   @@map("toner_prices")
 }
 
-/// 在庫テーブル（品番ごとの現在数と累計）
+/// 在庫テーブル（**品番 × 会社**ごとの現在数と累計）
+///
+/// **会社ごとに数える単位はここ。** 品番マスタ（Toner）は全社で共通なので、
+/// 「A 社の P500H が 3 本、B 社の P500H が 1 本」を分けて持てるのはこの表だけ。
+/// 行が無い組み合わせは在庫 0 と同じ意味（受け入れて初めて行ができる）
 model TonerStock {
-  tonerId String @id @map("toner_id")
+  tonerId   String  @map("toner_id")
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id])
 
   /// 現在庫。搬入で増え、持ち出しで減る
   quantity Int @default(0)
@@ -233,6 +240,8 @@ model TonerStock {
 
   toner Toner @relation(fields: [tonerId], references: [id], onDelete: Cascade)
 
+  @@id([tonerId, companyId])
+  @@index([companyId])
   @@map("toner_stocks")
 }
 
@@ -242,6 +251,11 @@ model TonerEntry {
   userId  String      @map("user_id")
   tonerId String      @map("toner_id")
   action  TonerAction
+
+  /// どの会社の受け払いか。**在庫を動かした先と必ず一致させる**
+  /// （TonerStock も「品番 × 会社」で持っているため）
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id])
 
   /// 操作した本数。常に 0 以上。登録は 0
   quantity Int @default(0)
@@ -269,6 +283,10 @@ model TonerEntry {
 model TonerOrder {
   id      Int    @id @default(autoincrement())
   tonerId String @map("toner_id")
+
+  /// どの会社の注文か。搬入して在庫になる先と揃える
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id])
 
   /// 注文した人。職員番号（数字 6〜10 桁）か、未入力のときは「ゲスト」。
   /// この列を足す前の注文は持っていないので null を許す
@@ -472,6 +490,12 @@ model PrinterAlert {
 model PrinterAsset {
   id Int @id @default(autoincrement())
 
+  /// 持っている会社。**在庫と受け払いを分ける単位**（Company 参照）。
+  /// 機器の状態・印刷枚数・修理履歴は全社まとめて見るので、
+  /// この列は絞り込みと表示のために持つ。会社を消せないよう Restrict にする
+  companyId Int     @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id])
+
   /// 部署
   department String?
 
@@ -554,6 +578,48 @@ model PrinterAsset {
 /// 台帳に会社名と電話番号を直接持たせると、同じ業者を見ている機器のぶんだけ
 /// 同じ番号を writing することになり、番号が変わったときに直し漏れる。
 /// マスタにして台帳から参照する。
+/// 機器とトナーを持っている会社。
+///
+/// **在庫と受け払いを分ける単位。** 同じグループの別法人がそれぞれ機器を持ち、
+/// トナーを自分の分だけ数えたいので、持ち出し・搬入・棚卸・注文・請求書は
+/// この単位で集計する。逆に、機器の状態・印刷枚数・修理履歴は
+/// 全社まとめて見る（どこで何が起きているかは横断で見たいため）。
+///
+/// **品番マスタ（Toner）は会社で分けない。** 同じ品番を各社が使うので、
+/// マスタと価格の履歴は 1 か所にまとめ、**在庫（TonerStock）を
+/// 「品番 × 会社」で持つ**ことで会社ごとの数になる。
+/// その会社が使う品番は、会社の機器に紐づいたトナーから引ける。
+///
+/// **これは「見せない」仕組みではない。** 認証を持たないシステムなので、
+/// 画面のセレクタで切り替えるだけで誰でも他社を見られる。
+/// 閲覧を本当に制限するならログインが要る
+model Company {
+  id Int @id @default(autoincrement())
+
+  /// 会社名。セレクタの見出しになるので重複させない
+  name String @unique
+
+  /// 並び順。よく使う会社を上に出すために持つ。同値なら名前順
+  sortOrder Int @default(0) @map("sort_order")
+
+  /// 略称や管理上の覚え書き
+  note String?
+
+  /// 無効にした日時。null なら有効。
+  /// **削除の代わり。** 機器・在庫・履歴がぶら下がっているので消せない
+  disabledAt DateTime? @map("disabled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  assets  PrinterAsset[]
+  stocks  TonerStock[]
+  entries TonerEntry[]
+  orders  TonerOrder[]
+
+  @@map("companies")
+}
+
 model MaintVendor {
   id Int @id @default(autoincrement())
 

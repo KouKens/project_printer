@@ -15,6 +15,7 @@ const class_validator_1 = require("class-validator");
 class CreateTonerEntryDto {
     action;
     userId;
+    companyId;
     tonerId;
     name;
     quantity;
@@ -33,6 +34,12 @@ __decorate([
     (0, class_validator_1.MaxLength)(64),
     __metadata("design:type", String)
 ], CreateTonerEntryDto.prototype, "userId", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '会社を選んでください' }),
+    (0, class_validator_1.Min)(1, { message: '会社を選んでください' }),
+    __metadata("design:type", Number)
+], CreateTonerEntryDto.prototype, "companyId", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)({ message: 'トナーIDを読み取ってください' }),

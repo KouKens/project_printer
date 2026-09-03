@@ -52,6 +52,9 @@ let PrintersController = class PrintersController {
     dumpCounters(id) {
         return this.service.dumpCounters(id);
     }
+    dumpSupplies(id) {
+        return this.service.dumpSupplies(id);
+    }
     createMany(dto) {
         return this.service.createMany(dto);
     }
@@ -112,6 +115,13 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], PrintersController.prototype, "dumpCounters", null);
+__decorate([
+    (0, common_1.Get)(':id/supplies'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], PrintersController.prototype, "dumpSupplies", null);
 __decorate([
     (0, common_1.Post)('bulk'),
     __param(0, (0, common_1.Body)()),

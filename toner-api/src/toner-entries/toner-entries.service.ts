@@ -69,6 +69,8 @@ export class TonerEntriesService {
           await this.apply(tx, {
             action: dto.action,
             userId: dto.userId,
+            // 会社はまとめ単位で 1 つ。1 回の伝票が会社をまたぐことは無い
+            companyId: dto.companyId,
             tonerId: item.tonerId,
             name: item.name,
             quantity: item.quantity,
@@ -107,19 +109,20 @@ export class TonerEntriesService {
       );
     }
 
+    // 在庫の行はここでは作らない。「品番 × 会社」なので、
+    // どの会社の分かは搬入して初めて決まる
     const toner = await tx.toner.create({
       data: {
         id: dto.tonerId,
         name: dto.name?.trim() || null,
-        stock: { create: {} },
       },
-      include: { stock: true },
     });
 
     await tx.tonerEntry.create({
       data: {
         userId: dto.userId,
         tonerId: dto.tonerId,
+        companyId: dto.companyId,
         action: 'REGISTER',
         quantity: 0,
         balance: 0,
@@ -144,20 +147,18 @@ export class TonerEntriesService {
   ): Promise<EntryResult> {
     const count = dto.quantity ?? 1;
 
-    const toner = await this.requireToner(tx, dto.tonerId);
+    const toner = await this.requireToner(tx, dto.tonerId, dto.companyId);
 
-    const stock = await tx.tonerStock.update({
-      where: { tonerId: dto.tonerId },
-      data: {
-        quantity: { increment: count },
-        received: { increment: count },
-      },
+    const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+      quantity: count,
+      received: count,
     });
 
     await tx.tonerEntry.create({
       data: {
         userId: dto.userId,
         tonerId: dto.tonerId,
+        companyId: dto.companyId,
         action: 'RECEIVE',
         quantity: count,
         balance: stock.quantity,
@@ -173,7 +174,7 @@ export class TonerEntriesService {
   private async issue(tx: Tx, dto: CreateTonerEntryDto): Promise<EntryResult> {
     const count = dto.quantity ?? 1;
 
-    const toner = await this.requireToner(tx, dto.tonerId);
+    const toner = await this.requireToner(tx, dto.tonerId, dto.companyId);
     const current = toner.stock?.quantity ?? 0;
 
     if (current < count) {
@@ -182,15 +183,15 @@ export class TonerEntriesService {
       );
     }
 
-    const stock = await tx.tonerStock.update({
-      where: { tonerId: dto.tonerId },
-      data: { quantity: { decrement: count } },
+    const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+      quantity: -count,
     });
 
     await tx.tonerEntry.create({
       data: {
         userId: dto.userId,
         tonerId: dto.tonerId,
+        companyId: dto.companyId,
         action: 'ISSUE',
         quantity: count,
         balance: stock.quantity,
@@ -212,7 +213,7 @@ export class TonerEntriesService {
   ): Promise<EntryResult> {
     const count = dto.quantity ?? 1;
 
-    const toner = await this.requireToner(tx, dto.tonerId);
+    const toner = await this.requireToner(tx, dto.tonerId, dto.companyId);
 
     const received = toner.stock?.received ?? 0;
     const disposed = toner.stock?.disposed ?? 0;
@@ -226,15 +227,15 @@ export class TonerEntriesService {
       );
     }
 
-    const stock = await tx.tonerStock.update({
-      where: { tonerId: dto.tonerId },
-      data: { disposed: { increment: count } },
+    const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+      disposed: count,
     });
 
     await tx.tonerEntry.create({
       data: {
         userId: dto.userId,
         tonerId: dto.tonerId,
+        companyId: dto.companyId,
         action: 'DISPOSE',
         quantity: count,
         balance: stock.quantity,
@@ -265,12 +266,13 @@ export class TonerEntriesService {
        */
       const toners = await tx.toner.findMany({
         where: { id: { in: dto.counts.map((count) => count.tonerId) } },
-        include: { stock: true },
+        // 在庫は「品番 × 会社」。この会社の行だけを見て合わせる
+        include: { stocks: { where: { companyId: dto.companyId } } },
       });
       const known = new Map(toners.map((toner) => [toner.id, toner]));
       /** 書き換えたあとの在庫。同じ品番が 2 行来ても直前の結果から続けて数える */
       const quantities = new Map(
-        toners.map((toner) => [toner.id, toner.stock?.quantity ?? 0]),
+        toners.map((toner) => [toner.id, toner.stocks[0]?.quantity ?? 0]),
       );
 
       const rows: StockTakeRow[] = [];
@@ -307,8 +309,17 @@ export class TonerEntriesService {
         }
 
         await tx.tonerStock.upsert({
-          where: { tonerId: toner.id },
-          create: { tonerId: toner.id, quantity: count.counted },
+          where: {
+            tonerId_companyId: {
+              tonerId: toner.id,
+              companyId: dto.companyId,
+            },
+          },
+          create: {
+            tonerId: toner.id,
+            companyId: dto.companyId,
+            quantity: count.counted,
+          },
           update: { quantity: count.counted },
         });
         quantities.set(toner.id, count.counted);
@@ -317,6 +328,7 @@ export class TonerEntriesService {
           data: {
             userId,
             tonerId: toner.id,
+            companyId: dto.companyId,
             action: 'ADJUST',
             // quantity は 0 以上で持つ決まりなので、増減の向きは balance で読む
             quantity: Math.abs(diff),
@@ -339,22 +351,32 @@ export class TonerEntriesService {
   }
 
   /** 在庫一覧 */
-  async findStock() {
+  /**
+   * 在庫の一覧。**会社ごと。** 棚卸しと受付の候補がここから作られる。
+   *
+   * 品番マスタは全社共通なので、行はどの会社でも同じ数だけ並ぶ。
+   * その会社で一度も受け入れていない品番は在庫の行が無く、0 本として出る
+   */
+  async findStock(companyId: number) {
     const toners = await this.prisma.toner.findMany({
-      include: { stock: true },
+      include: { stocks: { where: { companyId } } },
       orderBy: { id: 'asc' },
     });
 
-    return toners.map((t) => ({
-      id: t.id,
-      name: t.name,
-      // 棚卸しの画面が同じ品番の色違いを見分けるのに使う
-      color: t.color,
-      quantity: t.stock?.quantity ?? 0,
-      received: t.stock?.received ?? 0,
-      disposed: t.stock?.disposed ?? 0,
-      updatedAt: t.stock?.updatedAt ?? t.updatedAt,
-    }));
+    return toners.map((t) => {
+      // 会社で絞ってあるので 0 件か 1 件
+      const stock = t.stocks[0] ?? null;
+      return {
+        id: t.id,
+        name: t.name,
+        // 棚卸しの画面が同じ品番の色違いを見分けるのに使う
+        color: t.color,
+        quantity: stock?.quantity ?? 0,
+        received: stock?.received ?? 0,
+        disposed: stock?.disposed ?? 0,
+        updatedAt: stock?.updatedAt ?? t.updatedAt,
+      };
+    });
   }
 
   /**
@@ -386,9 +408,15 @@ export class TonerEntriesService {
         );
       }
 
-      const stock = await tx.tonerStock.findUnique({
-        where: { tonerId: entry.tonerId },
-      });
+      // 履歴が持っている会社の在庫を戻す。他社の数を動かさないための鍵
+      const stockKey = {
+        tonerId_companyId: {
+          tonerId: entry.tonerId,
+          companyId: entry.companyId,
+        },
+      };
+
+      const stock = await tx.tonerStock.findUnique({ where: stockKey });
       const quantity = stock?.quantity ?? 0;
       const received = stock?.received ?? 0;
       const disposed = stock?.disposed ?? 0;
@@ -407,7 +435,7 @@ export class TonerEntriesService {
           );
         }
         await tx.tonerStock.update({
-          where: { tonerId: entry.tonerId },
+          where: stockKey,
           data: {
             quantity: { decrement: count },
             received: { decrement: count },
@@ -415,12 +443,12 @@ export class TonerEntriesService {
         });
       } else if (entry.action === 'ISSUE') {
         await tx.tonerStock.update({
-          where: { tonerId: entry.tonerId },
+          where: stockKey,
           data: { quantity: { increment: count } },
         });
       } else if (entry.action === 'DISPOSE') {
         await tx.tonerStock.update({
-          where: { tonerId: entry.tonerId },
+          where: stockKey,
           data: { disposed: { decrement: Math.min(count, disposed) } },
         });
       }
@@ -428,9 +456,7 @@ export class TonerEntriesService {
 
       await tx.tonerEntry.delete({ where: { id } });
 
-      const after = await tx.tonerStock.findUnique({
-        where: { tonerId: entry.tonerId },
-      });
+      const after = await tx.tonerStock.findUnique({ where: stockKey });
 
       return {
         id,
@@ -460,10 +486,15 @@ export class TonerEntriesService {
    * 既定は直近 60 日。区分・品番で絞れる。
    * 搬入日（receivedOn）は搬入の行だけに入る
    */
+  /**
+   * 受け払いの履歴。**会社ごと**（トナー入出状況の画面用）。
+   * `companyId` を渡さなければ全社まとめて返す
+   */
   async findHistory(params: {
     days?: number;
     action?: string;
     tonerId?: string;
+    companyId?: number;
   }) {
     const days = params.days && params.days > 0 ? params.days : 60;
     const from = new Date();
@@ -474,6 +505,7 @@ export class TonerEntriesService {
         createdAt: { gte: from },
         ...(params.action ? { action: params.action as TonerAction } : {}),
         ...(params.tonerId ? { tonerId: params.tonerId } : {}),
+        ...(params.companyId ? { companyId: params.companyId } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 1000,
@@ -484,6 +516,8 @@ export class TonerEntriesService {
       id: row.id,
       userId: row.userId,
       tonerId: row.tonerId,
+      /** どの会社の受け払いか。全社で見るときに列として出す */
+      companyId: row.companyId,
       name: row.toner.name,
       color: row.toner.color,
       action: row.action,
@@ -498,10 +532,16 @@ export class TonerEntriesService {
 
   // ── 内部ヘルパー ──────────────────────
 
-  private async requireToner(tx: Tx, tonerId: string) {
+  /**
+   * 品番を引き、**その会社の在庫行だけ**を添えて返す。
+   *
+   * 在庫は「品番 × 会社」なので、会社を指定しないと他社の数を掴んでしまう。
+   * 行が無いのは在庫 0 と同じ意味なので、無くてもここでは止めない
+   */
+  private async requireToner(tx: Tx, tonerId: string, companyId: number) {
     const toner = await tx.toner.findUnique({
       where: { id: tonerId },
-      include: { stock: true },
+      include: { stocks: { where: { companyId } } },
     });
 
     if (!toner) {
@@ -509,7 +549,42 @@ export class TonerEntriesService {
         `${tonerId} は未登録です。先に登録を行ってください`,
       );
     }
-    return toner;
+    return { ...toner, stock: toner.stocks[0] ?? null };
+  }
+
+  /**
+   * その会社の在庫を動かす。**行が無ければ作る。**
+   *
+   * 在庫は「品番 × 会社」で、行ができるのは初めて受け入れたとき。
+   * 品番を登録した時点では会社が決まらないので、ここで upsert する
+   */
+  private bumpStock(
+    tx: Tx,
+    tonerId: string,
+    companyId: number,
+    delta: { quantity?: number; received?: number; disposed?: number },
+  ) {
+    return tx.tonerStock.upsert({
+      where: { tonerId_companyId: { tonerId, companyId } },
+      create: {
+        tonerId,
+        companyId,
+        quantity: delta.quantity ?? 0,
+        received: delta.received ?? 0,
+        disposed: delta.disposed ?? 0,
+      },
+      update: {
+        ...(delta.quantity === undefined
+          ? {}
+          : { quantity: { increment: delta.quantity } }),
+        ...(delta.received === undefined
+          ? {}
+          : { received: { increment: delta.received } }),
+        ...(delta.disposed === undefined
+          ? {}
+          : { disposed: { increment: delta.disposed } }),
+      },
+    });
   }
 
   private toResult(

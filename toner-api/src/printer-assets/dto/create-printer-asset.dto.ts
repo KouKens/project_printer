@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsIP,
   IsIn,
@@ -20,6 +21,15 @@ const DATE_MESSAGE = 'YYYY-MM-DD の形式で入力してください';
  * 更新時に null を送れば値を消せる。
  */
 export class CreatePrinterAssetDto {
+  /**
+   * 持っている会社。**必須。**
+   * トナーの在庫と受け払いをこの単位で数えるので、機器には必ず持たせる
+   */
+  @Type(() => Number)
+  @IsInt({ message: '会社を選んでください' })
+  @Min(1, { message: '会社を選んでください' })
+  companyId!: number;
+
   @IsOptional()
   @IsString()
   @MaxLength(120)

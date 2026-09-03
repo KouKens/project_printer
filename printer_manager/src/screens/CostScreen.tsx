@@ -29,6 +29,8 @@ type Catalog = {
 
 type CostRow = {
   id: number;
+  /** 持っている会社。全社まとめて出すので列として添える */
+  company: string | null;
   no: string | null;
   department: string | null;
   maker: string | null;
@@ -98,6 +100,7 @@ function perPage(value: number | null | undefined) {
 }
 
 type PrinterKey =
+  | 'company'
   | 'department'
   | 'no'
   | 'model'
@@ -119,6 +122,7 @@ const PRINTER_COLUMNS: {
   numeric?: boolean;
   group: 'asset' | 'catalog' | 'actual' | 'diff';
 }[] = [
+  { key: 'company', label: '会社', kind: 'text', group: 'asset' },
   { key: 'department', label: '部署', kind: 'text', group: 'asset' },
   { key: 'no', label: 'No.', kind: 'text', group: 'asset' },
   { key: 'model', label: '機種', kind: 'text', group: 'asset' },
@@ -161,6 +165,7 @@ function diffOf(row: CostRow): number | null {
 
 function pickPrinter(row: CostRow, key: PrinterKey): unknown {
   switch (key) {
+    case 'company':
     case 'department':
     case 'no':
       return row[key];
@@ -301,6 +306,9 @@ export default function CostScreen() {
 
   const cellOf = (row: CostRow, key: PrinterKey) => {
     switch (key) {
+      // 全社をまとめて出す画面なので、どこの機器かを示す
+      case 'company':
+        return row.company ?? <span className="dt-muted">—</span>;
       case 'department':
         return row.department ?? <span className="dt-muted">—</span>;
       case 'no':

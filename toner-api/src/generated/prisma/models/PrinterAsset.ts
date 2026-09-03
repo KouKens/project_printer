@@ -30,6 +30,7 @@ export type AggregatePrinterAsset = {
 
 export type PrinterAssetAvgAggregateOutputType = {
   id: number | null
+  companyId: number | null
   purchasePrice: number | null
   maintVendorId: number | null
   maintFee: number | null
@@ -37,6 +38,7 @@ export type PrinterAssetAvgAggregateOutputType = {
 
 export type PrinterAssetSumAggregateOutputType = {
   id: number | null
+  companyId: number | null
   purchasePrice: number | null
   maintVendorId: number | null
   maintFee: number | null
@@ -44,6 +46,7 @@ export type PrinterAssetSumAggregateOutputType = {
 
 export type PrinterAssetMinAggregateOutputType = {
   id: number | null
+  companyId: number | null
   department: string | null
   no: string | null
   ipAddress: string | null
@@ -68,6 +71,7 @@ export type PrinterAssetMinAggregateOutputType = {
 
 export type PrinterAssetMaxAggregateOutputType = {
   id: number | null
+  companyId: number | null
   department: string | null
   no: string | null
   ipAddress: string | null
@@ -92,6 +96,7 @@ export type PrinterAssetMaxAggregateOutputType = {
 
 export type PrinterAssetCountAggregateOutputType = {
   id: number
+  companyId: number
   department: number
   no: number
   ipAddress: number
@@ -118,6 +123,7 @@ export type PrinterAssetCountAggregateOutputType = {
 
 export type PrinterAssetAvgAggregateInputType = {
   id?: true
+  companyId?: true
   purchasePrice?: true
   maintVendorId?: true
   maintFee?: true
@@ -125,6 +131,7 @@ export type PrinterAssetAvgAggregateInputType = {
 
 export type PrinterAssetSumAggregateInputType = {
   id?: true
+  companyId?: true
   purchasePrice?: true
   maintVendorId?: true
   maintFee?: true
@@ -132,6 +139,7 @@ export type PrinterAssetSumAggregateInputType = {
 
 export type PrinterAssetMinAggregateInputType = {
   id?: true
+  companyId?: true
   department?: true
   no?: true
   ipAddress?: true
@@ -156,6 +164,7 @@ export type PrinterAssetMinAggregateInputType = {
 
 export type PrinterAssetMaxAggregateInputType = {
   id?: true
+  companyId?: true
   department?: true
   no?: true
   ipAddress?: true
@@ -180,6 +189,7 @@ export type PrinterAssetMaxAggregateInputType = {
 
 export type PrinterAssetCountAggregateInputType = {
   id?: true
+  companyId?: true
   department?: true
   no?: true
   ipAddress?: true
@@ -291,6 +301,7 @@ export type PrinterAssetGroupByArgs<ExtArgs extends runtime.Types.Extensions.Int
 
 export type PrinterAssetGroupByOutputType = {
   id: number
+  companyId: number
   department: string | null
   no: string | null
   ipAddress: string | null
@@ -338,6 +349,7 @@ export type PrinterAssetWhereInput = {
   OR?: Prisma.PrinterAssetWhereInput[]
   NOT?: Prisma.PrinterAssetWhereInput | Prisma.PrinterAssetWhereInput[]
   id?: Prisma.IntFilter<"PrinterAsset"> | number
+  companyId?: Prisma.IntFilter<"PrinterAsset"> | number
   department?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   no?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   ipAddress?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
@@ -358,6 +370,7 @@ export type PrinterAssetWhereInput = {
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
+  company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   maintVendor?: Prisma.XOR<Prisma.MaintVendorNullableScalarRelationFilter, Prisma.MaintVendorWhereInput> | null
   repairs?: Prisma.RepairRecordListRelationFilter
   toners?: Prisma.TonerPrinterListRelationFilter
@@ -365,6 +378,7 @@ export type PrinterAssetWhereInput = {
 
 export type PrinterAssetOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   department?: Prisma.SortOrderInput | Prisma.SortOrder
   no?: Prisma.SortOrderInput | Prisma.SortOrder
   ipAddress?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -385,6 +399,7 @@ export type PrinterAssetOrderByWithRelationInput = {
   countLayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  company?: Prisma.CompanyOrderByWithRelationInput
   maintVendor?: Prisma.MaintVendorOrderByWithRelationInput
   repairs?: Prisma.RepairRecordOrderByRelationAggregateInput
   toners?: Prisma.TonerPrinterOrderByRelationAggregateInput
@@ -395,6 +410,7 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.PrinterAssetWhereInput | Prisma.PrinterAssetWhereInput[]
   OR?: Prisma.PrinterAssetWhereInput[]
   NOT?: Prisma.PrinterAssetWhereInput | Prisma.PrinterAssetWhereInput[]
+  companyId?: Prisma.IntFilter<"PrinterAsset"> | number
   department?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   no?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   ipAddress?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
@@ -415,6 +431,7 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
+  company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
   maintVendor?: Prisma.XOR<Prisma.MaintVendorNullableScalarRelationFilter, Prisma.MaintVendorWhereInput> | null
   repairs?: Prisma.RepairRecordListRelationFilter
   toners?: Prisma.TonerPrinterListRelationFilter
@@ -422,6 +439,7 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
 
 export type PrinterAssetOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   department?: Prisma.SortOrderInput | Prisma.SortOrder
   no?: Prisma.SortOrderInput | Prisma.SortOrder
   ipAddress?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -454,6 +472,7 @@ export type PrinterAssetScalarWhereWithAggregatesInput = {
   OR?: Prisma.PrinterAssetScalarWhereWithAggregatesInput[]
   NOT?: Prisma.PrinterAssetScalarWhereWithAggregatesInput | Prisma.PrinterAssetScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"PrinterAsset"> | number
+  companyId?: Prisma.IntWithAggregatesFilter<"PrinterAsset"> | number
   department?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null
   no?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null
   ipAddress?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null
@@ -496,6 +515,7 @@ export type PrinterAssetCreateInput = {
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
   maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput
   repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput
   toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput
@@ -503,6 +523,7 @@ export type PrinterAssetCreateInput = {
 
 export type PrinterAssetUncheckedCreateInput = {
   id?: number
+  companyId: number
   department?: string | null
   no?: string | null
   ipAddress?: string | null
@@ -547,6 +568,7 @@ export type PrinterAssetUpdateInput = {
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
   maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput
   repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput
   toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput
@@ -554,6 +576,7 @@ export type PrinterAssetUpdateInput = {
 
 export type PrinterAssetUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -580,6 +603,7 @@ export type PrinterAssetUncheckedUpdateInput = {
 
 export type PrinterAssetCreateManyInput = {
   id?: number
+  companyId: number
   department?: string | null
   no?: string | null
   ipAddress?: string | null
@@ -626,6 +650,7 @@ export type PrinterAssetUpdateManyMutationInput = {
 
 export type PrinterAssetUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -655,6 +680,7 @@ export type PrinterAssetScalarRelationFilter = {
 
 export type PrinterAssetCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   department?: Prisma.SortOrder
   no?: Prisma.SortOrder
   ipAddress?: Prisma.SortOrder
@@ -679,6 +705,7 @@ export type PrinterAssetCountOrderByAggregateInput = {
 
 export type PrinterAssetAvgOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   maintVendorId?: Prisma.SortOrder
   maintFee?: Prisma.SortOrder
@@ -686,6 +713,7 @@ export type PrinterAssetAvgOrderByAggregateInput = {
 
 export type PrinterAssetMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   department?: Prisma.SortOrder
   no?: Prisma.SortOrder
   ipAddress?: Prisma.SortOrder
@@ -710,6 +738,7 @@ export type PrinterAssetMaxOrderByAggregateInput = {
 
 export type PrinterAssetMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   department?: Prisma.SortOrder
   no?: Prisma.SortOrder
   ipAddress?: Prisma.SortOrder
@@ -734,6 +763,7 @@ export type PrinterAssetMinOrderByAggregateInput = {
 
 export type PrinterAssetSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   purchasePrice?: Prisma.SortOrder
   maintVendorId?: Prisma.SortOrder
   maintFee?: Prisma.SortOrder
@@ -765,6 +795,48 @@ export type PrinterAssetUpdateOneRequiredWithoutTonersNestedInput = {
 
 export type EnumCountLayoutFieldUpdateOperationsInput = {
   set?: $Enums.CountLayout
+}
+
+export type PrinterAssetCreateNestedManyWithoutCompanyInput = {
+  create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutCompanyInput, Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput> | Prisma.PrinterAssetCreateWithoutCompanyInput[] | Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput | Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput[]
+  createMany?: Prisma.PrinterAssetCreateManyCompanyInputEnvelope
+  connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+}
+
+export type PrinterAssetUncheckedCreateNestedManyWithoutCompanyInput = {
+  create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutCompanyInput, Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput> | Prisma.PrinterAssetCreateWithoutCompanyInput[] | Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput | Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput[]
+  createMany?: Prisma.PrinterAssetCreateManyCompanyInputEnvelope
+  connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+}
+
+export type PrinterAssetUpdateManyWithoutCompanyNestedInput = {
+  create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutCompanyInput, Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput> | Prisma.PrinterAssetCreateWithoutCompanyInput[] | Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput | Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput[]
+  upsert?: Prisma.PrinterAssetUpsertWithWhereUniqueWithoutCompanyInput | Prisma.PrinterAssetUpsertWithWhereUniqueWithoutCompanyInput[]
+  createMany?: Prisma.PrinterAssetCreateManyCompanyInputEnvelope
+  set?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  disconnect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  delete?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  update?: Prisma.PrinterAssetUpdateWithWhereUniqueWithoutCompanyInput | Prisma.PrinterAssetUpdateWithWhereUniqueWithoutCompanyInput[]
+  updateMany?: Prisma.PrinterAssetUpdateManyWithWhereWithoutCompanyInput | Prisma.PrinterAssetUpdateManyWithWhereWithoutCompanyInput[]
+  deleteMany?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[]
+}
+
+export type PrinterAssetUncheckedUpdateManyWithoutCompanyNestedInput = {
+  create?: Prisma.XOR<Prisma.PrinterAssetCreateWithoutCompanyInput, Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput> | Prisma.PrinterAssetCreateWithoutCompanyInput[] | Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput | Prisma.PrinterAssetCreateOrConnectWithoutCompanyInput[]
+  upsert?: Prisma.PrinterAssetUpsertWithWhereUniqueWithoutCompanyInput | Prisma.PrinterAssetUpsertWithWhereUniqueWithoutCompanyInput[]
+  createMany?: Prisma.PrinterAssetCreateManyCompanyInputEnvelope
+  set?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  disconnect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  delete?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  connect?: Prisma.PrinterAssetWhereUniqueInput | Prisma.PrinterAssetWhereUniqueInput[]
+  update?: Prisma.PrinterAssetUpdateWithWhereUniqueWithoutCompanyInput | Prisma.PrinterAssetUpdateWithWhereUniqueWithoutCompanyInput[]
+  updateMany?: Prisma.PrinterAssetUpdateManyWithWhereWithoutCompanyInput | Prisma.PrinterAssetUpdateManyWithWhereWithoutCompanyInput[]
+  deleteMany?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[]
 }
 
 export type PrinterAssetCreateNestedManyWithoutMaintVendorInput = {
@@ -843,12 +915,14 @@ export type PrinterAssetCreateWithoutTonersInput = {
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
   maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput
   repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput
 }
 
 export type PrinterAssetUncheckedCreateWithoutTonersInput = {
   id?: number
+  companyId: number
   department?: string | null
   no?: string | null
   ipAddress?: string | null
@@ -908,12 +982,14 @@ export type PrinterAssetUpdateWithoutTonersInput = {
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
   maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput
   repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput
 }
 
 export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -937,6 +1013,111 @@ export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
   repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput
 }
 
+export type PrinterAssetCreateWithoutCompanyInput = {
+  department?: string | null
+  no?: string | null
+  ipAddress?: string | null
+  maker?: string | null
+  model?: string | null
+  serialNumber?: string | null
+  purchasedOn?: Date | string | null
+  purchasePrice?: number | null
+  contractNo?: string | null
+  maintContract?: string | null
+  maintStartOn?: Date | string | null
+  maintEndOn?: Date | string | null
+  maintDealOn?: Date | string | null
+  maintFee?: number | null
+  note?: string | null
+  disabledAt?: Date | string | null
+  countLayout?: $Enums.CountLayout
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput
+  repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput
+  toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput
+}
+
+export type PrinterAssetUncheckedCreateWithoutCompanyInput = {
+  id?: number
+  department?: string | null
+  no?: string | null
+  ipAddress?: string | null
+  maker?: string | null
+  model?: string | null
+  serialNumber?: string | null
+  purchasedOn?: Date | string | null
+  purchasePrice?: number | null
+  contractNo?: string | null
+  maintVendorId?: number | null
+  maintContract?: string | null
+  maintStartOn?: Date | string | null
+  maintEndOn?: Date | string | null
+  maintDealOn?: Date | string | null
+  maintFee?: number | null
+  note?: string | null
+  disabledAt?: Date | string | null
+  countLayout?: $Enums.CountLayout
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  repairs?: Prisma.RepairRecordUncheckedCreateNestedManyWithoutAssetInput
+  toners?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutAssetInput
+}
+
+export type PrinterAssetCreateOrConnectWithoutCompanyInput = {
+  where: Prisma.PrinterAssetWhereUniqueInput
+  create: Prisma.XOR<Prisma.PrinterAssetCreateWithoutCompanyInput, Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput>
+}
+
+export type PrinterAssetCreateManyCompanyInputEnvelope = {
+  data: Prisma.PrinterAssetCreateManyCompanyInput | Prisma.PrinterAssetCreateManyCompanyInput[]
+  skipDuplicates?: boolean
+}
+
+export type PrinterAssetUpsertWithWhereUniqueWithoutCompanyInput = {
+  where: Prisma.PrinterAssetWhereUniqueInput
+  update: Prisma.XOR<Prisma.PrinterAssetUpdateWithoutCompanyInput, Prisma.PrinterAssetUncheckedUpdateWithoutCompanyInput>
+  create: Prisma.XOR<Prisma.PrinterAssetCreateWithoutCompanyInput, Prisma.PrinterAssetUncheckedCreateWithoutCompanyInput>
+}
+
+export type PrinterAssetUpdateWithWhereUniqueWithoutCompanyInput = {
+  where: Prisma.PrinterAssetWhereUniqueInput
+  data: Prisma.XOR<Prisma.PrinterAssetUpdateWithoutCompanyInput, Prisma.PrinterAssetUncheckedUpdateWithoutCompanyInput>
+}
+
+export type PrinterAssetUpdateManyWithWhereWithoutCompanyInput = {
+  where: Prisma.PrinterAssetScalarWhereInput
+  data: Prisma.XOR<Prisma.PrinterAssetUpdateManyMutationInput, Prisma.PrinterAssetUncheckedUpdateManyWithoutCompanyInput>
+}
+
+export type PrinterAssetScalarWhereInput = {
+  AND?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[]
+  OR?: Prisma.PrinterAssetScalarWhereInput[]
+  NOT?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[]
+  id?: Prisma.IntFilter<"PrinterAsset"> | number
+  companyId?: Prisma.IntFilter<"PrinterAsset"> | number
+  department?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  no?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  ipAddress?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  maker?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  model?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  serialNumber?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  purchasedOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
+  purchasePrice?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
+  contractNo?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  maintVendorId?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
+  maintContract?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  maintStartOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
+  maintEndOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
+  maintDealOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
+  maintFee?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
+  note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
+  disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
+  countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
+  createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
+}
+
 export type PrinterAssetCreateWithoutMaintVendorInput = {
   department?: string | null
   no?: string | null
@@ -957,12 +1138,14 @@ export type PrinterAssetCreateWithoutMaintVendorInput = {
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
   repairs?: Prisma.RepairRecordCreateNestedManyWithoutAssetInput
   toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput
 }
 
 export type PrinterAssetUncheckedCreateWithoutMaintVendorInput = {
   id?: number
+  companyId: number
   department?: string | null
   no?: string | null
   ipAddress?: string | null
@@ -1012,33 +1195,6 @@ export type PrinterAssetUpdateManyWithWhereWithoutMaintVendorInput = {
   data: Prisma.XOR<Prisma.PrinterAssetUpdateManyMutationInput, Prisma.PrinterAssetUncheckedUpdateManyWithoutMaintVendorInput>
 }
 
-export type PrinterAssetScalarWhereInput = {
-  AND?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[]
-  OR?: Prisma.PrinterAssetScalarWhereInput[]
-  NOT?: Prisma.PrinterAssetScalarWhereInput | Prisma.PrinterAssetScalarWhereInput[]
-  id?: Prisma.IntFilter<"PrinterAsset"> | number
-  department?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  no?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  ipAddress?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  maker?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  model?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  serialNumber?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  purchasedOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
-  purchasePrice?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
-  contractNo?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  maintVendorId?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
-  maintContract?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  maintStartOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
-  maintEndOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
-  maintDealOn?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
-  maintFee?: Prisma.IntNullableFilter<"PrinterAsset"> | number | null
-  note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
-  disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
-  countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
-  createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
-  updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
-}
-
 export type PrinterAssetCreateWithoutRepairsInput = {
   department?: string | null
   no?: string | null
@@ -1059,12 +1215,14 @@ export type PrinterAssetCreateWithoutRepairsInput = {
   countLayout?: $Enums.CountLayout
   createdAt?: Date | string
   updatedAt?: Date | string
+  company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
   maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput
   toners?: Prisma.TonerPrinterCreateNestedManyWithoutAssetInput
 }
 
 export type PrinterAssetUncheckedCreateWithoutRepairsInput = {
   id?: number
+  companyId: number
   department?: string | null
   no?: string | null
   ipAddress?: string | null
@@ -1124,12 +1282,14 @@ export type PrinterAssetUpdateWithoutRepairsInput = {
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
   maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput
   toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput
 }
 
 export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1153,8 +1313,108 @@ export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
   toners?: Prisma.TonerPrinterUncheckedUpdateManyWithoutAssetNestedInput
 }
 
+export type PrinterAssetCreateManyCompanyInput = {
+  id?: number
+  department?: string | null
+  no?: string | null
+  ipAddress?: string | null
+  maker?: string | null
+  model?: string | null
+  serialNumber?: string | null
+  purchasedOn?: Date | string | null
+  purchasePrice?: number | null
+  contractNo?: string | null
+  maintVendorId?: number | null
+  maintContract?: string | null
+  maintStartOn?: Date | string | null
+  maintEndOn?: Date | string | null
+  maintDealOn?: Date | string | null
+  maintFee?: number | null
+  note?: string | null
+  disabledAt?: Date | string | null
+  countLayout?: $Enums.CountLayout
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PrinterAssetUpdateWithoutCompanyInput = {
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput
+  repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput
+  toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput
+}
+
+export type PrinterAssetUncheckedUpdateWithoutCompanyInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maintVendorId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput
+  toners?: Prisma.TonerPrinterUncheckedUpdateManyWithoutAssetNestedInput
+}
+
+export type PrinterAssetUncheckedUpdateManyWithoutCompanyInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maker?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  model?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  serialNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  purchasedOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  purchasePrice?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  contractNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maintVendorId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  maintContract?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  maintStartOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintEndOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintDealOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  maintFee?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type PrinterAssetCreateManyMaintVendorInput = {
   id?: number
+  companyId: number
   department?: string | null
   no?: string | null
   ipAddress?: string | null
@@ -1196,12 +1456,14 @@ export type PrinterAssetUpdateWithoutMaintVendorInput = {
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
   repairs?: Prisma.RepairRecordUpdateManyWithoutAssetNestedInput
   toners?: Prisma.TonerPrinterUpdateManyWithoutAssetNestedInput
 }
 
 export type PrinterAssetUncheckedUpdateWithoutMaintVendorInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1227,6 +1489,7 @@ export type PrinterAssetUncheckedUpdateWithoutMaintVendorInput = {
 
 export type PrinterAssetUncheckedUpdateManyWithoutMaintVendorInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  companyId?: Prisma.IntFieldUpdateOperationsInput | number
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   no?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   ipAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1290,6 +1553,7 @@ export type PrinterAssetCountOutputTypeCountTonersArgs<ExtArgs extends runtime.T
 
 export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  companyId?: boolean
   department?: boolean
   no?: boolean
   ipAddress?: boolean
@@ -1310,6 +1574,7 @@ export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.Internal
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
   repairs?: boolean | Prisma.PrinterAsset$repairsArgs<ExtArgs>
   toners?: boolean | Prisma.PrinterAsset$tonersArgs<ExtArgs>
@@ -1318,6 +1583,7 @@ export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.Internal
 
 export type PrinterAssetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  companyId?: boolean
   department?: boolean
   no?: boolean
   ipAddress?: boolean
@@ -1338,11 +1604,13 @@ export type PrinterAssetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
 }, ExtArgs["result"]["printerAsset"]>
 
 export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  companyId?: boolean
   department?: boolean
   no?: boolean
   ipAddress?: boolean
@@ -1363,11 +1631,13 @@ export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   countLayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
 }, ExtArgs["result"]["printerAsset"]>
 
 export type PrinterAssetSelectScalar = {
   id?: boolean
+  companyId?: boolean
   department?: boolean
   no?: boolean
   ipAddress?: boolean
@@ -1390,29 +1660,39 @@ export type PrinterAssetSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "disabledAt" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>
+export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "disabledAt" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>
 export type PrinterAssetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
   repairs?: boolean | Prisma.PrinterAsset$repairsArgs<ExtArgs>
   toners?: boolean | Prisma.PrinterAsset$tonersArgs<ExtArgs>
   _count?: boolean | Prisma.PrinterAssetCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type PrinterAssetIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
 }
 export type PrinterAssetIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
 }
 
 export type $PrinterAssetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "PrinterAsset"
   objects: {
+    company: Prisma.$CompanyPayload<ExtArgs>
     maintVendor: Prisma.$MaintVendorPayload<ExtArgs> | null
     repairs: Prisma.$RepairRecordPayload<ExtArgs>[]
     toners: Prisma.$TonerPrinterPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
+    /**
+     * 持っている会社。**在庫と受け払いを分ける単位**（Company 参照）。
+     * 機器の状態・印刷枚数・修理履歴は全社まとめて見るので、
+     * この列は絞り込みと表示のために持つ。会社を消せないよう Restrict にする
+     */
+    companyId: number
     /**
      * 部署
      */
@@ -1884,6 +2164,7 @@ readonly fields: PrinterAssetFieldRefs;
  */
 export interface Prisma__PrinterAssetClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  company<T extends Prisma.CompanyDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompanyDefaultArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   maintVendor<T extends Prisma.PrinterAsset$maintVendorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterAsset$maintVendorArgs<ExtArgs>>): Prisma.Prisma__MaintVendorClient<runtime.Types.Result.GetResult<Prisma.$MaintVendorPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   repairs<T extends Prisma.PrinterAsset$repairsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterAsset$repairsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RepairRecordPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   toners<T extends Prisma.PrinterAsset$tonersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PrinterAsset$tonersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TonerPrinterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -1917,6 +2198,7 @@ export interface Prisma__PrinterAssetClient<T, Null = never, ExtArgs extends run
  */
 export interface PrinterAssetFieldRefs {
   readonly id: Prisma.FieldRef<"PrinterAsset", 'Int'>
+  readonly companyId: Prisma.FieldRef<"PrinterAsset", 'Int'>
   readonly department: Prisma.FieldRef<"PrinterAsset", 'String'>
   readonly no: Prisma.FieldRef<"PrinterAsset", 'String'>
   readonly ipAddress: Prisma.FieldRef<"PrinterAsset", 'String'>

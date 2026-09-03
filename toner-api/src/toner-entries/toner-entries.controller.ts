@@ -35,19 +35,32 @@ export class TonerEntriesController {
     return this.service.findRecent();
   }
 
-  /** 受付の履歴。入出庫の画面で使う。既定は直近 60 日 */
+  /**
+   * 受付の履歴。トナー入出状況の画面で使う。既定は直近 60 日。
+   * `companyId` を付けるとその会社の分だけ返す（付けなければ全社）
+   */
   @Get('history')
   findHistory(
     @Query('days', new DefaultValuePipe(60), ParseIntPipe) days: number,
     @Query('action') action?: string,
     @Query('tonerId') tonerId?: string,
+    @Query('companyId') companyId?: string,
   ) {
-    return this.service.findHistory({ days, action, tonerId });
+    return this.service.findHistory({
+      days,
+      action,
+      tonerId,
+      companyId: companyId ? Number(companyId) : undefined,
+    });
   }
 
+  /**
+   * 在庫の一覧。**会社ごと。** 棚卸しと受付の候補がここから作られるので、
+   * `companyId` は必須にする（省くと他社の数を混ぜてしまう）
+   */
   @Get('stock')
-  findStock() {
-    return this.service.findStock();
+  findStock(@Query('companyId', ParseIntPipe) companyId: number) {
+    return this.service.findStock(companyId);
   }
 
   /** 受付の記録を取り消す。在庫は操作の逆を当てて戻す */

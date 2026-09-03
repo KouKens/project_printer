@@ -14,6 +14,9 @@ const common_1 = require("@nestjs/common");
 const date_1 = require("../common/date");
 const text_1 = require("../common/text");
 const prisma_service_1 = require("../prisma/prisma.service");
+function sumStock(stocks) {
+    return stocks.reduce((total, stock) => total + stock.quantity, 0);
+}
 let TonersService = class TonersService {
     prisma;
     constructor(prisma) {
@@ -35,7 +38,6 @@ let TonersService = class TonersService {
                     recycled: dto.recycled ?? false,
                     alertThreshold: dto.alertThreshold ?? null,
                     yieldPages: dto.yieldPages ?? null,
-                    stock: { create: {} },
                     printers: {
                         create: (dto.printerAssetIds ?? []).map((printerAssetId) => ({
                             printerAssetId,
@@ -62,7 +64,7 @@ let TonersService = class TonersService {
             where: includeDisabled ? {} : { disabledAt: null },
             orderBy: [{ name: 'asc' }, { id: 'asc' }],
             include: {
-                stock: true,
+                stocks: true,
                 prices: { orderBy: { effectiveFrom: 'desc' } },
                 printers: {
                     include: {
@@ -86,7 +88,7 @@ let TonersService = class TonersService {
         const toner = await this.prisma.toner.findUnique({
             where: { id },
             include: {
-                stock: true,
+                stocks: true,
                 prices: { orderBy: { effectiveFrom: 'desc' } },
                 printers: {
                     include: {
@@ -173,6 +175,56 @@ let TonersService = class TonersService {
         });
         return this.findOne(id);
     }
+    async remove(id) {
+        const toner = await this.prisma.toner.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: {
+                        entries: true,
+                        orders: true,
+                        invoiceLines: true,
+                        printers: true,
+                        prices: true,
+                    },
+                },
+                stocks: true,
+            },
+        });
+        if (!toner) {
+            throw new common_1.NotFoundException(`${id} は登録されていません`);
+        }
+        if (toner.disabledAt === null) {
+            throw new common_1.BadRequestException(`${id} はまだ有効です。先に無効にしてから削除してください`);
+        }
+        const blockers = [];
+        if (toner._count.entries > 0) {
+            blockers.push(`受付の履歴 ${toner._count.entries} 件`);
+        }
+        if (toner._count.orders > 0) {
+            blockers.push(`注文 ${toner._count.orders} 件`);
+        }
+        if (toner._count.invoiceLines > 0) {
+            blockers.push(`請求書の明細 ${toner._count.invoiceLines} 件`);
+        }
+        const quantity = sumStock(toner.stocks);
+        if (quantity > 0) {
+            blockers.push(`在庫 ${quantity} 本`);
+        }
+        if (blockers.length > 0) {
+            throw new common_1.BadRequestException(`${id} は${blockers.join('・')}から参照されているため削除できません。` +
+                '無効のままにしておけば、一覧と選択肢からは外れたまま記録が残ります');
+        }
+        await this.prisma.toner.delete({ where: { id } });
+        return {
+            id,
+            deleted: true,
+            removed: {
+                prices: toner._count.prices,
+                printers: toner._count.printers,
+            },
+        };
+    }
     async findPrices(id) {
         const toner = await this.prisma.toner.findUnique({
             where: { id },
@@ -230,7 +282,7 @@ let TonersService = class TonersService {
             priceFrom: current ? (0, date_1.fromDate)(current.effectiveFrom) : null,
             priceCount: toner.prices.length,
             disabledAt: toner.disabledAt,
-            stock: toner.stock?.quantity ?? 0,
+            stock: sumStock(toner.stocks),
             printers: toner.printers.map((link) => ({
                 id: link.asset.id,
                 department: link.asset.department,

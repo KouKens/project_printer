@@ -279,6 +279,30 @@ export default function TonerScreen() {
         : [...prev.printerAssetIds, id],
     }));
 
+  /** 表示中の機器がすべて選択済みか。押しても何も起きないボタンを止めるため */
+  const shownAllSelected =
+    shownPrinters.length > 0 &&
+    shownPrinters.every((printer) => form.printerAssetIds.includes(printer.id));
+
+  /**
+   * いま表示している機器をまとめて選ぶ。
+   *
+   * 同じトナーが 20 台に対応することがあり、1 台ずつ押していられない。
+   * **絞り込みの外で選んである機器は残す。** 絞り込みを変えながら
+   * 「RICOH の分」「Canon の分」と足していけるようにするため、
+   * 置き換えではなく追加にする（外すときは隣の「選択を外す」）
+   */
+  const selectShown = () =>
+    setForm((prev) => ({
+      ...prev,
+      printerAssetIds: [
+        ...prev.printerAssetIds,
+        ...shownPrinters
+          .filter((printer) => !prev.printerAssetIds.includes(printer.id))
+          .map((printer) => printer.id),
+      ],
+    }));
+
   /** マスタ登録。対応機器と初回価格も一緒に送る */
   const create = async () => {
     setBusy(true);
@@ -448,6 +472,51 @@ export default function TonerScreen() {
     }
   };
 
+  /**
+   * 無効にした品番を完全に消す。**登録し間違えたものの後始末。**
+   *
+   * 普段は無効のままにしておけばよく、これは戻す必要が無いと分かっている行だけ。
+   * 元に戻せないので、何が一緒に消えるかを数えて確認の文面に出す。
+   * 受付の履歴・注文・請求書から指されているものは API 側が断る
+   */
+  const remove = async (toner: SavedToner) => {
+    const label = toner.name ?? toner.id;
+    const alsoGone = [
+      toner.printers.length > 0 ? `対応プリンター ${toner.printers.length} 台の紐づけ` : null,
+      toner.priceCount > 0 ? `価格の履歴 ${toner.priceCount} 件` : null,
+    ].filter(Boolean);
+
+    if (
+      !window.confirm(
+        `${label}（${toner.id}）を完全に削除します。\n\n` +
+          'この操作は元に戻せません。\n' +
+          (alsoGone.length > 0 ? `一緒に消えるもの: ${alsoGone.join('・')}\n` : '') +
+          '\n受付の履歴・注文・請求書から使われている品番は削除できません。\n' +
+          '記録を残したまま一覧から外しておきたいだけなら、無効のままにしておいてください。',
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await request(`/toners/${encodeURIComponent(toner.id)}`, { method: 'DELETE' });
+      setNotice(`${label} を削除しました`);
+      if (editingId === toner.id) {
+        setForm(EMPTY);
+        setEditingId(null);
+        setPrices([]);
+      }
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const clear = () => {
     setForm(EMPTY);
     setEditingId(null);
@@ -572,6 +641,18 @@ export default function TonerScreen() {
               onChange={(e) => setFilter(e.target.value)}
               placeholder="IP・No.・部署・機種で絞り込み"
             />
+            <button
+              type="button"
+              onClick={selectShown}
+              disabled={shownPrinters.length === 0 || shownAllSelected}
+              title={
+                shownAllSelected
+                  ? '表示中の機器はすべて選択済みです'
+                  : 'いま表示している機器をまとめて選びます。絞り込みの外で選んである機器はそのまま残ります'
+              }
+            >
+              表示中の {shownPrinters.length} 台を選ぶ
+            </button>
             <button type="button" onClick={() => set('printerAssetIds')([])}>
               選択を外す
             </button>
@@ -787,6 +868,10 @@ export default function TonerScreen() {
             受付の検索・注文・請求書の候補からは外れています。
             「元に戻す」を押せば、そのまま元の一覧に戻ります。
             在庫が残っている品番を廃棄したいときは、先に元に戻してから受付で処理してください。
+            <br />
+            登録し間違えた品番は「削除」で完全に消せます。<strong>元に戻せません。</strong>
+            受付の履歴・注文・請求書から使われている品番や、在庫が残っている品番は削除できません
+            （そのまま無効にしておけば記録が残ります）。
           </p>
 
           <div className="tn-table-wrap">
@@ -829,6 +914,15 @@ export default function TonerScreen() {
                         title="元の一覧に戻します"
                       >
                         元に戻す
+                      </button>
+                      <button
+                        className="tn-danger"
+                        onClick={() => void remove(toner)}
+                        disabled={busy}
+                        type="button"
+                        title="完全に削除します。元に戻せません。受付の履歴・注文・請求書から使われている品番は削除できません"
+                      >
+                        削除
                       </button>
                     </td>
                   </tr>

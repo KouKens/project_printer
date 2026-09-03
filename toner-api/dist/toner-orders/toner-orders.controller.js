@@ -31,11 +31,11 @@ let TonerOrdersController = class TonerOrdersController {
     remove(id) {
         return this.service.remove(id);
     }
-    findAll() {
-        return this.service.findAll();
+    findAll(companyId) {
+        return this.service.findAll(companyId ? Number(companyId) : undefined);
     }
-    findPending() {
-        return this.service.findPending();
+    findPending(companyId) {
+        return this.service.findPending(companyId ? Number(companyId) : undefined);
     }
     findDeliveryCheck(days) {
         return this.service.findDeliveryCheck(days);
@@ -65,14 +65,16 @@ __decorate([
 ], TonerOrdersController.prototype, "remove", null);
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('companyId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('pending'),
+    __param(0, (0, common_1.Query)('companyId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "findPending", null);
 __decorate([

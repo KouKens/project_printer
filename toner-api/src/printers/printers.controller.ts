@@ -76,6 +76,17 @@ export class PrintersController {
     return this.service.dumpCounters(id);
   }
 
+  /**
+   * 消耗品・警告の表をそのまま返す。**調べるための口。**
+   *
+   * 一覧に定着やドラムが出ない機器で、その行が無いのか、
+   * 応答が落ちて表が途中で切れたのかを列ごとの行数で確かめるために使う
+   */
+  @Get(':id/supplies')
+  dumpSupplies(@Param('id', ParseIntPipe) id: number) {
+    return this.service.dumpSupplies(id);
+  }
+
   /** 複数の IP をまとめて登録する。応答がない機器は登録されず、理由が返る */
   @Post('bulk')
   createMany(@Body() dto: BulkCreatePrintersDto) {

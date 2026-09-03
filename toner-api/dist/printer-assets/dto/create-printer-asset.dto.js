@@ -10,10 +10,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreatePrinterAssetDto = void 0;
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_MESSAGE = 'YYYY-MM-DD の形式で入力してください';
 class CreatePrinterAssetDto {
+    companyId;
     department;
     no;
     ipAddress;
@@ -33,6 +35,12 @@ class CreatePrinterAssetDto {
     note;
 }
 exports.CreatePrinterAssetDto = CreatePrinterAssetDto;
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)({ message: '会社を選んでください' }),
+    (0, class_validator_1.Min)(1, { message: '会社を選んでください' }),
+    __metadata("design:type", Number)
+], CreatePrinterAssetDto.prototype, "companyId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

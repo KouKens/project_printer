@@ -24,7 +24,7 @@ let RepairsService = class RepairsService {
         this.ensureDateOrder(dto);
         const saved = await this.prisma.repairRecord.create({
             data: this.toData(dto),
-            include: { asset: true },
+            include: { asset: { include: { company: true } } },
         });
         return this.toResponse(saved);
     }
@@ -34,14 +34,14 @@ let RepairsService = class RepairsService {
                 { occurredOn: { sort: 'desc', nulls: 'last' } },
                 { id: 'desc' },
             ],
-            include: { asset: true },
+            include: { asset: { include: { company: true } } },
         });
         return rows.map((row) => this.toResponse(row));
     }
     async findOne(id) {
         const row = await this.prisma.repairRecord.findUnique({
             where: { id },
-            include: { asset: true },
+            include: { asset: { include: { company: true } } },
         });
         if (!row) {
             throw new common_1.NotFoundException(`ID ${id} の修理履歴は登録されていません`);
@@ -55,7 +55,7 @@ let RepairsService = class RepairsService {
         const saved = await this.prisma.repairRecord.update({
             where: { id },
             data: this.toData(dto),
-            include: { asset: true },
+            include: { asset: { include: { company: true } } },
         });
         return this.toResponse(saved);
     }
@@ -105,6 +105,8 @@ let RepairsService = class RepairsService {
             id: row.id,
             assignee: row.assignee,
             printerAssetId: row.printerAssetId,
+            companyId: row.asset?.company?.id ?? null,
+            company: row.asset?.company?.name ?? null,
             department: row.asset?.department ?? null,
             no: row.asset?.no ?? null,
             maker: row.asset?.maker ?? null,

@@ -15,6 +15,12 @@ export type SupplySnapshot = {
     maxCapacity: number;
     percent: number | null;
 };
+export type ColumnStatus = {
+    name: string;
+    oid: string;
+    rows: number;
+    complete: boolean;
+};
 export type AlertSnapshot = {
     alertIndex: number;
     severity: number | null;
@@ -44,6 +50,15 @@ export type PrinterSnapshot = CountMatrix & {
     colorCount: number | null;
     countSource: CountSource;
     supplies: SupplySnapshot[];
+    suppliesComplete: boolean;
+    alerts: AlertSnapshot[];
+    consoleText: string | null;
+};
+export type SupplyDump = {
+    version: SnmpVersionKey;
+    sysDescr: string | null;
+    columns: ColumnStatus[];
+    supplies: SupplySnapshot[];
     alerts: AlertSnapshot[];
     consoleText: string | null;
 };
@@ -65,14 +80,19 @@ export declare class SnmpService {
     dumpCounters(ipAddress: string, community: string, preferred?: SnmpVersionKey): Promise<CounterDump>;
     private dumpCountersWith;
     private pollWith;
+    dumpSupplies(ipAddress: string, community: string, preferred?: SnmpVersionKey): Promise<SupplyDump>;
+    private dumpSuppliesWith;
     private readAlerts;
     private readConsoleText;
     private readSupplies;
     private readCounts;
     private ricohCounts;
     private canonCounts;
+    private epsonCounts;
     private readCanonCounters;
     private readCounterTable;
     private get;
+    private walkAll;
     private walk;
+    private walkOnce;
 }

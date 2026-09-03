@@ -3,6 +3,7 @@ import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
 import './StockTakeScreen.css';
+import { useCompany } from '../lib/company'
 
 /** GET /toner-entries/stock の 1 行 */
 type StockRow = {
@@ -54,6 +55,8 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 ];
 
 export default function StockTakeScreen() {
+  // 数える対象も書き戻す先も、右上で選んでいる会社の在庫
+  const { companyId } = useCompany()
   const [rows, setRows] = useState<StockRow[]>([]);
   /** 数えた本数。キーはトナーID、値は入力欄の文字列。未入力の行は持たない */
   const [counted, setCounted] = useState<Record<string, string>>({});
@@ -70,12 +73,16 @@ export default function StockTakeScreen() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // 会社が決まるまで待つ。決まる前に叩くと API が 400 で断る
+    if (companyId === null) return;
     try {
-      setRows(await request<StockRow[]>('/toner-entries/stock'));
+      setRows(
+        await request<StockRow[]>(`/toner-entries/stock?companyId=${companyId}`),
+      );
     } catch (err) {
       setError((err as Error).message);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     void load();
@@ -170,6 +177,8 @@ export default function StockTakeScreen() {
         method: 'POST',
         body: JSON.stringify({
           userId: userId.trim(),
+          // 数えた結果を書き戻す先。右上で選んでいる会社の在庫
+          companyId,
           counts: [...entered.entries()].map(([tonerId, count]) => ({
             tonerId,
             counted: count,

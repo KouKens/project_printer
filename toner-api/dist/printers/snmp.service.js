@@ -91,6 +91,8 @@ const COUNTER = {
     canonBriefId: '1.3.6.1.4.1.1602.1.11.1.3.1.2',
     canonBriefName: '1.3.6.1.4.1.1602.1.11.1.3.1.3',
     canonBriefValue: '1.3.6.1.4.1.1602.1.11.1.3.1.4',
+    epsonTotal: '1.3.6.1.4.1.1248.1.2.2.6.1.1.4',
+    epsonColor: '1.3.6.1.4.1.1248.1.2.2.6.1.1.5',
 };
 const RICOH_COUNTER = {
     machine: 10,
@@ -106,7 +108,24 @@ const CANON_COUNTER = {
     copyColor: 232,
     scanTotal: 501,
 };
+const EPSON_TOTAL_TOLERANCE = 10;
 const COLOR_NAMES = ['cyan', 'magenta', 'yellow'];
+const SUPPLY_COLUMNS = [
+    { name: '説明', oid: TABLE.supplyDescription },
+    { name: '残量', oid: TABLE.supplyLevel },
+    { name: '最大容量', oid: TABLE.supplyMaxCapacity },
+    { name: '色番号', oid: TABLE.supplyColorantIndex },
+    { name: '色名', oid: TABLE.colorantValue },
+    { name: '種別', oid: TABLE.supplyType },
+    { name: '分類', oid: TABLE.supplyClass },
+];
+const ALERT_COLUMNS = [
+    { name: '重大度', oid: TABLE.alertSeverity },
+    { name: '区分', oid: TABLE.alertGroup },
+    { name: '対象行', oid: TABLE.alertGroupIndex },
+    { name: 'コード', oid: TABLE.alertCode },
+    { name: '説明', oid: TABLE.alertDescription },
+];
 const NO_MATRIX = {
     printMono: null,
     printColor: null,
@@ -252,25 +271,21 @@ let SnmpService = SnmpService_1 = class SnmpService {
         });
         try {
             const sysName = await this.get(session, SCALAR.sysName);
-            const [sysDescr, hrDeviceDescr, serialNumber, pageCount, counterUnit] = await Promise.all([
-                this.get(session, SCALAR.sysDescr),
-                this.get(session, SCALAR.hrDeviceDescr),
-                this.get(session, SCALAR.serialNumber),
-                this.get(session, SCALAR.pageCount),
-                this.get(session, SCALAR.counterUnit),
-            ]);
-            const [macs, supplies, alerts, consoleText] = await Promise.all([
-                this.walk(session, TABLE.ifPhysAddress),
-                this.readSupplies(session),
-                this.readAlerts(session),
-                this.readConsoleText(session),
-            ]);
-            const macAddress = Array.from(macs.values())
+            const sysDescr = await this.get(session, SCALAR.sysDescr);
+            const hrDeviceDescr = await this.get(session, SCALAR.hrDeviceDescr);
+            const serialNumber = await this.get(session, SCALAR.serialNumber);
+            const pageCount = await this.get(session, SCALAR.pageCount);
+            const counterUnit = await this.get(session, SCALAR.counterUnit);
+            const macs = await this.walk(session, TABLE.ifPhysAddress);
+            const supplies = await this.readSupplies(session);
+            const alerts = await this.readAlerts(session);
+            const consoleText = await this.readConsoleText(session);
+            const macAddress = Array.from(macs.rows.values())
                 .map((varbind) => readMac(varbind.value))
                 .find((mac) => mac !== null) ?? null;
             const total = pageCount ? readNumber(pageCount.value) : null;
             const descr = sysDescr ? readText(sysDescr.value) : null;
-            const counts = await this.readCounts(session, descr, total, supplies);
+            const counts = await this.readCounts(session, descr, total, supplies.supplies);
             return {
                 version,
                 hostName: sysName ? readText(sysName.value) : null,
@@ -282,7 +297,50 @@ let SnmpService = SnmpService_1 = class SnmpService {
                 pageCount: total,
                 counterUnit: counterUnit ? readNumber(counterUnit.value) : null,
                 ...counts,
-                supplies,
+                supplies: supplies.supplies,
+                suppliesComplete: supplies.complete,
+                alerts,
+                consoleText,
+            };
+        }
+        finally {
+            session.close();
+        }
+    }
+    async dumpSupplies(ipAddress, community, preferred = 'V1') {
+        const order = preferred === 'V1' ? ['V1', 'V2C'] : ['V2C', 'V1'];
+        for (const version of order) {
+            try {
+                return await this.dumpSuppliesWith(ipAddress, community, version);
+            }
+            catch (error) {
+                if (!(error instanceof SnmpUnreachableError))
+                    throw error;
+                this.logger.debug(`${ipAddress}: SNMP ${version} は応答なし`);
+            }
+        }
+        throw new SnmpUnreachableError(`${ipAddress} から SNMP の応答がありません。IP アドレス・コミュニティ名・機器側の SNMP 設定を確認してください`);
+    }
+    async dumpSuppliesWith(ipAddress, community, version) {
+        const session = snmp.createSession(ipAddress, community, {
+            version: version === 'V1' ? snmp.Version1 : snmp.Version2c,
+            timeout: TIMEOUT_MS,
+            retries: RETRIES,
+        });
+        session.on('error', (error) => {
+            this.logger.debug(`${ipAddress}: セッションエラー ${error.message}`);
+        });
+        try {
+            await this.get(session, SCALAR.sysName);
+            const sysDescrRaw = await this.get(session, SCALAR.sysDescr);
+            const supplies = await this.readSupplies(session);
+            const alerts = await this.readAlerts(session);
+            const consoleText = await this.readConsoleText(session);
+            return {
+                version,
+                sysDescr: sysDescrRaw ? readText(sysDescrRaw.value) : null,
+                columns: supplies.columns,
+                supplies: supplies.supplies,
                 alerts,
                 consoleText,
             };
@@ -292,25 +350,19 @@ let SnmpService = SnmpService_1 = class SnmpService {
         }
     }
     async readAlerts(session) {
-        const [severities, groups, groupIndexes, codes, descriptions] = await Promise.all([
-            this.walk(session, TABLE.alertSeverity),
-            this.walk(session, TABLE.alertGroup),
-            this.walk(session, TABLE.alertGroupIndex),
-            this.walk(session, TABLE.alertCode),
-            this.walk(session, TABLE.alertDescription),
-        ]);
+        const [severities, groups, groupIndexes, codes, descriptions] = await this.walkAll(session, ALERT_COLUMNS);
         const alerts = [];
-        for (const [suffix, varbind] of descriptions) {
+        for (const [suffix, varbind] of descriptions.rows) {
             const alertIndex = lastIndexOf(suffix);
             if (alertIndex === null)
                 continue;
-            const rawGroupIndex = readNumber(groupIndexes.get(suffix)?.value ?? null);
+            const rawGroupIndex = readNumber(groupIndexes.rows.get(suffix)?.value ?? null);
             alerts.push({
                 alertIndex,
-                severity: readNumber(severities.get(suffix)?.value ?? null),
-                alertGroup: readNumber(groups.get(suffix)?.value ?? null),
+                severity: readNumber(severities.rows.get(suffix)?.value ?? null),
+                alertGroup: readNumber(groups.rows.get(suffix)?.value ?? null),
                 groupIndex: rawGroupIndex !== null && rawGroupIndex > 0 ? rawGroupIndex : null,
-                code: readNumber(codes.get(suffix)?.value ?? null),
+                code: readNumber(codes.rows.get(suffix)?.value ?? null),
                 description: readText(varbind.value),
             });
         }
@@ -319,7 +371,7 @@ let SnmpService = SnmpService_1 = class SnmpService {
             .sort((a, b) => a.alertIndex - b.alertIndex);
     }
     async readConsoleText(session) {
-        const rows = await this.walk(session, TABLE.consoleText);
+        const { rows } = await this.walk(session, TABLE.consoleText);
         const lines = [...rows.entries()]
             .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
             .map(([, varbind]) => readText(varbind.value))
@@ -327,36 +379,38 @@ let SnmpService = SnmpService_1 = class SnmpService {
         return lines.length > 0 ? lines.join(' / ') : null;
     }
     async readSupplies(session) {
-        const [descriptions, levels, capacities, colorantIndexes, colorantValues, types, classes,] = await Promise.all([
-            this.walk(session, TABLE.supplyDescription),
-            this.walk(session, TABLE.supplyLevel),
-            this.walk(session, TABLE.supplyMaxCapacity),
-            this.walk(session, TABLE.supplyColorantIndex),
-            this.walk(session, TABLE.colorantValue),
-            this.walk(session, TABLE.supplyType),
-            this.walk(session, TABLE.supplyClass),
-        ]);
+        const [descriptions, levels, capacities, colorantIndexes, colorantValues, types, classes,] = await this.walkAll(session, SUPPLY_COLUMNS);
         const colorants = new Map();
-        for (const [suffix, varbind] of colorantValues) {
+        for (const [suffix, varbind] of colorantValues.rows) {
             const index = lastIndexOf(suffix);
             const name = readText(varbind.value);
             if (index !== null && name)
                 colorants.set(index, name);
         }
+        const suffixes = new Set([
+            ...descriptions.rows.keys(),
+            ...levels.rows.keys(),
+            ...capacities.rows.keys(),
+            ...colorantIndexes.rows.keys(),
+            ...types.rows.keys(),
+            ...classes.rows.keys(),
+        ]);
         const supplies = [];
-        for (const [suffix, varbind] of descriptions) {
+        for (const suffix of suffixes) {
             const supplyIndex = lastIndexOf(suffix);
             if (supplyIndex === null)
                 continue;
-            const name = readText(varbind.value) ?? `消耗品 ${supplyIndex}`;
-            const level = readNumber(levels.get(suffix)?.value ?? null) ?? -1;
-            const maxCapacity = readNumber(capacities.get(suffix)?.value ?? null) ?? -1;
-            const colorantIndex = readNumber(colorantIndexes.get(suffix)?.value ?? null);
+            const description = descriptions.rows.get(suffix);
+            const name = (description ? readText(description.value) : null) ??
+                `消耗品 ${supplyIndex}`;
+            const level = readNumber(levels.rows.get(suffix)?.value ?? null) ?? -1;
+            const maxCapacity = readNumber(capacities.rows.get(suffix)?.value ?? null) ?? -1;
+            const colorantIndex = readNumber(colorantIndexes.rows.get(suffix)?.value ?? null);
             supplies.push({
                 supplyIndex,
                 name,
-                supplyType: readNumber(types.get(suffix)?.value ?? null),
-                supplyClass: readNumber(classes.get(suffix)?.value ?? null),
+                supplyType: readNumber(types.rows.get(suffix)?.value ?? null),
+                supplyClass: readNumber(classes.rows.get(suffix)?.value ?? null),
                 colorant: colorantIndex !== null
                     ? (colorants.get(colorantIndex) ?? null)
                     : null,
@@ -372,7 +426,25 @@ let SnmpService = SnmpService_1 = class SnmpService {
                 supply.supplyIndex = position + 1;
             });
         }
-        return supplies;
+        const results = [
+            descriptions,
+            levels,
+            capacities,
+            colorantIndexes,
+            colorantValues,
+            types,
+            classes,
+        ];
+        return {
+            supplies,
+            complete: results.every((result) => result.complete),
+            columns: SUPPLY_COLUMNS.map((column, position) => ({
+                name: column.name,
+                oid: column.oid,
+                rows: results[position].rows.size,
+                complete: results[position].complete,
+            })),
+        };
     }
     async readCounts(session, sysDescr, total, supplies) {
         const descr = sysDescr ?? '';
@@ -386,6 +458,11 @@ let SnmpService = SnmpService_1 = class SnmpService {
             const canon = this.canonCounts(await this.readCanonCounters(session));
             if (canon)
                 return canon;
+        }
+        else if (/epson/i.test(descr)) {
+            const epson = await this.epsonCounts(session, total);
+            if (epson)
+                return epson;
         }
         const hasColor = supplies.some((supply) => supply.colorant !== null &&
             COLOR_NAMES.includes(supply.colorant.toLowerCase()));
@@ -450,6 +527,33 @@ let SnmpService = SnmpService_1 = class SnmpService {
             countSource: 'vendor',
         };
     }
+    async epsonCounts(session, lifeCount) {
+        const [totals, colors] = await this.walkAll(session, [
+            { name: '総ページ数', oid: COUNTER.epsonTotal },
+            { name: 'カラーページ数', oid: COUNTER.epsonColor },
+        ]);
+        if (!totals.complete || !colors.complete)
+            return null;
+        if (totals.rows.size === 0 || colors.rows.size === 0)
+            return null;
+        const total = sumRows(totals.rows);
+        const color = sumRows(colors.rows);
+        if (total === null || color === null)
+            return null;
+        if (lifeCount !== null &&
+            Math.abs(total - lifeCount) > EPSON_TOTAL_TOLERANCE) {
+            this.logger.warn(`EPSON の総ページ数 ${total} が累計 ${lifeCount} と合いません。色の内訳は読みません`);
+            return null;
+        }
+        if (color > total)
+            return null;
+        return {
+            monoCount: total - color,
+            colorCount: color,
+            ...NO_MATRIX,
+            countSource: 'vendor',
+        };
+    }
     async readCanonCounters(session) {
         const full = await this.readCounterTable(session, COUNTER.canonId, COUNTER.canonValue, COUNTER.canonName);
         if (full.size > 0)
@@ -457,18 +561,18 @@ let SnmpService = SnmpService_1 = class SnmpService {
         return this.readCounterTable(session, COUNTER.canonBriefId, COUNTER.canonBriefValue, COUNTER.canonBriefName);
     }
     async readCounterTable(session, idBase, valueBase, nameBase) {
-        const [ids, values, names] = await Promise.all([
-            this.walk(session, idBase),
-            this.walk(session, valueBase),
-            this.walk(session, nameBase),
+        const [ids, values, names] = await this.walkAll(session, [
+            { name: 'ID', oid: idBase },
+            { name: '値', oid: valueBase },
+            { name: '名前', oid: nameBase },
         ]);
         const counters = new Map();
-        for (const [row, varbind] of ids) {
+        for (const [row, varbind] of ids.rows) {
             const id = readCounterId(varbind.value);
-            const value = readNumber(values.get(row)?.value ?? null);
+            const value = readNumber(values.rows.get(row)?.value ?? null);
             if (id === null || value === null)
                 continue;
-            const label = names.get(row);
+            const label = names.rows.get(row);
             counters.set(id, { name: label ? readText(label.value) : null, value });
         }
         return counters;
@@ -493,7 +597,22 @@ let SnmpService = SnmpService_1 = class SnmpService {
             });
         });
     }
-    walk(session, base) {
+    async walkAll(session, columns) {
+        const results = [];
+        for (const column of columns) {
+            results.push(await this.walk(session, column.oid));
+        }
+        return results;
+    }
+    async walk(session, base) {
+        const first = await this.walkOnce(session, base);
+        if (first.complete)
+            return first;
+        this.logger.debug(`${base} が途中で切れました。引き直します`);
+        const retry = await this.walkOnce(session, base);
+        return retry.complete || retry.rows.size >= first.rows.size ? retry : first;
+    }
+    walkOnce(session, base) {
         return new Promise((resolve) => {
             const rows = new Map();
             session.subtree(base, MAX_REPETITIONS, (varbinds) => {
@@ -504,7 +623,7 @@ let SnmpService = SnmpService_1 = class SnmpService {
                         continue;
                     rows.set(varbind.oid.slice(base.length + 1), varbind);
                 }
-            }, () => resolve(rows));
+            }, (error) => resolve({ rows, complete: !error }));
         });
     }
 };
@@ -521,6 +640,16 @@ function readCounterId(value) {
         return null;
     const parsed = Number(text);
     return Number.isInteger(parsed) ? parsed : null;
+}
+function sumRows(rows) {
+    let sum = 0;
+    for (const varbind of rows.values()) {
+        const value = readNumber(varbind.value);
+        if (value === null)
+            return null;
+        sum += value;
+    }
+    return sum;
 }
 function lastIndexOf(suffix) {
     const last = suffix.split('.').pop();

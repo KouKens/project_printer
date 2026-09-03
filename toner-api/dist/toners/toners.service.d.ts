@@ -149,6 +149,14 @@ export declare class TonersService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    remove(id: string): Promise<{
+        id: string;
+        deleted: boolean;
+        removed: {
+            prices: number;
+            printers: number;
+        };
+    }>;
     findPrices(id: string): Promise<{
         id: number;
         price: number;

@@ -22,6 +22,7 @@ export declare const ModelName: {
     readonly Printer: "Printer";
     readonly PrinterAlert: "PrinterAlert";
     readonly PrinterAsset: "PrinterAsset";
+    readonly Company: "Company";
     readonly MaintVendor: "MaintVendor";
     readonly PageCountDaily: "PageCountDaily";
     readonly SupplyReading: "SupplyReading";
@@ -64,6 +65,7 @@ export declare const TonerPriceScalarFieldEnum: {
 export type TonerPriceScalarFieldEnum = (typeof TonerPriceScalarFieldEnum)[keyof typeof TonerPriceScalarFieldEnum];
 export declare const TonerStockScalarFieldEnum: {
     readonly tonerId: "tonerId";
+    readonly companyId: "companyId";
     readonly quantity: "quantity";
     readonly received: "received";
     readonly disposed: "disposed";
@@ -75,6 +77,7 @@ export declare const TonerEntryScalarFieldEnum: {
     readonly userId: "userId";
     readonly tonerId: "tonerId";
     readonly action: "action";
+    readonly companyId: "companyId";
     readonly quantity: "quantity";
     readonly balance: "balance";
     readonly receivedOn: "receivedOn";
@@ -84,6 +87,7 @@ export type TonerEntryScalarFieldEnum = (typeof TonerEntryScalarFieldEnum)[keyof
 export declare const TonerOrderScalarFieldEnum: {
     readonly id: "id";
     readonly tonerId: "tonerId";
+    readonly companyId: "companyId";
     readonly userId: "userId";
     readonly quantity: "quantity";
     readonly orderedAt: "orderedAt";
@@ -150,6 +154,7 @@ export declare const PrinterAlertScalarFieldEnum: {
 export type PrinterAlertScalarFieldEnum = (typeof PrinterAlertScalarFieldEnum)[keyof typeof PrinterAlertScalarFieldEnum];
 export declare const PrinterAssetScalarFieldEnum: {
     readonly id: "id";
+    readonly companyId: "companyId";
     readonly department: "department";
     readonly no: "no";
     readonly ipAddress: "ipAddress";
@@ -172,6 +177,16 @@ export declare const PrinterAssetScalarFieldEnum: {
     readonly updatedAt: "updatedAt";
 };
 export type PrinterAssetScalarFieldEnum = (typeof PrinterAssetScalarFieldEnum)[keyof typeof PrinterAssetScalarFieldEnum];
+export declare const CompanyScalarFieldEnum: {
+    readonly id: "id";
+    readonly name: "name";
+    readonly sortOrder: "sortOrder";
+    readonly note: "note";
+    readonly disabledAt: "disabledAt";
+    readonly createdAt: "createdAt";
+    readonly updatedAt: "updatedAt";
+};
+export type CompanyScalarFieldEnum = (typeof CompanyScalarFieldEnum)[keyof typeof CompanyScalarFieldEnum];
 export declare const MaintVendorScalarFieldEnum: {
     readonly id: "id";
     readonly name: "name";

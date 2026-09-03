@@ -12,6 +12,7 @@ const config_1 = require("@nestjs/config");
 const schedule_1 = require("@nestjs/schedule");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
+const companies_module_1 = require("./companies/companies.module");
 const costs_module_1 = require("./costs/costs.module");
 const maint_vendors_module_1 = require("./maint-vendors/maint-vendors.module");
 const printer_assets_module_1 = require("./printer-assets/printer-assets.module");
@@ -31,6 +32,7 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             schedule_1.ScheduleModule.forRoot(),
             prisma_module_1.PrismaModule,
+            companies_module_1.CompaniesModule,
             toner_entries_module_1.TonerEntriesModule,
             toner_invoices_module_1.TonerInvoicesModule,
             toner_orders_module_1.TonerOrdersModule,

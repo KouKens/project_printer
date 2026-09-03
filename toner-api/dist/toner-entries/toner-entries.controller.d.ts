@@ -15,16 +15,18 @@ export declare class TonerEntriesController {
         id: number;
         createdAt: Date;
         tonerId: string;
+        companyId: number;
         quantity: number;
         userId: string;
         action: import("../generated/prisma/enums").TonerAction;
         balance: number;
         receivedOn: Date | null;
     })[]>;
-    findHistory(days: number, action?: string, tonerId?: string): Promise<{
+    findHistory(days: number, action?: string, tonerId?: string, companyId?: string): Promise<{
         id: number;
         userId: string;
         tonerId: string;
+        companyId: number;
         name: string | null;
         color: string | null;
         action: import("../generated/prisma/enums").TonerAction;
@@ -33,7 +35,7 @@ export declare class TonerEntriesController {
         receivedOn: string | null;
         createdAt: Date;
     }[]>;
-    findStock(): Promise<{
+    findStock(companyId: number): Promise<{
         id: string;
         name: string | null;
         color: string | null;

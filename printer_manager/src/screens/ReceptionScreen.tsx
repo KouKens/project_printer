@@ -15,6 +15,7 @@ import {
   submitEntry,
 } from '../api'
 import { STAFF_ID_HINT, filterStaffId, staffIdError } from '../lib/staffId'
+import { useCompany } from '../lib/company'
 
 type FieldKey = 'userId' | 'tonerId' | 'name' | 'quantity'
 
@@ -121,6 +122,8 @@ function noticeFor(result: EntryResult): string {
 }
 
 export default function ReceptionScreen() {
+  // 在庫も受付も、右上で選んでいる会社の分だけを扱う
+  const { companyId } = useCompany()
   const [mode, setMode] = useState<ReceptionMode>('ISSUE')
   const [values, setValues] = useState<FormValues>(EMPTY)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -157,12 +160,14 @@ export default function ReceptionScreen() {
   }, [])
 
   const loadStock = useCallback(async () => {
+    // 会社が決まるまで待つ。会社を指定しないと API が 400 で断る
+    if (companyId === null) return
     try {
-      setStocks(await fetchStock())
+      setStocks(await fetchStock(companyId))
     } catch {
       // 在庫表示は補助情報。取得に失敗しても受付操作は続けられる
     }
-  }, [])
+  }, [companyId])
 
   useEffect(() => {
     void loadStock()
@@ -286,6 +291,7 @@ export default function ReceptionScreen() {
         const results = await submitBulkEntry({
           action: mode,
           userId: trimmed.userId,
+          companyId,
           items: items.map((item) => ({
             tonerId: item.tonerId,
             quantity: Number(item.quantity),
@@ -345,6 +351,7 @@ export default function ReceptionScreen() {
     const payload: Record<string, unknown> = {
       action: mode,
       userId: trimmed.userId,
+      companyId,
       tonerId: trimmed.tonerId,
     }
     payload.quantity = Number(trimmed.quantity)
