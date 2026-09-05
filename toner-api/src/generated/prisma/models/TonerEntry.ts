@@ -831,8 +831,8 @@ export type $TonerEntryPayload<ExtArgs extends runtime.Types.Extensions.Internal
     tonerId: string
     action: $Enums.TonerAction
     /**
-     * どの会社の受け払いか。**在庫を動かした先と必ず一致させる**
-     * （TonerStock も「品番 × 会社」で持っているため）
+     * どの拠点の受け払いか。**在庫を動かした先と必ず一致させる**
+     * （TonerStock も「品番 × 拠点」で持っているため）
      */
     companyId: number
     /**

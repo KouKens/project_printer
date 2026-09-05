@@ -141,8 +141,8 @@ export function submitEntry(payload: Record<string, unknown>) {
 }
 
 /**
- * 在庫の一覧。**会社ごと。**
- * 会社を渡さないと API が 400 で断る（他社の数を混ぜないため）
+ * 在庫の一覧。**拠点ごと。**
+ * 拠点を渡さないと API が 400 で断る（他の拠点の数を混ぜないため）
  */
 export function fetchStock(companyId: number) {
   return get<StockRow[]>(
@@ -172,7 +172,7 @@ export function submitBulkOrder(payload: Record<string, unknown>) {
   return post<OrderResult[]>(`${API}/toner-orders/bulk`, payload)
 }
 
-/** 未入荷の注文。**会社ごと** */
+/** 未入荷の注文。**拠点ごと** */
 export function fetchPendingOrders(companyId: number) {
   return get<OrderRow[]>(
     `${API}/toner-orders/pending?companyId=${companyId}`,
@@ -180,7 +180,7 @@ export function fetchPendingOrders(companyId: number) {
   )
 }
 
-/** 注文履歴（直近 50 件）。**会社ごと** */
+/** 注文履歴（直近 50 件）。**拠点ごと** */
 export function fetchOrders(companyId: number) {
   return get<OrderRow[]>(
     `${API}/toner-orders?companyId=${companyId}`,
@@ -190,7 +190,7 @@ export function fetchOrders(companyId: number) {
 
 /**
  * 受付の履歴。区分で絞れる。
- * `companyId` を渡すとその会社の分だけ（トナー入出状況は会社ごとに見る）
+ * `companyId` を渡すとその拠点の分だけ（トナー入出状況は拠点ごとに見る）
  */
 export function fetchEntryHistory(days: number, action?: string, companyId?: number) {
   const query =

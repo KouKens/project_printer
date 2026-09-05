@@ -9,13 +9,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 
 /**
- * 機器とトナーを持っている会社。
+ * 機器とトナーを持っている拠点。
  *
  * **在庫と受け払いを分ける単位。** 持ち出し・搬入・棚卸・注文はこの単位で数え、
- * 機器の状態・印刷枚数・修理履歴・請求書は全社まとめて見る。
+ * 機器の状態・印刷枚数・修理履歴・請求書は全拠点まとめて見る。
  *
  * **見せない仕組みではない。** 認証を持たないシステムなので、
- * 画面のセレクタで切り替えれば誰でも他社を見られる。
+ * 画面のセレクタで切り替えれば誰でも他の拠点を見られる。
  * 閲覧を本当に制限するならログインが要る
  */
 type CompanyRow = {
@@ -49,10 +49,10 @@ export class CompaniesService {
   }
 
   /**
-   * 会社の一覧。**既定では無効にした会社を返さない。**
+   * 拠点の一覧。**既定では無効にした拠点を返さない。**
    *
-   * セレクタはここから作られるので、使っていない会社を選べないようにする。
-   * 無効の分まで要るのは会社登録の画面だけで、そこだけ true を渡す
+   * セレクタはここから作られるので、使っていない拠点を選べないようにする。
+   * 無効の分まで要るのは拠点登録の画面だけで、そこだけ true を渡す
    */
   async findAll(includeDisabled = false) {
     const companies = await this.prisma.company.findMany({
@@ -69,7 +69,7 @@ export class CompaniesService {
       include: { _count: { select: this.counts } },
     });
     if (!company) {
-      throw new NotFoundException(`ID ${id} の会社は登録されていません`);
+      throw new NotFoundException(`ID ${id} の拠点は登録されていません`);
     }
     return this.toResponse(company);
   }
@@ -92,13 +92,13 @@ export class CompaniesService {
   }
 
   /**
-   * 使わなくなった会社を無効にする／元に戻す。**削除の代わり。**
+   * 使わなくなった拠点を無効にする／元に戻す。**削除の代わり。**
    *
    * 機器・在庫・履歴・注文がぶら下がっているので、行ごと消すと過去の記録が壊れる。
    * 無効にするとセレクタから外れるが、記録はそのまま残る。
    *
-   * **最後の 1 社は無効にできない。** 会社が 0 になると、
-   * どの会社で受け付ければよいか決まらず、入力の画面が使えなくなる
+   * **最後の 1 拠点は無効にできない。** 拠点が 0 になると、
+   * どの拠点で受け付ければよいか決まらず、入力の画面が使えなくなる
    */
   async setDisabled(id: number, disabled: boolean) {
     await this.ensureExists(id);
@@ -109,7 +109,7 @@ export class CompaniesService {
       });
       if (active === 0) {
         throw new BadRequestException(
-          '最後の 1 社は無効にできません。受け付ける先が無くなり、持ち出し・搬入・棚卸が使えなくなります',
+          '最後の 1 拠点は無効にできません。受け付ける先が無くなり、持ち出し・搬入・棚卸が使えなくなります',
         );
       }
     }
@@ -123,7 +123,7 @@ export class CompaniesService {
   }
 
   /**
-   * 会社を完全に消す。**登録し間違えた行の後始末用。**
+   * 拠点を完全に消す。**登録し間違えた行の後始末用。**
    *
    * 無効にしたものだけ、機器・在庫・履歴・注文が 1 つも無いときだけ。
    * 外部キーは RESTRICT なので DB も拒否するが、
@@ -135,7 +135,7 @@ export class CompaniesService {
       include: { _count: { select: this.counts } },
     });
     if (!company) {
-      throw new NotFoundException(`ID ${id} の会社は登録されていません`);
+      throw new NotFoundException(`ID ${id} の拠点は登録されていません`);
     }
 
     if (company.disabledAt === null) {
@@ -185,11 +185,11 @@ export class CompaniesService {
       select: { id: true },
     });
     if (!found) {
-      throw new NotFoundException(`ID ${id} の会社は登録されていません`);
+      throw new NotFoundException(`ID ${id} の拠点は登録されていません`);
     }
   }
 
-  /** 会社名はセレクタの見出しなので重複させない */
+  /** 拠点名はセレクタの見出しなので重複させない */
   private async ensureNameFree(name: string, exceptId?: number) {
     const found = await this.prisma.company.findFirst({
       where: {

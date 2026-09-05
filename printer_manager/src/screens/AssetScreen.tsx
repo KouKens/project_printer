@@ -24,7 +24,7 @@ type CountLayout = 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
 /** 台帳の手入力項目。こちらは DB に保存する */
 type Asset = {
   /**
-   * 持っている会社。**必須。**
+   * 持っている拠点。**必須。**
    * トナーの在庫と受け払いをこの単位で数えるので、機器には必ず持たせる。
    * 入力欄の値なので、他の欄と同じく文字列で持つ
    */
@@ -64,7 +64,7 @@ type SavedAsset = {
   maker: string | null;
   model: string | null;
   serialNumber: string | null;
-  /** 持っている会社。在庫と受け払いを分ける単位 */
+  /** 持っている拠点。在庫と受け払いを分ける単位 */
   companyId: number;
   company: { id: number; name: string } | null;
   purchasedOn: string | null;
@@ -150,8 +150,8 @@ type Probe = {
 type SortKey = Exclude<keyof SavedAsset, 'id' | 'effectiveVendor'> | 'maintStatus';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
-  // 全社をまとめて出す画面なので、どこの機器かが分かるよう会社を先頭に置く
-  { key: 'company', label: '会社', kind: 'text' },
+  // 全拠点をまとめて出す画面なので、どこの機器かが分かるよう拠点を先頭に置く
+  { key: 'company', label: '拠点', kind: 'text' },
   { key: 'department', label: '部署', kind: 'text' },
   { key: 'no', label: 'No.', kind: 'text' },
   { key: 'ipAddress', label: 'IP アドレス', kind: 'ip' },
@@ -173,7 +173,7 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 
 function toPayload(asset: Asset) {
   return {
-    // 会社は必須。空のまま送ると API が 400 で断る
+    // 拠点は必須。空のまま送ると API が 400 で断る
     companyId: asset.companyId === '' ? null : Number(asset.companyId),
     department: orNull(asset.department),
     no: orNull(asset.no),
@@ -504,7 +504,7 @@ export default function AssetScreen() {
     }
   };
 
-  /** 新規入力の初期値。会社だけは右上で選んでいるものを入れておく */
+  /** 新規入力の初期値。拠点だけは右上で選んでいるものを入れておく */
   const blank = useCallback(
     (): Asset => ({
       ...EMPTY,
@@ -514,7 +514,7 @@ export default function AssetScreen() {
   );
 
   /*
-   * 会社の一覧が届く前に画面が立ち上がるので、届いてから初期値を入れる。
+   * 拠点の一覧が届く前に画面が立ち上がるので、届いてから初期値を入れる。
    * 入力の途中や編集中は触らない（選び直したものを勝手に戻さないため）
    */
   useEffect(() => {
@@ -601,15 +601,15 @@ export default function AssetScreen() {
         </label>
 
         {/*
-          * 会社は必須。トナーの在庫と受け払いをこの単位で数えるため。
-          * 新規のときは画面右上で選んでいる会社を初期値にする
+          * 拠点は必須。トナーの在庫と受け払いをこの単位で数えるため。
+          * 新規のときは画面右上で選んでいる拠点を初期値にする
           */}
         <label>
-          <span>会社</span>
+          <span>拠点</span>
           <select
             value={asset.companyId}
             onChange={(e) => set('companyId')(e.target.value)}
-            title="この機器を持っている会社です。トナーの在庫と受け払いがこの単位で分かれます"
+            title="この機器を持っている拠点です。トナーの在庫と受け払いがこの単位で分かれます"
           >
             <option value="">選んでください</option>
             {companies.map((row) => (
@@ -1031,7 +1031,7 @@ export default function AssetScreen() {
             <table className="as-table">
               <thead>
                 <tr>
-                  <th>会社</th>
+                  <th>拠点</th>
                   <th>部署</th>
                   <th>No.</th>
                   <th>IP アドレス</th>

@@ -107,7 +107,7 @@ const signed = (value: number) =>
   value > 0 ? `+${num.format(value)}` : num.format(value);
 
 export default function DeliveryScreen() {
-  // 入出庫は会社ごとに見る
+  // 入出庫は拠点ごとに見る
   const { companyId } = useCompany()
   const [checks, setChecks] = useState<DeliveryCheckRow[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);

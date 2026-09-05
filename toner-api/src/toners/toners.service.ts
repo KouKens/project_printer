@@ -14,11 +14,11 @@ import { UpdateTonerDto } from './dto/update-toner.dto';
 type PriceRow = { price: number; effectiveFrom: Date; note: string | null };
 
 /**
- * 会社ごとに分かれている在庫を足す。
+ * 拠点ごとに分かれている在庫を足す。
  *
- * **品番マスタ（Toner）は全社共通**なので、1 品番に会社の数だけ在庫の行が付く。
- * トナー登録は会社で分けない画面なので、ここでは全社の合計を出す。
- * 会社ごとの数が要る画面（トナー個数状況・受付）は、会社で絞った行を直接見る
+ * **品番マスタ（Toner）は全拠点共通**なので、1 品番に拠点の数だけ在庫の行が付く。
+ * トナー登録は拠点で分けない画面なので、ここでは全拠点の合計を出す。
+ * 拠点ごとの数が要る画面（トナー個数状況・受付）は、拠点で絞った行を直接見る
  */
 function sumStock(stocks: { quantity: number }[]): number {
   return stocks.reduce((total, stock) => total + stock.quantity, 0);
@@ -29,10 +29,10 @@ export class TonersService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * マスタを登録する。**品番マスタは全社共通。**
+   * マスタを登録する。**品番マスタは全拠点共通。**
    *
-   * 在庫の行はここでは作らない。在庫は「品番 × 会社」で持つので、
-   * どの会社の分かは搬入して初めて決まる（受付側で upsert する）。
+   * 在庫の行はここでは作らない。在庫は「品番 × 拠点」で持つので、
+   * どの拠点の分かは搬入して初めて決まる（受付側で upsert する）。
    * 行が無い組み合わせは在庫 0 と同じ意味
    */
   async create(dto: CreateTonerDto) {
@@ -288,7 +288,7 @@ export class TonersService {
       blockers.push(`請求書の明細 ${toner._count.invoiceLines} 件`);
     }
 
-    // 在庫は会社ごとに行が分かれている。どこかに残っていれば消せない
+    // 在庫は拠点ごとに行が分かれている。どこかに残っていれば消せない
     const quantity = sumStock(toner.stocks);
     if (quantity > 0) {
       blockers.push(`在庫 ${quantity} 本`);
@@ -389,7 +389,7 @@ export class TonersService {
     disabledAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
-    /** 会社ごとの在庫。**品番マスタは全社共通**なので会社の数だけ並ぶ */
+    /** 拠点ごとの在庫。**品番マスタは全拠点共通**なので拠点の数だけ並ぶ */
     stocks: { quantity: number }[];
     prices: (PriceRow & { id: number; createdAt: Date })[];
     printers: {
@@ -427,7 +427,7 @@ export class TonersService {
       priceCount: toner.prices.length,
       /** 無効にした日時。null なら有効。画面はこれで一覧を 2 つに分ける */
       disabledAt: toner.disabledAt,
-      /** 全社を合わせた在庫。会社ごとの数はトナー個数状況で見る */
+      /** 全拠点を合わせた在庫。拠点ごとの数はトナー個数状況で見る */
       stock: sumStock(toner.stocks),
       printers: toner.printers.map((link) => ({
         id: link.asset.id,

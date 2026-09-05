@@ -79,7 +79,7 @@ const GROUPS: {
       { value: 'asset', label: 'プリンター登録', wide: true },
       { value: 'toner', label: 'トナー登録', wide: true },
       { value: 'vendor', label: '保守登録', wide: true },
-      { value: 'company', label: '会社登録', wide: true },
+      { value: 'company', label: '拠点登録', wide: true },
     ],
   },
   {
@@ -218,25 +218,25 @@ export default function App() {
         </nav>
 
         {/*
-          * 会社の切り替え。**在庫と受け払いを分ける単位。**
-          * 持ち出し・注文・棚卸とトナーの 2 画面がこの会社の分だけを扱う。
-          * プリンター状況・印刷状況・修理・請求書は全社まとめて出すので変わらない。
+          * 拠点の切り替え。**在庫と受け払いを分ける単位。**
+          * 持ち出し・注文・棚卸とトナーの 2 画面がこの拠点の分だけを扱う。
+          * プリンター状況・印刷状況・修理・請求書は全拠点まとめて出すので変わらない。
           * 認証が無いので、これは「見せない」仕組みではない
           */}
         <label className="station__company">
-          <span className="station__company-label">会社</span>
+          <span className="station__company-label">拠点</span>
           <select
             value={companyId ?? ''}
             onChange={(e) => select(Number(e.target.value))}
             disabled={companies.length === 0}
             title={
               companies.length === 0
-                ? '会社が登録されていません。「登録 → 会社登録」で追加してください'
-                : '在庫・持ち出し・注文・棚卸をこの会社の分だけ扱います（プリンター状況や修理は全社のままです）'
+                ? '拠点が登録されていません。「登録 → 拠点登録」で追加してください'
+                : '在庫・持ち出し・注文・棚卸をこの拠点の分だけ扱います（プリンター状況や修理は全拠点のままです）'
             }
           >
             {companies.length === 0 ? (
-              <option value="">会社が未登録</option>
+              <option value="">拠点が未登録</option>
             ) : (
               companies.map((row) => (
                 <option key={row.id} value={row.id}>

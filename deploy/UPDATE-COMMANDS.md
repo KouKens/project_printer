@@ -48,7 +48,7 @@ cd C:\toner\app
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`N migrations found` の N を控える。**配布物は 40 本。**
+`N migrations found` の N を控える。**配布物は 41 本。**
 
 今回落とす列に値が入っているか（列が無いというエラーなら失うものはゼロ）。
 
@@ -125,7 +125,7 @@ Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" C:\toner\app\ -Force
 (Get-ChildItem C:\toner\app\prisma\migrations -Directory).Count
 ```
 
-**40 と出ること。**
+**41 と出ること。**
 
 ---
 
@@ -144,7 +144,40 @@ node node_modules\prisma\build\index.js migrate deploy
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`40 migrations found` と `Database schema is up to date!` を確認する。
+`41 migrations found` と `Database schema is up to date!` を確認する。
+
+---
+
+## 5-2. 拠点を振り分ける（`20260903020000_add_company` が今回入ったときだけ）
+
+移行は**拠点を 1 つ（「既定の会社」）だけ作り、既存の機器・在庫・履歴・注文を
+すべてそこに寄せる**。本院と各事業所へ分けるのは別の SQL で、**1 度だけ流す**。
+
+今回の更新でこの移行が入ったかを確かめる。
+
+```powershell
+psql -U printer -h localhost -d printer -c "SELECT id, name FROM companies ORDER BY sort_order;"
+```
+
+**「既定の会社」1 行だけなら未振り分け。**9 拠点が並んでいれば済んでいるので飛ばす。
+
+```powershell
+psql -U printer -h localhost -d printer -f <USB>\assign-sites.sql
+```
+
+`INSERT 0 9` → `UPDATE`（台帳・在庫・履歴・注文）→ `DELETE 1` → `COMMIT` と並ぶ。
+`DELETE 0` なら「既定の会社」に何かが残っている（振り分けから漏れた機器がある）。
+
+振り分けの鍵は**台帳の部署名**で、どの条件にも当たらない機器は本院に残る。
+結果を数えて確かめる。
+
+```powershell
+psql -U printer -h localhost -d printer -c "SELECT c.name, count(a.id) FROM companies c LEFT JOIN printer_assets a ON a.company_id = c.id GROUP BY c.name ORDER BY 2 DESC;"
+```
+
+開発 DB（機器 78 台）では 嶋田病院 66 / 大刀洗診療所 3 / シマダ在宅サービス 3 /
+残り 6 拠点が各 1 台だった。**台数が合わない拠点があれば部署名の表記を確かめる**
+（`assign-sites.sql` の CASE は部分一致）。
 
 ---
 

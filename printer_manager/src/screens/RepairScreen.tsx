@@ -82,7 +82,7 @@ type Repair = {
   id: number;
   assignee: string | null;
   printerAssetId: number;
-  /** 台帳の会社名。API が添えて返す */
+  /** 台帳の拠点名。API が添えて返す */
   company: string | null;
   department: string | null;
   no: string | null;
@@ -101,7 +101,7 @@ type Repair = {
 /** 選択肢に出す台帳の 1 件 */
 type Asset = {
   id: number;
-  /** 持っている会社。修理は全社まとめて見るので、どこの機器かを呼び名に出す */
+  /** 持っている拠点。修理は全拠点まとめて見るので、どこの機器かを呼び名に出す */
   company: { id: number; name: string } | null;
   department: string | null;
   no: string | null;
@@ -151,7 +151,7 @@ const WIDE_SPACE = '　';
 
 /** 台帳の呼び名。部署と No. で人が識別できるようにする */
 const assetLabel = (asset: {
-  /** 台帳は { id, name }、修理履歴は会社名の文字列で持っている */
+  /** 台帳は { id, name }、修理履歴は拠点名の文字列で持っている */
   company: { name: string } | string | null
   department: string | null
   no: string | null

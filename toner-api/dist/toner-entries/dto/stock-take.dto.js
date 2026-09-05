@@ -44,8 +44,8 @@ __decorate([
 ], StockTakeDto.prototype, "userId", void 0);
 __decorate([
     (0, class_transformer_1.Type)(() => Number),
-    (0, class_validator_1.IsInt)({ message: '会社を選んでください' }),
-    (0, class_validator_1.Min)(1, { message: '会社を選んでください' }),
+    (0, class_validator_1.IsInt)({ message: '拠点を選んでください' }),
+    (0, class_validator_1.Min)(1, { message: '拠点を選んでください' }),
     __metadata("design:type", Number)
 ], StockTakeDto.prototype, "companyId", void 0);
 __decorate([

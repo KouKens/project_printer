@@ -1254,7 +1254,7 @@ export type $TonerPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   name: "Toner"
   objects: {
     /**
-     * 会社ごとの在庫。**品番マスタは全社共通**なので、ここは会社の数だけ並ぶ
+     * 拠点ごとの在庫。**品番マスタは全拠点共通**なので、ここは拠点の数だけ並ぶ
      */
     stocks: Prisma.$TonerStockPayload<ExtArgs>[]
     entries: Prisma.$TonerEntryPayload<ExtArgs>[]

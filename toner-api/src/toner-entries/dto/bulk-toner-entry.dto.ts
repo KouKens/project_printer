@@ -53,12 +53,12 @@ export class BulkTonerEntryDto {
   userId: string;
 
   /**
-   * どの会社の受け払いか。**必須。**
-   * 在庫は「品番 × 会社」なので、動かす先をここで決める
+   * どの拠点の受け払いか。**必須。**
+   * 在庫は「品番 × 拠点」なので、動かす先をここで決める
    */
   @Type(() => Number)
-  @IsInt({ message: '会社を選んでください' })
-  @Min(1, { message: '会社を選んでください' })
+  @IsInt({ message: '拠点を選んでください' })
+  @Min(1, { message: '拠点を選んでください' })
   companyId: number;
 
   /** 窓口で一度に扱う本数を超えない上限にしてある */

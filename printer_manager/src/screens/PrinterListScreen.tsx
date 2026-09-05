@@ -166,7 +166,7 @@ function partsOf(readings: SupplyReading[]): SupplyReading[] {
 /** 台帳に実機と印刷枚数をぶら下げた 1 行。取れないものは null */
 type Row = {
   id: number;
-  /** 持っている会社。全社まとめて出すので、どこの機器かが分かるよう列に出す */
+  /** 持っている拠点。全拠点まとめて出すので、どこの機器かが分かるよう列に出す */
   company: { id: number; name: string } | null;
   department: string | null;
   no: string | null;
@@ -272,7 +272,7 @@ const COLUMNS: {
   numeric?: boolean;
   group: '台帳' | '修理' | '機器' | '枚数';
 }[] = [
-  { key: 'company', label: '会社', kind: 'text', group: '台帳' },
+  { key: 'company', label: '拠点', kind: 'text', group: '台帳' },
   { key: 'department', label: '部署', kind: 'text', group: '台帳' },
   { key: 'no', label: 'No.', kind: 'text', group: '台帳' },
   { key: 'ipAddress', label: 'IP アドレス', kind: 'ip', group: '台帳' },
@@ -1045,7 +1045,7 @@ export default function PrinterListScreen() {
 
   const cellOf = (row: Row, key: SortKey) => {
     switch (key) {
-      // 全社をまとめて出す画面なので、どこの機器かを名前で示す
+      // 全拠点をまとめて出す画面なので、どこの機器かを名前で示す
       case 'company':
         return row.company?.name ?? '—';
       case 'repairOpen':

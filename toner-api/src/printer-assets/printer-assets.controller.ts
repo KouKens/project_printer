@@ -26,21 +26,23 @@ export class PrinterAssetsController {
   }
 
   /**
-   * 台帳の一覧。**既定は有効な台だけ、全社まとめて。**
+   * 台帳の一覧。**既定は有効な台だけ、全拠点まとめて。**
    *
    * `?includeDisabled=1` を付けたときだけ無効にした台も返す（プリンター登録の画面用）。
-   * `?companyId=` を付けるとその会社の台だけ返す。付けなければ全社
-   * （修理・プリンター状況は全社で見るので、既定は絞らない）
+   * `?companyId=` を付けるとその拠点の台だけ返す。付けなければ全拠点
+   * （修理・プリンター状況は全拠点で見るので、既定は絞らない）
+   *
+   * **数字でない companyId は 400 で断る。** `Number()` で読むと NaN になり、
+   * NaN は falsy なので絞り込みごと消えて全拠点が返る。絞ったつもりで
+   * 他の拠点が混ざるより、読めなかったと言うほうがよい
    */
   @Get()
   findAll(
     @Query('includeDisabled') includeDisabled?: string,
-    @Query('companyId') companyId?: string,
+    @Query('companyId', new ParseIntPipe({ optional: true }))
+    companyId?: number,
   ) {
-    return this.service.findAll(
-      includeDisabled === '1',
-      companyId ? Number(companyId) : undefined,
-    );
+    return this.service.findAll(includeDisabled === '1', companyId);
   }
 
   /**
@@ -56,8 +58,8 @@ export class PrinterAssetsController {
    * 台帳を機種でまとめ、その機種で使うトナーを添えた一覧。
    * これも ':id' より前に置く。
    *
-   * **会社ごとに見る画面（トナー個数状況）用。** `companyId` は必須で、
-   * 機種も在庫もその会社の分だけを数える
+   * **拠点ごとに見る画面（トナー個数状況）用。** `companyId` は必須で、
+   * 機種も在庫もその拠点の分だけを数える
    */
   @Get('by-model')
   findByModel(@Query('companyId', ParseIntPipe) companyId: number) {

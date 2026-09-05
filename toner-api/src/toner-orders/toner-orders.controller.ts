@@ -34,18 +34,25 @@ export class TonerOrdersController {
     return this.service.remove(id);
   }
 
-  /** 注文履歴 */
-  /** 注文履歴。`companyId` を付けるとその会社の分だけ */
+  /**
+   * 注文履歴。`companyId` を付けるとその拠点の分だけ。
+   * 数字でない値は 400 で断る（NaN は falsy で、絞り込みごと消えるため）
+   */
   @Get()
-  findAll(@Query('companyId') companyId?: string) {
-    return this.service.findAll(companyId ? Number(companyId) : undefined);
+  findAll(
+    @Query('companyId', new ParseIntPipe({ optional: true }))
+    companyId?: number,
+  ) {
+    return this.service.findAll(companyId);
   }
 
-  /** 未入荷の注文 */
-  /** 未入荷の注文。`companyId` を付けるとその会社の分だけ */
+  /** 未入荷の注文。`companyId` を付けるとその拠点の分だけ */
   @Get('pending')
-  findPending(@Query('companyId') companyId?: string) {
-    return this.service.findPending(companyId ? Number(companyId) : undefined);
+  findPending(
+    @Query('companyId', new ParseIntPipe({ optional: true }))
+    companyId?: number,
+  ) {
+    return this.service.findPending(companyId);
   }
 
   /**

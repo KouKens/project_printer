@@ -44,7 +44,7 @@ function toResponse(order: {
   return {
     id: order.id,
     tonerId: order.tonerId,
-    /** どの会社の注文か。注文・搬入は会社ごとに見る */
+    /** どの拠点の注文か。注文・搬入は拠点ごとに見る */
     companyId: order.companyId,
     /** 注文した人。この列を足す前の注文は null */
     userId: order.userId,

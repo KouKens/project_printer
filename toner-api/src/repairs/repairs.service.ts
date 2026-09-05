@@ -27,7 +27,7 @@ type RepairRow = {
   createdAt: Date;
   updatedAt: Date;
   asset?: {
-    /** 持っている会社。修理は全社まとめて見るので、列として出す */
+    /** 持っている拠点。修理は全拠点まとめて見るので、列として出す */
     company: { id: number; name: string } | null;
     department: string | null;
     no: string | null;

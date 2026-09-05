@@ -25,7 +25,7 @@ let PrinterAssetsController = class PrinterAssetsController {
         return this.service.create(dto);
     }
     findAll(includeDisabled, companyId) {
-        return this.service.findAll(includeDisabled === '1', companyId ? Number(companyId) : undefined);
+        return this.service.findAll(includeDisabled === '1', companyId);
     }
     findOverview() {
         return this.service.findOverview();
@@ -66,9 +66,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('includeDisabled')),
-    __param(1, (0, common_1.Query)('companyId')),
+    __param(1, (0, common_1.Query)('companyId', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, Number]),
     __metadata("design:returntype", void 0)
 ], PrinterAssetsController.prototype, "findAll", null);
 __decorate([

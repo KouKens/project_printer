@@ -14,10 +14,10 @@ import type * as Prisma from "../internal/prismaNamespace.js"
 
 /**
  * Model TonerStock
- * 在庫テーブル（**品番 × 会社**ごとの現在数と累計）
+ * 在庫テーブル（**品番 × 拠点**ごとの現在数と累計）
  * 
- * **会社ごとに数える単位はここ。** 品番マスタ（Toner）は全社で共通なので、
- * 「A 社の P500H が 3 本、B 社の P500H が 1 本」を分けて持てるのはこの表だけ。
+ * **拠点ごとに数える単位はここ。** 品番マスタ（Toner）は全拠点で共通なので、
+ * 「A 拠点の P500H が 3 本、B 拠点の P500H が 1 本」を分けて持てるのはこの表だけ。
  * 行が無い組み合わせは在庫 0 と同じ意味（受け入れて初めて行ができる）
  */
 export type TonerStockModel = runtime.Types.Result.DefaultSelection<Prisma.$TonerStockPayload>

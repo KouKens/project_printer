@@ -9,16 +9,16 @@ import {
 import { Type } from 'class-transformer';
 
 /**
- * 会社の入力。
- * セレクタの見出しになるので、会社名だけは必須にする。
+ * 拠点の入力。
+ * セレクタの見出しになるので、拠点名だけは必須にする。
  */
 export class CreateCompanyDto {
   @IsString()
-  @IsNotEmpty({ message: '会社名を入力してください' })
+  @IsNotEmpty({ message: '拠点名を入力してください' })
   @MaxLength(120)
   name!: string;
 
-  /** 並び順。よく使う会社を上に出すために持つ。同値なら名前順 */
+  /** 並び順。よく使う拠点を上に出すために持つ。同値なら名前順 */
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: '並び順は整数で入力してください' })

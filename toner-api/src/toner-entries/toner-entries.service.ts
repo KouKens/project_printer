@@ -69,7 +69,7 @@ export class TonerEntriesService {
           await this.apply(tx, {
             action: dto.action,
             userId: dto.userId,
-            // 会社はまとめ単位で 1 つ。1 回の伝票が会社をまたぐことは無い
+            // 拠点はまとめ単位で 1 つ。1 回の伝票が拠点をまたぐことは無い
             companyId: dto.companyId,
             tonerId: item.tonerId,
             name: item.name,
@@ -109,8 +109,8 @@ export class TonerEntriesService {
       );
     }
 
-    // 在庫の行はここでは作らない。「品番 × 会社」なので、
-    // どの会社の分かは搬入して初めて決まる
+    // 在庫の行はここでは作らない。「品番 × 拠点」なので、
+    // どの拠点の分かは搬入して初めて決まる
     const toner = await tx.toner.create({
       data: {
         id: dto.tonerId,
@@ -266,7 +266,7 @@ export class TonerEntriesService {
        */
       const toners = await tx.toner.findMany({
         where: { id: { in: dto.counts.map((count) => count.tonerId) } },
-        // 在庫は「品番 × 会社」。この会社の行だけを見て合わせる
+        // 在庫は「品番 × 拠点」。この拠点の行だけを見て合わせる
         include: { stocks: { where: { companyId: dto.companyId } } },
       });
       const known = new Map(toners.map((toner) => [toner.id, toner]));
@@ -352,10 +352,10 @@ export class TonerEntriesService {
 
   /** 在庫一覧 */
   /**
-   * 在庫の一覧。**会社ごと。** 棚卸しと受付の候補がここから作られる。
+   * 在庫の一覧。**拠点ごと。** 棚卸しと受付の候補がここから作られる。
    *
-   * 品番マスタは全社共通なので、行はどの会社でも同じ数だけ並ぶ。
-   * その会社で一度も受け入れていない品番は在庫の行が無く、0 本として出る
+   * 品番マスタは全拠点共通なので、行はどの拠点でも同じ数だけ並ぶ。
+   * その拠点で一度も受け入れていない品番は在庫の行が無く、0 本として出る
    */
   async findStock(companyId: number) {
     const toners = await this.prisma.toner.findMany({
@@ -364,7 +364,7 @@ export class TonerEntriesService {
     });
 
     return toners.map((t) => {
-      // 会社で絞ってあるので 0 件か 1 件
+      // 拠点で絞ってあるので 0 件か 1 件
       const stock = t.stocks[0] ?? null;
       return {
         id: t.id,
@@ -408,7 +408,7 @@ export class TonerEntriesService {
         );
       }
 
-      // 履歴が持っている会社の在庫を戻す。他社の数を動かさないための鍵
+      // 履歴が持っている拠点の在庫を戻す。他の拠点の数を動かさないための鍵
       const stockKey = {
         tonerId_companyId: {
           tonerId: entry.tonerId,
@@ -487,8 +487,8 @@ export class TonerEntriesService {
    * 搬入日（receivedOn）は搬入の行だけに入る
    */
   /**
-   * 受け払いの履歴。**会社ごと**（トナー入出状況の画面用）。
-   * `companyId` を渡さなければ全社まとめて返す
+   * 受け払いの履歴。**拠点ごと**（トナー入出状況の画面用）。
+   * `companyId` を渡さなければ全拠点まとめて返す
    */
   async findHistory(params: {
     days?: number;
@@ -516,7 +516,7 @@ export class TonerEntriesService {
       id: row.id,
       userId: row.userId,
       tonerId: row.tonerId,
-      /** どの会社の受け払いか。全社で見るときに列として出す */
+      /** どの拠点の受け払いか。全拠点で見るときに列として出す */
       companyId: row.companyId,
       name: row.toner.name,
       color: row.toner.color,
@@ -533,9 +533,9 @@ export class TonerEntriesService {
   // ── 内部ヘルパー ──────────────────────
 
   /**
-   * 品番を引き、**その会社の在庫行だけ**を添えて返す。
+   * 品番を引き、**その拠点の在庫行だけ**を添えて返す。
    *
-   * 在庫は「品番 × 会社」なので、会社を指定しないと他社の数を掴んでしまう。
+   * 在庫は「品番 × 拠点」なので、拠点を指定しないと他の拠点の数を掴んでしまう。
    * 行が無いのは在庫 0 と同じ意味なので、無くてもここでは止めない
    */
   private async requireToner(tx: Tx, tonerId: string, companyId: number) {
@@ -553,10 +553,10 @@ export class TonerEntriesService {
   }
 
   /**
-   * その会社の在庫を動かす。**行が無ければ作る。**
+   * その拠点の在庫を動かす。**行が無ければ作る。**
    *
-   * 在庫は「品番 × 会社」で、行ができるのは初めて受け入れたとき。
-   * 品番を登録した時点では会社が決まらないので、ここで upsert する
+   * 在庫は「品番 × 拠点」で、行ができるのは初めて受け入れたとき。
+   * 品番を登録した時点では拠点が決まらないので、ここで upsert する
    */
   private bumpStock(
     tx: Tx,

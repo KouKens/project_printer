@@ -31,7 +31,7 @@ export declare class TonerOrdersController {
         tonerId: string;
         quantity: number;
     }>;
-    findAll(companyId?: string): Promise<{
+    findAll(companyId?: number): Promise<{
         id: number;
         tonerId: string;
         companyId: number;
@@ -42,7 +42,7 @@ export declare class TonerOrdersController {
         deliveryOn: string | null;
         status: string;
     }[]>;
-    findPending(companyId?: string): Promise<{
+    findPending(companyId?: number): Promise<{
         id: number;
         tonerId: string;
         companyId: number;

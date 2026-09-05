@@ -1688,9 +1688,9 @@ export type $PrinterAssetPayload<ExtArgs extends runtime.Types.Extensions.Intern
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
     /**
-     * 持っている会社。**在庫と受け払いを分ける単位**（Company 参照）。
-     * 機器の状態・印刷枚数・修理履歴は全社まとめて見るので、
-     * この列は絞り込みと表示のために持つ。会社を消せないよう Restrict にする
+     * 持っている拠点。**在庫と受け払いを分ける単位**（Company 参照）。
+     * 機器の状態・印刷枚数・修理履歴は全拠点まとめて見るので、
+     * この列は絞り込みと表示のために持つ。拠点を消せないよう Restrict にする
      */
     companyId: number
     /**

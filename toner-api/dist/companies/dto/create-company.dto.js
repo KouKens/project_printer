@@ -20,7 +20,7 @@ class CreateCompanyDto {
 exports.CreateCompanyDto = CreateCompanyDto;
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)({ message: '会社名を入力してください' }),
+    (0, class_validator_1.IsNotEmpty)({ message: '拠点名を入力してください' }),
     (0, class_validator_1.MaxLength)(120),
     __metadata("design:type", String)
 ], CreateCompanyDto.prototype, "name", void 0);

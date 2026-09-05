@@ -411,7 +411,7 @@ function AssetRows({ row }: { row: Row }) {
 }
 
 export default function ModelTonerScreen() {
-  // 機種も在庫も、右上で選んでいる会社の分だけを数える
+  // 機種も在庫も、右上で選んでいる拠点の分だけを数える
   const { companyId } = useCompany();
   const [rows, setRows] = useState<Row[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -425,7 +425,7 @@ export default function ModelTonerScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    // 会社が決まるまで待つ。決まる前に叩くと API が 400 で断る
+    // 拠点が決まるまで待つ。決まる前に叩くと API が 400 で断る
     if (companyId === null) return;
     try {
       setRows(

@@ -11,7 +11,7 @@
 ## 前提（開発端末側で確認済み・2026-09-02）
 
 - `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate diff` で差分なし）
-- 開発側の migration は **40 本**
+- 開発側の migration は **41 本**
 - 破壊的な migration は **2 本**
   - `20260820050000_maint_vendors` → `printer_assets` の `maint_phones` / `maint_vendor` を DROP
   - `20260902010000_page_count_function_color_matrix` → `page_count_daily` の
@@ -55,7 +55,7 @@ node node_modules\prisma\build\index.js migrate status
 
 控えること。
 
-- [ ] `N migrations found` の **N** = ______ 本（開発側は 40 本）
+- [ ] `N migrations found` の **N** = ______ 本（開発側は 41 本）
 - [ ] 未適用として並んだ migration 名（または `up to date`）
 
 `node` の場所が違う・上が動かない場合はこちらでも分かる。
@@ -126,6 +126,7 @@ powershell -ExecutionPolicy Bypass -File deploy\bundle-offline.ps1
 
 - [ ] `deploy\out\app\` に `dist` / `web` / `node_modules` / `prisma` / `package.json`
       / `prisma.config.ts` が揃っている
+- [ ] `deploy\out\` に `assign-sites.sql` がある（拠点の振り分け。移行が入る回だけ使う）
 - [ ] `deploy\out\data\` が **無い**（= データを含んでいない）
 - [ ] USB へコピーした
 
@@ -133,8 +134,11 @@ powershell -ExecutionPolicy Bypass -File deploy\bundle-offline.ps1
 
 ## C. 本番へ適用する前の最終確認
 
-- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（40）の差＝今回入る変更の数を把握した
+- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（41）の差＝今回入る変更の数を把握した
 - [ ] A-3 の分岐を判断した（退避の要否）
+- [ ] `20260903020000_add_company` が今回入るなら、適用後に `assign-sites.sql` を
+      流すことを手順に入れた（[UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) の 5-2）。
+      **流さないと全機器・全在庫が「既定の会社」1 つに入ったままになる**
 - [ ] 更新後、1 日分の機能別（プリンター・コピー）は**次の取得から**入ることを伝えた
       （累計の差で出すので、更新した当日は累計だけが埋まる）
 - [ ] 業務時間外か、入力が走らない時間帯を選んだ

@@ -33,12 +33,7 @@ let TonerEntriesController = class TonerEntriesController {
         return this.service.findRecent();
     }
     findHistory(days, action, tonerId, companyId) {
-        return this.service.findHistory({
-            days,
-            action,
-            tonerId,
-            companyId: companyId ? Number(companyId) : undefined,
-        });
+        return this.service.findHistory({ days, action, tonerId, companyId });
     }
     findStock(companyId) {
         return this.service.findStock(companyId);
@@ -76,9 +71,9 @@ __decorate([
     __param(0, (0, common_1.Query)('days', new common_1.DefaultValuePipe(60), common_1.ParseIntPipe)),
     __param(1, (0, common_1.Query)('action')),
     __param(2, (0, common_1.Query)('tonerId')),
-    __param(3, (0, common_1.Query)('companyId')),
+    __param(3, (0, common_1.Query)('companyId', new common_1.ParseIntPipe({ optional: true }))),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String, String, String]),
+    __metadata("design:paramtypes", [Number, String, String, Number]),
     __metadata("design:returntype", void 0)
 ], TonerEntriesController.prototype, "findHistory", null);
 __decorate([

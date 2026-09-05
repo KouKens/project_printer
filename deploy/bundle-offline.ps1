@@ -106,6 +106,10 @@ Copy-Item (Join-Path $PSScriptRoot 'OFFLINE-WINDOWS.md') $OutDir
 Copy-Item (Join-Path $PSScriptRoot 'UPDATE-COMMANDS.md') $OutDir
 Copy-Item (Join-Path $PSScriptRoot 'check-prod.ps1') $OutDir
 
+# 拠点の振り分け SQL。移行（add_company）は「既定の会社」1 つに寄せるだけなので、
+# 本院と各事業所へ分けるにはこれを 1 度流す（UPDATE-COMMANDS.md の 5-2）
+Copy-Item (Join-Path $PSScriptRoot 'assign-sites.sql') $OutDir
+
 # node_modules は数が多く Copy-Item だと遅いので robocopy で運ぶ
 Step 'node_modules をコピー（数分かかる）'
 $srcModules = Join-Path $api 'node_modules'

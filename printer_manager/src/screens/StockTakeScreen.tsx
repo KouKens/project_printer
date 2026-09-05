@@ -55,7 +55,7 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 ];
 
 export default function StockTakeScreen() {
-  // 数える対象も書き戻す先も、右上で選んでいる会社の在庫
+  // 数える対象も書き戻す先も、右上で選んでいる拠点の在庫
   const { companyId } = useCompany()
   const [rows, setRows] = useState<StockRow[]>([]);
   /** 数えた本数。キーはトナーID、値は入力欄の文字列。未入力の行は持たない */
@@ -73,7 +73,7 @@ export default function StockTakeScreen() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    // 会社が決まるまで待つ。決まる前に叩くと API が 400 で断る
+    // 拠点が決まるまで待つ。決まる前に叩くと API が 400 で断る
     if (companyId === null) return;
     try {
       setRows(
@@ -177,7 +177,7 @@ export default function StockTakeScreen() {
         method: 'POST',
         body: JSON.stringify({
           userId: userId.trim(),
-          // 数えた結果を書き戻す先。右上で選んでいる会社の在庫
+          // 数えた結果を書き戻す先。右上で選んでいる拠点の在庫
           companyId,
           counts: [...entered.entries()].map(([tonerId, count]) => ({
             tonerId,

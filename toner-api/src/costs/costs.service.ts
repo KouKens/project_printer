@@ -70,7 +70,7 @@ export class CostsService {
           orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
           select: {
             id: true,
-            // 運用コストは全社まとめて見る。どこの機器かが分かるよう会社も引く
+            // 運用コストは全拠点まとめて見る。どこの機器かが分かるよう拠点も引く
             company: { select: { id: true, name: true } },
             department: true,
             no: true,
@@ -317,7 +317,7 @@ export class CostsService {
 
       return {
         id: asset.id,
-        /** 持っている会社。全社まとめて出すので列として添える */
+        /** 持っている拠点。全拠点まとめて出すので列として添える */
         companyId: asset.company?.id ?? null,
         company: asset.company?.name ?? null,
         no: asset.no,

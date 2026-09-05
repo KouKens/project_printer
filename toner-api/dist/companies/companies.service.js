@@ -45,7 +45,7 @@ let CompaniesService = class CompaniesService {
             include: { _count: { select: this.counts } },
         });
         if (!company) {
-            throw new common_1.NotFoundException(`ID ${id} の会社は登録されていません`);
+            throw new common_1.NotFoundException(`ID ${id} の拠点は登録されていません`);
         }
         return this.toResponse(company);
     }
@@ -71,7 +71,7 @@ let CompaniesService = class CompaniesService {
                 where: { disabledAt: null, id: { not: id } },
             });
             if (active === 0) {
-                throw new common_1.BadRequestException('最後の 1 社は無効にできません。受け付ける先が無くなり、持ち出し・搬入・棚卸が使えなくなります');
+                throw new common_1.BadRequestException('最後の 1 拠点は無効にできません。受け付ける先が無くなり、持ち出し・搬入・棚卸が使えなくなります');
             }
         }
         const saved = await this.prisma.company.update({
@@ -87,7 +87,7 @@ let CompaniesService = class CompaniesService {
             include: { _count: { select: this.counts } },
         });
         if (!company) {
-            throw new common_1.NotFoundException(`ID ${id} の会社は登録されていません`);
+            throw new common_1.NotFoundException(`ID ${id} の拠点は登録されていません`);
         }
         if (company.disabledAt === null) {
             throw new common_1.BadRequestException(`${company.name} はまだ有効です。先に無効にしてから削除してください`);
@@ -124,7 +124,7 @@ let CompaniesService = class CompaniesService {
             select: { id: true },
         });
         if (!found) {
-            throw new common_1.NotFoundException(`ID ${id} の会社は登録されていません`);
+            throw new common_1.NotFoundException(`ID ${id} の拠点は登録されていません`);
         }
     }
     async ensureNameFree(name, exceptId) {

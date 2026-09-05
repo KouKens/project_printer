@@ -29,7 +29,7 @@ type Catalog = {
 
 type CostRow = {
   id: number;
-  /** 持っている会社。全社まとめて出すので列として添える */
+  /** 持っている拠点。全拠点まとめて出すので列として添える */
   company: string | null;
   no: string | null;
   department: string | null;
@@ -122,7 +122,7 @@ const PRINTER_COLUMNS: {
   numeric?: boolean;
   group: 'asset' | 'catalog' | 'actual' | 'diff';
 }[] = [
-  { key: 'company', label: '会社', kind: 'text', group: 'asset' },
+  { key: 'company', label: '拠点', kind: 'text', group: 'asset' },
   { key: 'department', label: '部署', kind: 'text', group: 'asset' },
   { key: 'no', label: 'No.', kind: 'text', group: 'asset' },
   { key: 'model', label: '機種', kind: 'text', group: 'asset' },
@@ -306,7 +306,7 @@ export default function CostScreen() {
 
   const cellOf = (row: CostRow, key: PrinterKey) => {
     switch (key) {
-      // 全社をまとめて出す画面なので、どこの機器かを示す
+      // 全拠点をまとめて出す画面なので、どこの機器かを示す
       case 'company':
         return row.company ?? <span className="dt-muted">—</span>;
       case 'department':

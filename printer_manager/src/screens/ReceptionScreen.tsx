@@ -122,7 +122,7 @@ function noticeFor(result: EntryResult): string {
 }
 
 export default function ReceptionScreen() {
-  // 在庫も受付も、右上で選んでいる会社の分だけを扱う
+  // 在庫も受付も、右上で選んでいる拠点の分だけを扱う
   const { companyId } = useCompany()
   const [mode, setMode] = useState<ReceptionMode>('ISSUE')
   const [values, setValues] = useState<FormValues>(EMPTY)
@@ -160,7 +160,7 @@ export default function ReceptionScreen() {
   }, [])
 
   const loadStock = useCallback(async () => {
-    // 会社が決まるまで待つ。会社を指定しないと API が 400 で断る
+    // 拠点が決まるまで待つ。拠点を指定しないと API が 400 で断る
     if (companyId === null) return
     try {
       setStocks(await fetchStock(companyId))
@@ -374,7 +374,20 @@ export default function ReceptionScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [batch, fields, focusField, lines, loadStock, mode, submitting, values])
+    // companyId は送信先そのもの。拠点を切り替えたら必ず取り直す
+    // （loadStock 経由でも入れ替わるが、それに頼ると依存を減らしたとき静かに
+    //   前の拠点の在庫を動かすことになる）
+  }, [
+    batch,
+    companyId,
+    fields,
+    focusField,
+    lines,
+    loadStock,
+    mode,
+    submitting,
+    values,
+  ])
 
   useEffect(() => {
     if (!notice) return

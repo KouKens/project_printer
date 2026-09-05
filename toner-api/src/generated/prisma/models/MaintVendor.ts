@@ -14,7 +14,11 @@ import type * as Prisma from "../internal/prismaNamespace.js"
 
 /**
  * Model MaintVendor
+ * 保守を頼んでいる業者。
  * 
+ * 台帳に会社名と電話番号を直接持たせると、同じ業者を見ている機器のぶんだけ
+ * 同じ番号を書き写すことになり、番号が変わったときに直し漏れる。
+ * マスタにして台帳から参照する。
  */
 export type MaintVendorModel = runtime.Types.Result.DefaultSelection<Prisma.$MaintVendorPayload>
 
@@ -575,7 +579,7 @@ export type $MaintVendorPayload<ExtArgs extends runtime.Types.Extensions.Interna
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
     /**
-     * 会社名。台帳から選ぶときの見出しになるので重複させない
+     * 業者の会社名。台帳から選ぶときの見出しになるので重複させない
      */
     name: string
     /**

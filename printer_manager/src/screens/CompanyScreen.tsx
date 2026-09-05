@@ -4,15 +4,15 @@ import { useCompany, type Company } from '../lib/company'
 import './CompanyScreen.css'
 
 /**
- * 会社の登録。**在庫と受け払いを分ける単位。**
+ * 拠点の登録。**在庫と受け払いを分ける単位。**
  *
- * ここで足した会社が、画面右上のセレクタに並ぶ。
+ * ここで足した拠点が、画面右上のセレクタに並ぶ。
  * 持ち出し・廃棄・注文・搬入・棚卸と、トナー個数状況・トナー入出状況が
- * 選んだ会社の分だけを扱う。プリンター状況・印刷状況・修理・請求書・
- * 運用コストは会社で分けず、全社まとめて出す。
+ * 選んだ拠点の分だけを扱う。プリンター状況・印刷状況・修理・請求書・
+ * 運用コストは拠点で分けず、全拠点まとめて出す。
  *
  * **見せない仕組みではない。** 認証が無いので、セレクタを切り替えれば
- * 誰でも他社を見られる。閲覧を本当に制限するならログインが要る。
+ * 誰でも他の拠点を見られる。閲覧を本当に制限するならログインが要る。
  */
 
 type Form = {
@@ -34,7 +34,7 @@ export default function CompanyScreen() {
 
   const load = async () => {
     try {
-      // 登録の画面だけは無効にした会社も出す（元に戻せるようにするため）
+      // 登録の画面だけは無効にした拠点も出す（元に戻せるようにするため）
       setRows(await request<Company[]>('/companies?includeDisabled=1'))
       setError(null)
     } catch (err) {
@@ -139,7 +139,7 @@ export default function CompanyScreen() {
         !window.confirm(
           `${row.name} を完全に削除します。\n\n` +
             'この操作は元に戻せません。\n' +
-            '機器・在庫・受付の履歴・注文がぶら下がっている会社は削除できません。\n' +
+            '機器・在庫・受付の履歴・注文がぶら下がっている拠点は削除できません。\n' +
             'セレクタから外しておきたいだけなら、無効のままにしておいてください。',
         )
       ) {
@@ -156,24 +156,24 @@ export default function CompanyScreen() {
   return (
     <div className="cp">
       <section className="cp-form">
-        <h2>{editingId === null ? '会社を登録' : '会社を編集'}</h2>
+        <h2>{editingId === null ? '拠点を登録' : '拠点を編集'}</h2>
         <p className="cp-hint">
           <strong>在庫と受け払いを分ける単位です。</strong>
           持ち出し・廃棄・注文・搬入・棚卸と、トナー個数状況・トナー入出状況が
-          画面右上で選んだ会社の分だけになります。
-          プリンター状況・印刷状況・修理・請求書・運用コストは全社まとめて出します。
+          画面右上で選んだ拠点の分だけになります。
+          プリンター状況・印刷状況・修理・請求書・運用コストは全拠点まとめて出します。
           <br />
-          同じ品番を各社が使えます（品番マスタは全社共通で、在庫だけ会社ごとに数えます）。
-          <strong>ログインは無いので、セレクタを切り替えれば誰でも他社を見られます。</strong>
+          同じ品番を各拠点が使えます（品番マスタは全拠点共通で、在庫だけ拠点ごとに数えます）。
+          <strong>ログインは無いので、セレクタを切り替えれば誰でも他の拠点を見られます。</strong>
         </p>
 
         <label>
-          <span>会社名</span>
+          <span>拠点名</span>
           <input
             type="text"
             value={form.name}
             onChange={(e) => set('name')(e.target.value)}
-            placeholder="大刀洗ケアグループ"
+            placeholder="シマリス小郡"
           />
         </label>
 
@@ -221,12 +221,12 @@ export default function CompanyScreen() {
       {notice && <p className="cp-msg cp-msg-ok">{notice}</p>}
 
       <section className="cp-list">
-        <h2>登録した会社（{active.length} 社）</h2>
+        <h2>登録した拠点（{active.length} 拠点）</h2>
         <div className="cp-table-wrap">
           <table className="cp-table">
             <thead>
               <tr>
-                <th>会社名</th>
+                <th>拠点名</th>
                 <th className="cp-num">並び順</th>
                 <th className="cp-num">機器</th>
                 <th className="cp-num">在庫の記録</th>
@@ -268,17 +268,17 @@ export default function CompanyScreen() {
 
       {disabled.length > 0 && (
         <section className="cp-list cp-disabled">
-          <h2>無効にした会社（{disabled.length} 社）</h2>
+          <h2>無効にした拠点（{disabled.length} 拠点）</h2>
           <p className="cp-hint">
             セレクタから外れています。<strong>記録は消えていません。</strong>
-            登録し間違えた会社は「削除」で完全に消せますが、
+            登録し間違えた拠点は「削除」で完全に消せますが、
             <strong>機器・在庫・履歴・注文がぶら下がっていると削除できません。</strong>
           </p>
           <div className="cp-table-wrap">
             <table className="cp-table">
               <thead>
                 <tr>
-                  <th>会社名</th>
+                  <th>拠点名</th>
                   <th className="cp-num">機器</th>
                   <th className="cp-num">受付の履歴</th>
                   <th>無効にした日時</th>

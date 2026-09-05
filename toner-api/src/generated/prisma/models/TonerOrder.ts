@@ -862,7 +862,7 @@ export type $TonerOrderPayload<ExtArgs extends runtime.Types.Extensions.Internal
     id: number
     tonerId: string
     /**
-     * どの会社の注文か。搬入して在庫になる先と揃える
+     * どの拠点の注文か。搬入して在庫になる先と揃える
      */
     companyId: number
     /**

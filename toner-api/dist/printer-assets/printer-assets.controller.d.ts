@@ -47,7 +47,7 @@ export declare class PrinterAssetsController {
         createdAt: Date;
         updatedAt: Date;
     }>;
-    findAll(includeDisabled?: string, companyId?: string): Promise<{
+    findAll(includeDisabled?: string, companyId?: number): Promise<{
         id: number;
         companyId: number;
         company: {

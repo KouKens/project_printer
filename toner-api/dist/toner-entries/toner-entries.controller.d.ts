@@ -12,17 +12,17 @@ export declare class TonerEntriesController {
             name: string | null;
         };
     } & {
-        id: number;
         createdAt: Date;
-        tonerId: string;
+        id: number;
         companyId: number;
-        quantity: number;
+        tonerId: string;
         userId: string;
         action: import("../generated/prisma/enums").TonerAction;
+        quantity: number;
         balance: number;
         receivedOn: Date | null;
     })[]>;
-    findHistory(days: number, action?: string, tonerId?: string, companyId?: string): Promise<{
+    findHistory(days: number, action?: string, tonerId?: string, companyId?: number): Promise<{
         id: number;
         userId: string;
         tonerId: string;

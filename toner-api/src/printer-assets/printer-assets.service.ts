@@ -12,7 +12,7 @@ import { CONSUMABLE_TYPES } from '../printers/supply-types';
 import { PrintersService } from '../printers/printers.service';
 import { CreatePrinterAssetDto } from './dto/create-printer-asset.dto';
 
-/** 画面に出すのは会社名と連絡先だけ。既定のメーカー一覧までは要らない */
+/** 画面に出すのは業者名と連絡先だけ。既定のメーカー一覧までは要らない */
 function toVendor(vendor: VendorSlice) {
   return { id: vendor.id, name: vendor.name, phones: vendor.phones };
 }
@@ -216,7 +216,7 @@ export type SerialFill =
 
 type AssetRow = {
   id: number;
-  /** 持っている会社。全社表示の画面はこれを列に出す */
+  /** 持っている拠点。全拠点表示の画面はこれを列に出す */
   companyId: number;
   company?: { id: number; name: string } | null;
   maintVendor?: VendorSlice | null;
@@ -416,9 +416,9 @@ export class PrinterAssetsService {
    * まとめると差が見えなくなるので、台ごとの紐づけも assets に残し、
    * 揃っていない機種は mixed で示す。
    *
-   * **会社ごとに見る画面（トナー個数状況）から呼ばれる。** 機種も在庫も
-   * その会社の分だけを数える。品番マスタは全社共通なので、
-   * 在庫は「品番 × 会社」の行から取り出す
+   * **拠点ごとに見る画面（トナー個数状況）から呼ばれる。** 機種も在庫も
+   * その拠点の分だけを数える。品番マスタは全拠点共通なので、
+   * 在庫は「品番 × 拠点」の行から取り出す
    */
   async findByModel(companyId: number) {
     const [assets, printers] = await Promise.all([
@@ -443,7 +443,7 @@ export class PrinterAssetsService {
                   color: true,
                   recycled: true,
                   alertThreshold: true,
-                  // 在庫は「品番 × 会社」。この会社の行だけを取り出す
+                  // 在庫は「品番 × 拠点」。この拠点の行だけを取り出す
                   stocks: {
                     where: { companyId },
                     select: { quantity: true },
@@ -555,7 +555,7 @@ export class PrinterAssetsService {
           recycled: toner.recycled,
           alertThreshold: toner.alertThreshold,
           price: current?.price ?? null,
-          // 会社で絞ってあるので 0 件か 1 件。行が無ければ在庫 0
+          // 拠点で絞ってあるので 0 件か 1 件。行が無ければ在庫 0
           stock: toner.stocks[0]?.quantity ?? 0,
           /** その機種のうち、このトナーを紐づけている台数 */
           assetCount: 1,
@@ -970,7 +970,7 @@ export class PrinterAssetsService {
     return {
       id: asset.id,
       companyId: asset.companyId,
-      /** 会社名。プリンター状況・修理など全社で見る画面の列になる */
+      /** 拠点名。プリンター状況・修理など全拠点で見る画面の列になる */
       company: asset.company
         ? { id: asset.company.id, name: asset.company.name }
         : null,

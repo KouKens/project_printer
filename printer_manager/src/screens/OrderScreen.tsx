@@ -175,7 +175,7 @@ const listFormat = new Intl.DateTimeFormat('ja-JP', {
 })
 
 export default function OrderScreen() {
-  // 注文も搬入も、右上で選んでいる会社の分だけを扱う
+  // 注文も搬入も、右上で選んでいる拠点の分だけを扱う
   const { companyId } = useCompany()
   const [mode, setMode] = useState<OrderMode>('ORDER')
   const [values, setValues] = useState<FormValues>(emptyValues)
@@ -493,9 +493,13 @@ export default function OrderScreen() {
     } finally {
       setSubmitting(false)
     }
+    // companyId は送信先そのもの。拠点を切り替えたら必ず取り直す
+    // （loadOrders 経由でも入れ替わるが、それに頼ると依存を減らしたとき静かに
+    //   前の拠点へ注文・搬入することになる）
   }, [
     batch,
     catalog,
+    companyId,
     fields,
     focusField,
     lines,

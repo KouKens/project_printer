@@ -56,13 +56,13 @@ export declare class TonerEntriesService {
             name: string | null;
         };
     } & {
-        id: number;
         createdAt: Date;
-        tonerId: string;
+        id: number;
         companyId: number;
-        quantity: number;
+        tonerId: string;
         userId: string;
         action: import("../generated/prisma/enums").TonerAction;
+        quantity: number;
         balance: number;
         receivedOn: Date | null;
     })[]>;
