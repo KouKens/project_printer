@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { todayIso } from '../lib/date';
 import { num, orNull } from '../lib/format';
+import { suggestions } from '../lib/suggest';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -234,6 +235,18 @@ export default function TonerScreen() {
       toners
         .filter((toner) => toner.disabledAt !== null)
         .sort((a, b) => (a.disabledAt! < b.disabledAt! ? 1 : -1)),
+    [toners],
+  );
+
+  /**
+   * トナー名の候補。**無効にした品番のぶんも混ぜる。**
+   * 「トナーカートリッジ 054H（MF644Cdw）」のような定型が多く、
+   * 同じ機種の色違いを続けて登録するときに打ち直しが減る。
+   *
+   * **色は候補を増やさない。**あちらは `COLORS` の固定 8 件のままにする
+   */
+  const nameHints = useMemo(
+    () => suggestions(toners.map((toner) => toner.name)),
     [toners],
   );
 
@@ -556,7 +569,14 @@ export default function TonerScreen() {
             value={form.name}
             onChange={(e) => set('name')(e.target.value)}
             placeholder="トナーカートリッジ P500H"
+            list="tn-names"
           />
+          {/* 候補は縛りではない。一覧に無い名前もそのまま打てる */}
+          <datalist id="tn-names">
+            {nameHints.map((value) => (
+              <option key={value} value={value} />
+            ))}
+          </datalist>
         </label>
 
         <label>

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
@@ -63,4 +63,14 @@ function serveWeb(app: NestExpressApplication) {
   );
 }
 
-bootstrap();
+/*
+ * 起動に失敗したら理由を出して 1 で終わる。
+ *
+ * 投げっぱなしにすると Node のバージョン次第で終了コードが 0 になり、
+ * タスクスケジューラからは正常終了したように見える。WEB_ROOT の指定間違いや
+ * ポートの取り合いで上がらなかったことに気づけなくなる
+ */
+bootstrap().catch((error) => {
+  Logger.error(error, 'Bootstrap');
+  process.exit(1);
+});

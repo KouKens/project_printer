@@ -114,17 +114,17 @@ let TonerOrdersService = class TonerOrdersService {
             return saved;
         });
     }
-    async findDeliveryCheck(days = 180) {
+    async findDeliveryCheck(companyId, days = 180) {
         const from = new Date();
         from.setDate(from.getDate() - days);
         const [orders, entries] = await Promise.all([
             this.prisma.tonerOrder.findMany({
-                where: { orderedAt: { gte: from } },
+                where: { companyId, orderedAt: { gte: from } },
                 orderBy: { orderedAt: 'desc' },
                 include: { toner: { select: { name: true, color: true } } },
             }),
             this.prisma.tonerEntry.findMany({
-                where: { action: 'RECEIVE', createdAt: { gte: from } },
+                where: { companyId, action: 'RECEIVE', createdAt: { gte: from } },
                 orderBy: { createdAt: 'desc' },
                 include: { toner: { select: { name: true, color: true } } },
             }),

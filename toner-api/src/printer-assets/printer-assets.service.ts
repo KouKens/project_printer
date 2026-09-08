@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { fromDate, toDate, today } from '../common/date';
 import { toText } from '../common/text';
+import { asIs, field, WriteMode } from '../common/write-mode';
 import { makerKey } from '../maint-vendors/maint-vendors.service';
 import { indexPrinters, matchPrinter } from '../printers/printer-match';
 import { CONSUMABLE_TYPES } from '../printers/supply-types';
@@ -252,7 +253,7 @@ export class PrinterAssetsService {
 
   async create(dto: CreatePrinterAssetDto) {
     const saved = await this.prisma.printerAsset.create({
-      data: this.toData(dto),
+      data: this.toData(dto, 'create'),
       include: { maintVendor: true, company: true },
     });
     return this.toResponse(saved, await this.vendorsByMaker());
@@ -646,7 +647,7 @@ export class PrinterAssetsService {
 
     const saved = await this.prisma.printerAsset.update({
       where: { id },
-      data: this.toData(dto),
+      data: this.toData(dto, 'update'),
       include: { maintVendor: true, company: true },
     });
     return this.toResponse(saved, await this.vendorsByMaker());
@@ -916,26 +917,45 @@ export class PrinterAssetsService {
     };
   }
 
-  private toData(dto: CreatePrinterAssetDto) {
+  /**
+   * DTO を Prisma の data に写す。
+   *
+   * **update では入力に無かった列に触らない**（`field` が undefined を返し、
+   * Prisma がそれを「変更しない」と読む）。画面のフォームに入力欄が無い列を
+   * 未入力として保存し直してしまう事故を防ぐためで、実際に `countLayout` が
+   * 保存のたび TOTAL に戻っていた。値を消したいときは画面が null を送る。
+   */
+  private toData(dto: CreatePrinterAssetDto, mode: WriteMode) {
+    /** 文字列の欄。空白だけの入力は未入力と同じ扱いにする */
+    const text = (value: string | null | undefined) =>
+      field(mode, value, toText, null);
+    /** 日付の欄。'YYYY-MM-DD' を UTC 0 時の Date にする */
+    const date = (value: string | null | undefined) =>
+      field(mode, value, toDate, null);
+    /** 数値・ID の欄。null は「消す」の意味なのでそのまま通す */
+    const num = (value: number | null | undefined) =>
+      field(mode, value, asIs, null);
+
     return {
       companyId: dto.companyId,
-      department: toText(dto.department),
-      no: toText(dto.no),
-      ipAddress: toText(dto.ipAddress),
-      maker: toText(dto.maker),
-      model: toText(dto.model),
-      serialNumber: toText(dto.serialNumber),
-      purchasedOn: toDate(dto.purchasedOn),
-      purchasePrice: dto.purchasePrice ?? null,
-      contractNo: toText(dto.contractNo),
-      maintVendorId: dto.maintVendorId ?? null,
-      maintContract: toText(dto.maintContract),
-      maintStartOn: toDate(dto.maintStartOn),
-      maintEndOn: toDate(dto.maintEndOn),
-      maintDealOn: toDate(dto.maintDealOn),
-      maintFee: dto.maintFee ?? null,
-      note: toText(dto.note),
-      countLayout: dto.countLayout ?? 'TOTAL',
+      department: text(dto.department),
+      no: text(dto.no),
+      ipAddress: text(dto.ipAddress),
+      maker: text(dto.maker),
+      model: text(dto.model),
+      serialNumber: text(dto.serialNumber),
+      purchasedOn: date(dto.purchasedOn),
+      purchasePrice: num(dto.purchasePrice),
+      contractNo: text(dto.contractNo),
+      maintVendorId: num(dto.maintVendorId),
+      maintContract: text(dto.maintContract),
+      maintStartOn: date(dto.maintStartOn),
+      maintEndOn: date(dto.maintEndOn),
+      maintDealOn: date(dto.maintDealOn),
+      maintFee: num(dto.maintFee),
+      note: text(dto.note),
+      // 入力欄が無い列。既定は集計表の 1 行ぶん（TOTAL）
+      countLayout: field(mode, dto.countLayout, asIs, 'TOTAL' as const),
     };
   }
 

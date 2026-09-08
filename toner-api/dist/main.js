@@ -30,5 +30,8 @@ function serveWeb(app) {
         res.sendFile(index);
     });
 }
-bootstrap();
+bootstrap().catch((error) => {
+    common_1.Logger.error(error, 'Bootstrap');
+    process.exit(1);
+});
 //# sourceMappingURL=main.js.map

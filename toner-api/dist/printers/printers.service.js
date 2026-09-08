@@ -10,13 +10,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 var PrintersService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PrintersService = void 0;
+exports.PrintersService = exports.PRINTER_POLL_CRON = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
 const prisma_service_1 = require("../prisma/prisma.service");
 const sato_status_service_1 = require("./sato-status.service");
 const snmp_service_1 = require("./snmp.service");
 const BULK_CONCURRENCY = 6;
+exports.PRINTER_POLL_CRON = '30 12 * * *';
 function toVersionKey(input) {
     return input === '2c' ? 'V2C' : 'V1';
 }
@@ -446,7 +447,7 @@ let PrintersService = PrintersService_1 = class PrintersService {
 };
 exports.PrintersService = PrintersService;
 __decorate([
-    (0, schedule_1.Cron)('0 12 * * *', { name: 'poll-printers' }),
+    (0, schedule_1.Cron)(exports.PRINTER_POLL_CRON, { name: 'poll-printers' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

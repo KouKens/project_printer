@@ -26,6 +26,16 @@ import {
 /** 一括登録で何台まで同時に問い合わせるか */
 const BULK_CONCURRENCY = 6;
 
+/**
+ * 全機器の残量を取り直す時刻。
+ *
+ * **枚数の記録（`PAGE_COUNT_CRON`）と同じ時刻に置かないこと。**
+ * 2 本の @Cron は並走するので、重ねると 1 台の機器に枚数の 1 本と
+ * こちらの `BULK_CONCURRENCY` 本が同時に届き、UDP の返事が落ちて
+ * 消耗品の表が後ろから欠ける。間隔は cron-schedule.spec.ts が見張っている
+ */
+export const PRINTER_POLL_CRON = '30 12 * * *';
+
 /** 取り直しの 1 行分の結果 */
 export type PollResultRow = {
   id: number;
@@ -101,17 +111,21 @@ export class PrintersService {
   ) {}
 
   /**
-   * 毎日 12 時に、登録済みの全機器の残量・警告・累計枚数を取り直す。
+   * 毎日 12 時 30 分に、登録済みの全機器の残量・警告・累計枚数を取り直す。
    *
    * これが無いと画面の残量は「誰かが取得ボタンを押したときの値」のままで、
    * 機器一覧の交換時期の色が古い値を指す。
    *
-   * 枚数の記録（page-counts）と同じ時刻に走るが、
-   * どちらも 1 台ずつ順に問い合わせるので機器に同時には当たらない。
-   * API プロセスが動いていないと発火しないのも枚数と同じで、
+   * **枚数の記録（12 時）とは 30 分空ける。** 順に問い合わせるのは各ジョブの
+   * 中だけで、2 本の @Cron は別々の非同期処理として並走する。同じ時刻に置くと
+   * 1 台の機器に枚数の 1 本とこちらの 6 本（BULK_CONCURRENCY）が同時に届き、
+   * UDP の返事が落ちて消耗品の表が後ろから欠ける。枚数は全 56 台で 2 分ほど、
+   * こちらは 21 秒ほどなので 30 分あれば重ならない。
+   *
+   * API プロセスが動いていないと発火しないのは枚数と同じで、
    * 常時起動でない環境では POST /api/printers/poll を叩く
    */
-  @Cron('0 12 * * *', { name: 'poll-printers' })
+  @Cron(PRINTER_POLL_CRON, { name: 'poll-printers' })
   async pollScheduled() {
     this.logger.log('全機器の残量を取り直します');
     const rows = await this.pollAll();

@@ -218,16 +218,30 @@ Start-ScheduledTask -TaskName "toner-api"
 
 ## 5. 定期実行について
 
-アプリの中に**毎日 12 時の処理が 2 つ**ある（印刷枚数の記録／全機器の残量の取り直し）。
+アプリの中に**毎日の処理が 2 つ**ある。
+
+| 時刻 | 処理 | 所要 |
+| --- | --- | --- |
+| 12:00 | 印刷枚数の記録 | 全 56 台で 2 分ほど |
+| 12:30 | 全機器の残量の取り直し | 全 56 台で 21 秒ほど |
+
 プロセスが動いていれば自動で走るので、**常時起動ならこのままでよい**。
 4 章のタスクは `-AtStartup` なので、再起動しても自動で上がる。
 
-保守などで 12 時に落ちていた場合は、後から手で叩ける。
+**2 つは必ず間を空ける。** どちらも SNMP で全機器を回るため、同時刻に走らせると
+1 台の機器に両方の問い合わせが同時に届く。UDP なので返事が 1 つ落ちると
+消耗品の表が後ろから欠け、ドラムや定着が「無い」ことにされる。
+
+保守などで落ちていた場合は、後から手で叩ける。**続けて叩かず、
+枚数が終わったのを確かめてから残量を叩くこと。**
 
 ```powershell
 # 枚数の記録
 curl.exe -X POST http://localhost:3000/api/printers/page-counts/capture
-# 残量の取り直し
+```
+
+```powershell
+# 残量の取り直し（上が終わってから）
 curl.exe -X POST http://localhost:3000/api/printers/poll
 ```
 
@@ -258,46 +272,56 @@ curl.exe http://localhost:3000/api/printers
 
 ## 7. 更新するとき（本番に既にデータがある場合）
 
+**打つものは [UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) を見ること。**
+稼働中の本番に合わせて直してあるのはあちらで、ここは流れの説明として残す。
+配布物にも入るので、本番機では USB の中のそれを開けばよい。
+
+**このページの 1〜6 章は「新規に入れるとき」の話で、`C:\toner\app` に入れる前提で
+書いてある。稼働中の本番はそこではない**（2026-09-05 時点で
+`C:\Printer Manager\app`、タスク登録なしで `start.cmd` を手で実行）。
+更新でこのページのコマンドをそのまま打つと空振りする。
+
 開発端末で 2 を作り直す。**`-WithData` は付けない。**
 付けて作った `data\printer.dump` を本番へ流すと、本番の入力済みデータの上に
 開発のデータが重なり、ID も衝突する。更新のときにダンプは一切使わない。
 
-本番機で次を行う。
-
-打つものだけを 1 枚にしたものが [UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) にある
-（配布物にも入るので、本番機では USB の中のそれを見ればよい）。
+本番機での流れ。
 
 ```powershell
 # 7-0. 先に置く。**このウィンドウを閉じたら消える**
+$APP = 'C:\Printer Manager\app'        # 稼働中の本番。空白が入るので必ず引用符で囲む
 $env:PGPASSWORD   = "printer のパスワード"
 $env:DATABASE_URL = "postgresql://printer:同じパスワード@localhost:5432/printer?schema=public"
 
 # 7-1. 現在地の確認（何本適用済みか）
-cd C:\toner\app
+cd $APP
 node node_modules\prisma\build\index.js migrate status
 
 # 7-2. バックアップ（戻せるようにしてから触る）
-pg_dump -U printer -h localhost -Fc -f C:\toner\backup_$(Get-Date -f yyyyMMdd_HHmm).dump printer
+pg_dump -U printer -h localhost -Fc -f "$(Split-Path $APP)\backup_$(Get-Date -f yyyyMMdd_HHmm).dump" printer
 
-# 7-3. 停止
-Stop-ScheduledTask -TaskName "toner-api"
+# 7-3. 停止（タスクは無い。start.cmd のウィンドウを閉じる）
+Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$APP*" }
 
 # 7-4. 差し替え（api.env は上書きしない）
-xcopy /E /I /Y <USB>\out\app\dist         C:\toner\app\dist
-xcopy /E /I /Y <USB>\out\app\web          C:\toner\app\web
-xcopy /E /I /Y <USB>\out\app\node_modules C:\toner\app\node_modules
-xcopy /E /I /Y <USB>\out\app\prisma       C:\toner\app\prisma
-Copy-Item <USB>\out\app\package.json, <USB>\out\app\prisma.config.ts C:\toner\app\ -Force
+xcopy /E /I /Y <USB>\out\app\dist         "$APP\dist"
+xcopy /E /I /Y <USB>\out\app\web          "$APP\web"
+xcopy /E /I /Y <USB>\out\app\node_modules "$APP\node_modules"
+xcopy /E /I /Y <USB>\out\app\prisma       "$APP\prisma"
+Copy-Item <USB>\out\app\package.json, <USB>\out\app\prisma.config.ts "$APP\" -Force
 
 # 7-5. 差分だけ適用（reset は絶対にしない）
 node node_modules\prisma\build\index.js migrate deploy
 
+# 7-5-2. 拠点の振り分け（add_company が入った回だけ・1 度きり）
+psql -U printer -h localhost -d printer -f <USB>\assign-sites.sql
+
 # 7-6. 起動
-Start-ScheduledTask -TaskName "toner-api"
+Start-Process -FilePath "$APP\start.cmd" -WorkingDirectory $APP
 ```
 
 **7-0 を飛ばさないこと。** `migrate deploy` の接続先は `prisma.config.ts` の
-`process.env["DATABASE_URL"]` から来る。本番の `C:\toner\app` に `.env` は無く、
+`process.env["DATABASE_URL"]` から来る。本番のアプリフォルダに `.env` は無く、
 `api.env` は `start.cmd` しか読まないので、シェルで入れないと
 `The datasource.url property is required in your Prisma config file` で止まる。
 
@@ -318,7 +342,7 @@ Start-ScheduledTask -TaskName "toner-api"
 消える。7-1 の結果にこの migration が未適用で出たら、先に退避する。
 
 ```powershell
-psql -U printer -h localhost -d printer -c "\copy (SELECT id, maint_vendor, maint_phones FROM printer_assets WHERE maint_vendor IS NOT NULL) TO 'C:\toner\maint_vendor_backup.csv' CSV HEADER"
+psql -U printer -h localhost -d printer -c "\copy (SELECT id, maint_vendor, maint_phones FROM printer_assets WHERE maint_vendor IS NOT NULL) TO 'C:\Printer Manager\maint_vendor_backup.csv' CSV HEADER"
 ```
 
 適用後は「保守業者」画面で業者を登録し、台帳の業者を選び直す
@@ -329,10 +353,11 @@ psql -U printer -h localhost -d printer -c "\copy (SELECT id, maint_vendor, main
 `dist` / `web` / `node_modules` / `prisma` を旧版に戻し、DB は 7-2 のダンプから復元する。
 
 ```powershell
-Stop-ScheduledTask -TaskName "toner-api"
+# API を止める（start.cmd のウィンドウを閉じる。残っていたら下で落とす）
+Get-Process node | Where-Object { $_.Path -like "$APP*" } | Stop-Process
 psql -U postgres -h localhost -c "DROP DATABASE printer;"
 psql -U postgres -h localhost -c "CREATE DATABASE printer OWNER printer;"
-pg_restore -U printer -h localhost -d printer C:\toner\backup_....dump
+pg_restore -U printer -h localhost -d printer "$(Split-Path $APP)\backup_....dump"
 ```
 
 スキーマだけ戻して古い `dist` を新しい DB に当てるのは不可（列が合わない）。

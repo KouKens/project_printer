@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const date_1 = require("../common/date");
 const text_1 = require("../common/text");
+const write_mode_1 = require("../common/write-mode");
 const maint_vendors_service_1 = require("../maint-vendors/maint-vendors.service");
 const printer_match_1 = require("../printers/printer-match");
 const supply_types_1 = require("../printers/supply-types");
@@ -85,7 +86,7 @@ let PrinterAssetsService = class PrinterAssetsService {
     }
     async create(dto) {
         const saved = await this.prisma.printerAsset.create({
-            data: this.toData(dto),
+            data: this.toData(dto, 'create'),
             include: { maintVendor: true, company: true },
         });
         return this.toResponse(saved, await this.vendorsByMaker());
@@ -371,7 +372,7 @@ let PrinterAssetsService = class PrinterAssetsService {
         await this.ensureExists(id);
         const saved = await this.prisma.printerAsset.update({
             where: { id },
-            data: this.toData(dto),
+            data: this.toData(dto, 'update'),
             include: { maintVendor: true, company: true },
         });
         return this.toResponse(saved, await this.vendorsByMaker());
@@ -520,26 +521,29 @@ let PrinterAssetsService = class PrinterAssetsService {
             total: repairs.length,
         };
     }
-    toData(dto) {
+    toData(dto, mode) {
+        const text = (value) => (0, write_mode_1.field)(mode, value, text_1.toText, null);
+        const date = (value) => (0, write_mode_1.field)(mode, value, date_1.toDate, null);
+        const num = (value) => (0, write_mode_1.field)(mode, value, write_mode_1.asIs, null);
         return {
             companyId: dto.companyId,
-            department: (0, text_1.toText)(dto.department),
-            no: (0, text_1.toText)(dto.no),
-            ipAddress: (0, text_1.toText)(dto.ipAddress),
-            maker: (0, text_1.toText)(dto.maker),
-            model: (0, text_1.toText)(dto.model),
-            serialNumber: (0, text_1.toText)(dto.serialNumber),
-            purchasedOn: (0, date_1.toDate)(dto.purchasedOn),
-            purchasePrice: dto.purchasePrice ?? null,
-            contractNo: (0, text_1.toText)(dto.contractNo),
-            maintVendorId: dto.maintVendorId ?? null,
-            maintContract: (0, text_1.toText)(dto.maintContract),
-            maintStartOn: (0, date_1.toDate)(dto.maintStartOn),
-            maintEndOn: (0, date_1.toDate)(dto.maintEndOn),
-            maintDealOn: (0, date_1.toDate)(dto.maintDealOn),
-            maintFee: dto.maintFee ?? null,
-            note: (0, text_1.toText)(dto.note),
-            countLayout: dto.countLayout ?? 'TOTAL',
+            department: text(dto.department),
+            no: text(dto.no),
+            ipAddress: text(dto.ipAddress),
+            maker: text(dto.maker),
+            model: text(dto.model),
+            serialNumber: text(dto.serialNumber),
+            purchasedOn: date(dto.purchasedOn),
+            purchasePrice: num(dto.purchasePrice),
+            contractNo: text(dto.contractNo),
+            maintVendorId: num(dto.maintVendorId),
+            maintContract: text(dto.maintContract),
+            maintStartOn: date(dto.maintStartOn),
+            maintEndOn: date(dto.maintEndOn),
+            maintDealOn: date(dto.maintDealOn),
+            maintFee: num(dto.maintFee),
+            note: text(dto.note),
+            countLayout: (0, write_mode_1.field)(mode, dto.countLayout, write_mode_1.asIs, 'TOTAL'),
         };
     }
     async vendorsByMaker() {

@@ -8,10 +8,28 @@
 
 ---
 
-## 前提（開発端末側で確認済み・2026-09-02）
+## 本番機の実態（2026-09-05 に本番で確認）
+
+**手順書の初期版は `C:\toner\app` 前提で書かれていたが、実際は違う。**
+
+| 項目 | 実際 |
+| --- | --- |
+| インストール先 | **`C:\Printer Manager\app`**（フォルダ名に空白。パスは必ず引用符で囲む） |
+| 起動・停止 | **`start.cmd` を手で実行。**タスクもサービスも登録なし（§4 の自動起動は未実施） |
+| DB | `printer` / `printer` @ localhost:5432（既定値どおり） |
+| ポート / WEB_ROOT | 3000 / `C:\Printer Manager\app\web` |
+| バックアップ置き場 | `C:\Printer Manager\backup_<日時>.dump` |
+| psql | PATH に無い。バージョンは機械ごとに違うので決め打ちしない |
+| 適用済み migration | **40 本・up to date**（`prisma\` は運べている） |
+| データ | 台帳 80 / 在庫 140 / 品番 140 / 受付 44 / 注文 13 / 修理 4 / 枚数 758 |
+
+## 前提（開発端末側で確認済み・2026-09-05）
 
 - `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate diff` で差分なし）
 - 開発側の migration は **41 本**
+- **今回入るのは `20260903020000_add_company` の 1 本だけ**（本番 40 → 41）。
+  `toner_stocks` の主キーを「品番 × 拠点」に張り替えるので、バックアップは必須。
+  適用後に `assign-sites.sql` を流す（§5-2）
 - 破壊的な migration は **2 本**
   - `20260820050000_maint_vendors` → `printer_assets` の `maint_phones` / `maint_vendor` を DROP
   - `20260902010000_page_count_function_color_matrix` → `page_count_daily` の
@@ -38,18 +56,28 @@ powershell -ExecutionPolicy Bypass -File check-prod.ps1
 
 ### A-1. 稼働状況
 
+**タスクにもサービスにも登録していない。** `start.cmd` を手で叩く運用なので、
+`Get-ScheduledTask` では何も出ない（出たら誰かが後から登録したということ）。
+
 ```powershell
-Get-ScheduledTask -TaskName "toner-api"
-curl.exe http://localhost:3000/api/printers
+Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, Path; Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
 ```
 
-- [ ] タスクが動いているか
+- [ ] API が動いているか（動いていれば `start.cmd` のウィンドウを閉じて止める）
 - [ ] 画面が今どこまで使われているか（機器・在庫・修理履歴のどれに入力があるか）
 
 ### A-2. バージョンの確認
 
+**`DATABASE_URL` を先に置く。** 本番に `.env` は無く、`api.env` は `start.cmd` しか
+読まないので、入れ忘れると
+`The datasource.url property is required in your Prisma config file` で止まる。
+
 ```powershell
-cd C:\toner\app
+$env:DATABASE_URL = 'postgresql://printer:パスワード@localhost:5432/printer?schema=public'
+```
+
+```powershell
+cd 'C:\Printer Manager\app'
 node node_modules\prisma\build\index.js migrate status
 ```
 
@@ -66,6 +94,10 @@ psql -U printer -h localhost -d printer -c "SELECT migration_name FROM _prisma_m
 
 ### A-3. 保守業者の列（分岐の判断）
 
+**2026-09-05 の更新では判定済み。本番は 40 本すべて適用済みで
+`20260820050000_maint_vendors` は入っているため、退避は不要。**
+以下は次回以降、間が空いたときのために残しておく。
+
 A-2 の未適用一覧に `20260820050000_maint_vendors` が **出るかどうか**で分かれる。
 
 - [ ] 出ない（適用済み） → 退避は不要。B へ
@@ -79,7 +111,7 @@ psql -U printer -h localhost -d printer -c "SELECT count(*) FROM printer_assets 
 0 件なら退避不要。1 件以上なら CSV へ退避しておく。
 
 ```powershell
-psql -U printer -h localhost -d printer -c "\copy (SELECT id, maint_vendor, maint_phones FROM printer_assets WHERE maint_vendor IS NOT NULL) TO 'C:\toner\maint_vendor_backup.csv' CSV HEADER"
+psql -U printer -h localhost -d printer -c "\copy (SELECT id, maint_vendor, maint_phones FROM printer_assets WHERE maint_vendor IS NOT NULL) TO 'C:\Printer Manager\maint_vendor_backup.csv' CSV HEADER"
 ```
 
 - [ ] 退避した件数 = ______ 件
@@ -91,7 +123,7 @@ psql -U printer -h localhost -d printer -c "\copy (SELECT id, maint_vendor, main
 node -v                # 開発端末と同じメジャー（v24 系）か
 tzutil /g              # Tokyo Standard Time か
 psql --version
-Get-ChildItem C:\toner\app   # dist / web / node_modules / prisma / api.env が揃っているか
+Get-ChildItem 'C:\Printer Manager\app'   # dist / web / node_modules / prisma / api.env が揃っているか
 ```
 
 - [ ] Node のメジャーバージョンが開発端末と一致（`node_modules` をそのまま運ぶため）

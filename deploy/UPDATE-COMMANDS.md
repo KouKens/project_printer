@@ -10,26 +10,36 @@
 
 ---
 
-## 0. この 2 つを先に置く
+## 0. この 4 つを先に置く
 
 以降のコマンドが全部これを使う。**ウィンドウを閉じたら消えるので、
 開き直したらここからやり直すこと。**
 
 ```powershell
+$APP = 'C:\Printer Manager\app'        # 本番のインストール先。空白が入るので必ず変数で扱う
 $SRC = 'E:\out\app'                    # USB の配布物。ドライブ文字は差し込んで確認する
 $env:PGPASSWORD  = 'printer のパスワード'
 $env:DATABASE_URL = 'postgresql://printer:同じパスワード@localhost:5432/printer?schema=public'
 ```
 
-`DATABASE_URL` は `migrate deploy` に要る。**本番の `C:\toner\app` には `.env` が
-無く、`api.env` は `start.cmd` しか読まない**ので、ここで手で入れる。
+**`$APP` にはフォルダ名の空白が入る**（`Printer Manager`）。以降のコマンドで
+`$APP` を裸で書かず `"$APP\dist"` のように引用符で囲むのはこのため。
+2026-09-05 時点の本番は `C:\Printer Manager\app`。別の機械へ入れるときはここだけ変える。
+
+`DATABASE_URL` は `migrate deploy` に要る。**本番には `.env` が無く、
+`api.env` は `start.cmd` しか読まない**ので、ここで手で入れる。
 入れ忘れると `The datasource.url property is required in your Prisma config file`
 で止まる。
 
-`psql` が見つからない場合は PATH に足す。
+`psql` が見つからない場合は PATH に足す。**バージョンの番号は機械によって違う**ので、
+決め打ちせず実際に入っているものを見る。
 
 ```powershell
-$env:Path += ';C:\Program Files\PostgreSQL\18\bin'
+Get-ChildItem 'C:\Program Files\PostgreSQL','C:\Program Files (x86)\PostgreSQL' -Recurse -Filter psql.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+```
+
+```powershell
+$env:Path += ';C:\Program Files\PostgreSQL\18\bin'   # 上で出た bin に合わせる
 ```
 
 ---
@@ -44,7 +54,7 @@ powershell -ExecutionPolicy Bypass -File <USB>\check-prod.ps1
 `check-prod_<日時>.txt` が残るので持ち帰る。個別に見るなら以下。
 
 ```powershell
-cd C:\toner\app
+cd $APP
 node node_modules\prisma\build\index.js migrate status
 ```
 
@@ -63,28 +73,36 @@ psql -U printer -h localhost -d printer -c "SELECT count(*) FILTER (WHERE total_
 **消えるデータが小さくても省略しない。** 切り戻しの前提になる。
 
 ```powershell
-pg_dump -U printer -h localhost -Fc -f C:\toner\backup_$(Get-Date -f yyyyMMdd_HHmm).dump printer
+pg_dump -U printer -h localhost -Fc -f "$(Split-Path $APP)\backup_$(Get-Date -f yyyyMMdd_HHmm).dump" printer
 ```
 
 出来たことを確かめる（0 バイトなら失敗している）。
 
 ```powershell
-Get-ChildItem C:\toner\backup_*.dump | Sort-Object LastWriteTime | Select-Object -Last 1 Name, Length, LastWriteTime
+Get-ChildItem "$(Split-Path $APP)\backup_*.dump" | Sort-Object LastWriteTime | Select-Object -Last 1 Name, Length, LastWriteTime
 ```
 
 ---
 
 ## 3. 止める
 
-```powershell
-Stop-ScheduledTask -TaskName "toner-api"
-```
+**この本番はタスクにもサービスにも登録していない。** `start.cmd` を手で叩いて
+動かしており、`node dist\main.js` がそのウィンドウの中で動いたままになる。
+止め方は「そのウィンドウを閉じる（または Ctrl+C）」。
+
+動いていないことを確かめる。**両方とも何も出なければ止まっている。**
 
 ```powershell
-Get-ScheduledTask -TaskName "toner-api" | Select-Object TaskName, State
+Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, Path; Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
 ```
 
-`State` が `Ready` になっていること（`Running` のままなら止まっていない）。
+ウィンドウが見当たらないのに `node` が残っている場合だけ、プロセスを落とす。
+
+```powershell
+Get-Process node | Where-Object { $_.Path -like "$APP*" } | Stop-Process
+```
+
+**`Stop-Process -Name node` と書かないこと。** 関係のない Node を巻き込む。
 
 ---
 
@@ -93,23 +111,23 @@ Get-ScheduledTask -TaskName "toner-api" | Select-Object TaskName, State
 **`api.env` は上書きしない。** パスワードが入っている。
 
 ```powershell
-xcopy /E /I /Y "$SRC\dist"         C:\toner\app\dist
+xcopy /E /I /Y "$SRC\dist"         "$APP\dist"
 ```
 
 ```powershell
-xcopy /E /I /Y "$SRC\web"          C:\toner\app\web
+xcopy /E /I /Y "$SRC\web"          "$APP\web"
 ```
 
 ```powershell
-xcopy /E /I /Y "$SRC\node_modules" C:\toner\app\node_modules
+xcopy /E /I /Y "$SRC\node_modules" "$APP\node_modules"
 ```
 
 ```powershell
-xcopy /E /I /Y "$SRC\prisma"       C:\toner\app\prisma
+xcopy /E /I /Y "$SRC\prisma"       "$APP\prisma"
 ```
 
 ```powershell
-Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" C:\toner\app\ -Force
+Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" "$APP\" -Force
 ```
 
 **`copy /Y` と書かないこと。** PowerShell では `copy` が `Copy-Item` の別名なので、
@@ -122,10 +140,10 @@ Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" C:\toner\app\ -Force
 運べたか確かめる。
 
 ```powershell
-(Get-ChildItem C:\toner\app\prisma\migrations -Directory).Count
+(Get-ChildItem "$APP\prisma\migrations" -Directory).Count
 ```
 
-**41 と出ること。**
+**41 と出ること。**（更新前の本番は 40 本。差の 1 本が `add_company`）
 
 ---
 
@@ -134,7 +152,7 @@ Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" C:\toner\app\ -Force
 **`migrate dev` と `migrate reset` は絶対に打たない**（リセットを提案してくる）。
 
 ```powershell
-cd C:\toner\app
+cd $APP
 node node_modules\prisma\build\index.js migrate deploy
 ```
 
@@ -144,7 +162,27 @@ node node_modules\prisma\build\index.js migrate deploy
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`41 migrations found` と `Database schema is up to date!` を確認する。
+`42 migrations found` と `Database schema is up to date!` を確認する。
+
+### `20260907000000_toner_stock_non_negative` で止まったとき
+
+在庫の数に CHECK 制約を足すマイグレーション。**既存の行が引っかかると
+`ALTER TABLE` が落ちて、そこで `migrate deploy` が止まる。**
+該当行を探して直してから、もう一度 `migrate deploy` を打つ。
+
+```powershell
+node node_modules\prisma\build\index.js db execute --stdin
+```
+
+貼り付ける SQL（`Ctrl+Z` → `Enter` で終わり）。
+
+```sql
+SELECT * FROM toner_stocks
+WHERE quantity < 0 OR received < 0 OR disposed < 0 OR disposed > received;
+```
+
+出てきた行は在庫と履歴が食い違っている。**数字を勝手に丸めず**、
+棚を数えて棚卸しで合わせるか、どういう経緯でそうなったかを確かめること。
 
 ---
 
@@ -175,20 +213,47 @@ psql -U printer -h localhost -d printer -f <USB>\assign-sites.sql
 psql -U printer -h localhost -d printer -c "SELECT c.name, count(a.id) FROM companies c LEFT JOIN printer_assets a ON a.company_id = c.id GROUP BY c.name ORDER BY 2 DESC;"
 ```
 
-開発 DB（機器 78 台）では 嶋田病院 66 / 大刀洗診療所 3 / シマダ在宅サービス 3 /
-残り 6 拠点が各 1 台だった。**台数が合わない拠点があれば部署名の表記を確かめる**
-（`assign-sites.sql` の CASE は部分一致）。
+**2026-09-05 に本番の部署名で事前に検算した結果**（台帳 80 台）。この通りになること。
+
+| 拠点 | 台数 |
+| --- | --- |
+| 嶋田病院 | 68 |
+| 大刀洗診療所 | 3 |
+| シマダ在宅サービス | 3（ケアプランセンター・訪問看護・訪問介護） |
+| いきいき介護プラザ / エミナス / シマダナーシングホームおごおり | 各 1 |
+| シマリス小郡 / シマリス大刀洗 / シマリスみくに | 各 1 |
+
+在庫 140 行・受付履歴 44 件・注文 13 件は**すべて嶋田病院**に入る。
+**台数が合わない拠点があれば部署名の表記を確かめる**（CASE は部分一致）。
+
+`-c` で打つ問い合わせの日本語が化けるときは、クライアント側の encoding を
+コンソール（CP932）に合わせる。
+
+```powershell
+$env:PGCLIENTENCODING = 'SJIS'
+```
+
+**これを置いたままでも `assign-sites.sql` は安全。**ファイルの先頭で
+`\encoding UTF8` を宣言してあるので、環境変数に引きずられない。
+宣言が無いと UTF-8 のバイト列を SJIS と名乗って送ることになり、
+**拠点名が文字化けしたまま入り、CASE も一致せず全機器が 1 拠点に寄る**
+（エラーにならないので気づけない）。
 
 ---
 
 ## 6. 起動する
 
-```powershell
-Start-ScheduledTask -TaskName "toner-api"
-```
+タスク登録はしていないので `start.cmd` を叩く。**このウィンドウは開いたままにする**
+（閉じると API も止まる）。
 
 ```powershell
-Get-ScheduledTask -TaskName "toner-api" | Select-Object TaskName, State
+Start-Process -FilePath "$APP\start.cmd" -WorkingDirectory $APP
+```
+
+立ち上がったことを確かめる。
+
+```powershell
+Get-NetTCPConnection -LocalPort 3000 -State Listen | Select-Object OwningProcess
 ```
 
 ---
@@ -230,8 +295,10 @@ curl.exe -X POST http://localhost:3000/api/printers/page-counts/capture
 `dist` / `web` / `node_modules` / `prisma` を旧版に戻したうえで、DB を 2 のダンプから戻す。
 **DB とアプリは必ず同じ世代に揃える**（列が合わない）。
 
+API を止める（`start.cmd` のウィンドウを閉じる）。残っていたら落とす。
+
 ```powershell
-Stop-ScheduledTask -TaskName "toner-api"
+Get-Process node | Where-Object { $_.Path -like "$APP*" } | Stop-Process
 ```
 
 ```powershell
@@ -243,7 +310,7 @@ psql -U postgres -h localhost -c "CREATE DATABASE printer OWNER printer;"
 ```
 
 ```powershell
-pg_restore -U printer -h localhost -d printer C:\toner\backup_<日時>.dump
+pg_restore -U printer -h localhost -d printer "$(Split-Path $APP)\backup_<日時>.dump"
 ```
 
 ---

@@ -32,6 +32,7 @@ export type CaptureRow = {
     status: 'recorded' | 'skipped' | 'unreachable';
     note?: string;
 };
+export declare const PAGE_COUNT_CRON = "0 12 * * *";
 export declare class PageCountsService {
     private readonly prisma;
     private readonly snmp;

@@ -164,19 +164,23 @@ export class TonerOrdersService {
    * 片側しか無い行も出す。注文だけなら「まだ入っていない」、
    * 搬入だけなら「注文の記録が無い」で、どちらも見落としたくないため。
    * 次回搬入日を入れていない注文は突き合わせられないので、日付なしの行にまとめる。
+   *
+   * **拠点ごと。`companyId` は必須。** 鍵が「品番 ＋ 日付」だけなので、
+   * 拠点で絞らないと同じ品番を同じ日に受け取った別の拠点の搬入が
+   * 1 行にまとまり、こちらの注文が埋まったように見えて差が消える
    */
-  async findDeliveryCheck(days = 180) {
+  async findDeliveryCheck(companyId: number, days = 180) {
     const from = new Date();
     from.setDate(from.getDate() - days);
 
     const [orders, entries] = await Promise.all([
       this.prisma.tonerOrder.findMany({
-        where: { orderedAt: { gte: from } },
+        where: { companyId, orderedAt: { gte: from } },
         orderBy: { orderedAt: 'desc' },
         include: { toner: { select: { name: true, color: true } } },
       }),
       this.prisma.tonerEntry.findMany({
-        where: { action: 'RECEIVE', createdAt: { gte: from } },
+        where: { companyId, action: 'RECEIVE', createdAt: { gte: from } },
         orderBy: { createdAt: 'desc' },
         include: { toner: { select: { name: true, color: true } } },
       }),

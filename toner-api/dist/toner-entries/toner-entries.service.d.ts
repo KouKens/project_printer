@@ -4,6 +4,7 @@ import { CreateTonerEntryDto } from './dto/create-toner-entry.dto';
 import { StockTakeDto } from './dto/stock-take.dto';
 export type TonerAction = 'REGISTER' | 'RECEIVE' | 'ISSUE' | 'DISPOSE' | 'ADJUST';
 export declare const GUEST_USER = "\u30B2\u30B9\u30C8";
+export declare const HISTORY_LIMIT = 1000;
 export type StockTakeRow = {
     tonerId: string;
     name: string | null;
@@ -72,18 +73,22 @@ export declare class TonerEntriesService {
         tonerId?: string;
         companyId?: number;
     }): Promise<{
-        id: number;
-        userId: string;
-        tonerId: string;
-        companyId: number;
-        name: string | null;
-        color: string | null;
-        action: import("../generated/prisma/enums").TonerAction;
-        quantity: number;
-        balance: number;
-        receivedOn: string | null;
-        createdAt: Date;
-    }[]>;
+        truncated: boolean;
+        limit: number;
+        rows: {
+            id: number;
+            userId: string;
+            tonerId: string;
+            companyId: number;
+            name: string | null;
+            color: string | null;
+            action: import("../generated/prisma/enums").TonerAction;
+            quantity: number;
+            balance: number;
+            receivedOn: string | null;
+            createdAt: Date;
+        }[];
+    }>;
     private requireToner;
     private bumpStock;
     private toResult;

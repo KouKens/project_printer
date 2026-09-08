@@ -189,6 +189,18 @@ export function fetchOrders(companyId: number) {
 }
 
 /**
+ * 受付の履歴の戻り。
+ * **`truncated` が立っていたら上限で切れている。** 並んでいるものが
+ * その期間の全部だと読ませないよう、画面に断りを出すために付いている
+ */
+export type EntryHistory = {
+  rows: EntryRow[]
+  truncated: boolean
+  /** 1 回に返す上限の件数 */
+  limit: number
+}
+
+/**
  * 受付の履歴。区分で絞れる。
  * `companyId` を渡すとその拠点の分だけ（トナー入出状況は拠点ごとに見る）
  */
@@ -196,7 +208,7 @@ export function fetchEntryHistory(days: number, action?: string, companyId?: num
   const query =
     `days=${days}${action ? `&action=${action}` : ''}` +
     `${companyId ? `&companyId=${companyId}` : ''}`
-  return get<EntryRow[]>(
+  return get<EntryHistory>(
     `${API}/toner-entries/history?${query}`,
     '受付の履歴を取得できませんでした',
   )
@@ -215,10 +227,13 @@ export function deleteOrder(id: number) {
   return del<{ id: number }>(`${API}/toner-orders/${id}`, '取り消せませんでした')
 }
 
-/** 注文と搬入の突き合わせ */
-export function fetchDeliveryCheck(days: number) {
+/**
+ * 注文と搬入の突き合わせ。**拠点ごと。**
+ * 拠点を渡さないと API が 400 で断る（他の拠点の搬入が本数に混ざるため）
+ */
+export function fetchDeliveryCheck(companyId: number, days: number) {
   return get<DeliveryCheckRow[]>(
-    `${API}/toner-orders/delivery-check?days=${days}`,
+    `${API}/toner-orders/delivery-check?companyId=${companyId}&days=${days}`,
     '突き合わせを取得できませんでした',
   )
 }

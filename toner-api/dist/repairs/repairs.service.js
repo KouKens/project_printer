@@ -13,6 +13,7 @@ exports.RepairsService = void 0;
 const common_1 = require("@nestjs/common");
 const date_1 = require("../common/date");
 const text_1 = require("../common/text");
+const write_mode_1 = require("../common/write-mode");
 const prisma_service_1 = require("../prisma/prisma.service");
 let RepairsService = class RepairsService {
     prisma;
@@ -23,7 +24,7 @@ let RepairsService = class RepairsService {
         await this.ensureAsset(dto.printerAssetId);
         this.ensureDateOrder(dto);
         const saved = await this.prisma.repairRecord.create({
-            data: this.toData(dto),
+            data: this.toData(dto, 'create'),
             include: { asset: { include: { company: true } } },
         });
         return this.toResponse(saved);
@@ -54,7 +55,7 @@ let RepairsService = class RepairsService {
         this.ensureDateOrder(dto);
         const saved = await this.prisma.repairRecord.update({
             where: { id },
-            data: this.toData(dto),
+            data: this.toData(dto, 'update'),
             include: { asset: { include: { company: true } } },
         });
         return this.toResponse(saved);
@@ -87,17 +88,17 @@ let RepairsService = class RepairsService {
             throw new common_1.BadRequestException('復旧日が発生日より前になっています。日付を確認してください');
         }
     }
-    toData(dto) {
+    toData(dto, mode) {
         return {
-            assignee: (0, text_1.toText)(dto.assignee),
+            assignee: (0, write_mode_1.field)(mode, dto.assignee, text_1.toText, null),
             printerAssetId: dto.printerAssetId,
-            occurredOn: (0, date_1.toDate)(dto.occurredOn),
-            category: dto.category ?? null,
+            occurredOn: (0, write_mode_1.field)(mode, dto.occurredOn, date_1.toDate, null),
+            category: (0, write_mode_1.field)(mode, dto.category, write_mode_1.asIs, null),
             handledBy: dto.handledBy,
-            detail: (0, text_1.toText)(dto.detail),
-            cost: dto.cost ?? null,
-            restoredOn: (0, date_1.toDate)(dto.restoredOn),
-            status: dto.status ?? 'INVESTIGATING',
+            detail: (0, write_mode_1.field)(mode, dto.detail, text_1.toText, null),
+            cost: (0, write_mode_1.field)(mode, dto.cost, write_mode_1.asIs, null),
+            restoredOn: (0, write_mode_1.field)(mode, dto.restoredOn, date_1.toDate, null),
+            status: (0, write_mode_1.field)(mode, dto.status, write_mode_1.asIs, 'INVESTIGATING'),
         };
     }
     toResponse(row) {

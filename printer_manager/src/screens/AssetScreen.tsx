@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MANUAL_MAINT, maintStatus } from '../lib/maint';
 
+import { foldKey } from '../lib/fold';
 import { num, orNull } from '../lib/format';
+import { suggestions } from '../lib/suggest';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -171,7 +173,17 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
   { key: 'updatedAt', label: '更新日', kind: 'date' },
 ];
 
-function toPayload(asset: Asset) {
+/**
+ * 保存で送る形。**`Asset` の全項目を並べる。**
+ *
+ * キーを `keyof Asset` から作ってあるので、`Asset` に項目を足して
+ * ここに足し忘れるとコンパイルが落ちる。以前 `countLayout` の足し忘れで
+ * 保存のたび値が既定に戻る事故が起きたため、型で止めている
+ * （API 側も送られてこなかった列には触らないようになっている）
+ */
+type AssetPayload = Record<keyof Asset, string | number | null>;
+
+function toPayload(asset: Asset): AssetPayload {
   return {
     // 拠点は必須。空のまま送ると API が 400 で断る
     companyId: asset.companyId === '' ? null : Number(asset.companyId),
@@ -221,10 +233,13 @@ function toForm(saved: SavedAsset): Asset {
   };
 }
 
-/** 台帳の値と実機の値を突き合わせる。どちらか空なら判定しない */
+/**
+ * 台帳の値と実機の値を突き合わせる。どちらか空なら判定しない。
+ * 表記ゆれで「違う」と出さないよう、他の突き合わせと同じ `foldKey` で畳む
+ */
 function compare(input: string, actual: string | null): 'same' | 'diff' | null {
-  const a = input.trim().toLowerCase();
-  const b = (actual ?? '').trim().toLowerCase();
+  const a = foldKey(input);
+  const b = foldKey(actual ?? '');
   if (!a || !b) return null;
   return a === b ? 'same' : 'diff';
 }
@@ -273,6 +288,42 @@ export default function AssetScreen() {
       saved
         .filter((row) => row.disabledAt !== null)
         .sort((a, b) => (a.disabledAt! < b.disabledAt! ? 1 : -1)),
+    [saved],
+  );
+
+  /**
+   * 入力欄に出す「過去に入力した値」の候補。
+   *
+   * **無効にした台のぶんも混ぜる**（`saved` を使う）。使わなくなった機器でも
+   * 部署やメーカーの書き方は生きているので、候補から外す理由がない。
+   *
+   * 型番は同じ機種を何台も持つので、よく使われている順が実用的。
+   * 部署・メーカー・契約 No. は件数に偏りが少ないので探しやすさを採って名前順。
+   *
+   * 大文字小文字と全角半角は `suggestions` が畳むので、`RICOH` と `Ricoh`、
+   * `3階病棟` と `３階病棟` はそれぞれ 1 件にまとまり、多いほうの表記で出る。
+   *
+   * **実機から読めた機種名（printers 側）は混ぜない。** あちらは SNMP が返した
+   * 値で、台帳の書き方と食い違うことがある（`iR-ADV C3520F` と
+   * `Canon iR-ADV C3520F` など）。混ぜるとどちらが台帳の正しい書き方か
+   * 分からなくなるので、候補は台帳に人が入れた値だけにする
+   */
+  const hints = useMemo(
+    () => ({
+      departments: suggestions(
+        saved.map((row) => row.department),
+        'name',
+      ),
+      makers: suggestions(
+        saved.map((row) => row.maker),
+        'name',
+      ),
+      models: suggestions(saved.map((row) => row.model)),
+      contractNos: suggestions(
+        saved.map((row) => row.contractNo),
+        'name',
+      ),
+    }),
     [saved],
   );
 
@@ -532,19 +583,22 @@ export default function AssetScreen() {
     setNotice(null);
   };
 
-  /** 入力中のメーカーに対する既定の業者。選択欄の見出しに出す */
+  /**
+   * 入力中のメーカーに対する既定の業者。選択欄の見出しに出す。
+   *
+   * **API 側の `makerKey` と同じ `foldKey` で畳む。**畳み方が違うと、
+   * この見出しには業者が出ないのに保存すると業者が付く（またはその逆）という
+   * 食い違いになる
+   */
   const defaultVendor =
     vendors.find((vendor) =>
-      vendor.makers.some(
-        (maker) =>
-          maker.trim().toLowerCase() === asset.maker.trim().toLowerCase(),
-      ),
+      vendor.makers.some((maker) => foldKey(maker) === foldKey(asset.maker)),
     ) ?? null;
 
   const serialMatch = probe ? compare(asset.serialNumber, probe.serialNumber) : null;
   const makerMatch =
     probe && asset.maker.trim() && probe.model
-      ? probe.model.toLowerCase().includes(asset.maker.trim().toLowerCase())
+      ? foldKey(probe.model).includes(foldKey(asset.maker))
         ? 'same'
         : 'diff'
       : null;
@@ -595,9 +649,23 @@ export default function AssetScreen() {
       </header>
 
       <section className="as-form">
+        {/*
+          * 入力欄の候補は datalist で出す。**選ぶだけでなく自由入力もできる。**
+          * 一覧に無い部署・メーカーもそのまま打てるので、表記を揃えたいが
+          * 決め打ちにはできない欄に向く。候補は登録済みの台帳から作る
+          */}
         <label>
           <span>部署</span>
-          <input value={asset.department} onChange={(e) => set('department')(e.target.value)} />
+          <input
+            value={asset.department}
+            onChange={(e) => set('department')(e.target.value)}
+            list="as-departments"
+          />
+          <datalist id="as-departments">
+            {hints.departments.map((value) => (
+              <option key={value} value={value} />
+            ))}
+          </datalist>
         </label>
 
         {/*
@@ -638,13 +706,24 @@ export default function AssetScreen() {
           />
         </label>
 
+        {/*
+          * メーカーは保守業者のメーカー既定と突き合わせる鍵でもある
+          * （`makerKey` が小文字化して比べる）。候補から選べば表記が揃い、
+          * 「業者が引けない」を防げる
+          */}
         <label>
           <span>メーカー</span>
           <input
             value={asset.maker}
             onChange={(e) => set('maker')(e.target.value)}
             placeholder="Ricoh"
+            list="as-makers"
           />
+          <datalist id="as-makers">
+            {hints.makers.map((value) => (
+              <option key={value} value={value} />
+            ))}
+          </datalist>
         </label>
 
         <label>
@@ -653,7 +732,13 @@ export default function AssetScreen() {
             value={asset.model}
             onChange={(e) => set('model')(e.target.value)}
             placeholder="P501"
+            list="as-models"
           />
+          <datalist id="as-models">
+            {hints.models.map((value) => (
+              <option key={value} value={value} />
+            ))}
+          </datalist>
         </label>
 
         <label>
@@ -689,7 +774,16 @@ export default function AssetScreen() {
 
         <label>
           <span>契約 No.</span>
-          <input value={asset.contractNo} onChange={(e) => set('contractNo')(e.target.value)} />
+          <input
+            value={asset.contractNo}
+            onChange={(e) => set('contractNo')(e.target.value)}
+            list="as-contract-nos"
+          />
+          <datalist id="as-contract-nos">
+            {hints.contractNos.map((value) => (
+              <option key={value} value={value} />
+            ))}
+          </datalist>
         </label>
 
         <label>

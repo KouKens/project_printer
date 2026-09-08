@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { foldKey } from '../lib/fold';
 import { request } from '../lib/request';
 import './MaintVendorScreen.css';
 
@@ -108,9 +109,8 @@ export default function MaintVendorScreen() {
        * 「会社名 = メーカー名」なら、そのメーカーの既定にしたいはずなので印を付ける。
        * 手でチェックを触った後は触らない
        */
-      const hit = makers.find(
-        (maker) => maker.toLowerCase() === value.trim().toLowerCase(),
-      );
+      // API 側の makerKey と同じ畳み方にする（ＲＩＣＯＨ でも Ricoh に当たる）
+      const hit = makers.find((maker) => foldKey(maker) === foldKey(value));
       next.makers = hit ? [hit] : [];
       return next;
     });

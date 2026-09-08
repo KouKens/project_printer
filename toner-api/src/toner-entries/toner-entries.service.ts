@@ -20,6 +20,13 @@ export type TonerAction =
  */
 export const GUEST_USER = 'ゲスト';
 
+/**
+ * 受け払い履歴を 1 回で返す上限。
+ * これを超えたぶんは返さず、切れたことを `truncated` で画面に伝える。
+ * 黙って打ち切ると「その期間はこれで全部」と読めてしまうため
+ */
+export const HISTORY_LIMIT = 1000;
+
 /** 棚卸しの結果 1 行分 */
 export type StockTakeRow = {
   tonerId: string;
@@ -447,9 +454,21 @@ export class TonerEntriesService {
           data: { quantity: { increment: count } },
         });
       } else if (entry.action === 'DISPOSE') {
+        /*
+         * 廃棄累計より多く戻そうとするのは、履歴と在庫が食い違っている合図。
+         * 以前は Math.min で黙って辻褄を合わせていたが、それだと
+         * 取り消したはずの本数が戻らないまま「成功」として返ってしまう。
+         * 搬入の取り消しと同じく、筋が通らないなら断る
+         */
+        if (disposed < count) {
+          throw new UnprocessableEntityException(
+            `取り消せません。廃棄した ${count} 本に対して、` +
+              `記録上の廃棄累計は ${disposed} 本しかありません`,
+          );
+        }
         await tx.tonerStock.update({
           where: stockKey,
-          data: { disposed: { decrement: Math.min(count, disposed) } },
+          data: { disposed: { decrement: count } },
         });
       }
       // REGISTER は在庫を動かしていないので、行を消すだけ
@@ -488,7 +507,11 @@ export class TonerEntriesService {
    */
   /**
    * 受け払いの履歴。**拠点ごと**（トナー入出状況の画面用）。
-   * `companyId` を渡さなければ全拠点まとめて返す
+   * `companyId` を渡さなければ全拠点まとめて返す。
+   *
+   * 1 回に返すのは新しいほうから `HISTORY_LIMIT` 件まで。
+   * **切れたときは `truncated` を立てて返す。** 黙って打ち切ると
+   * 画面に並んだものがその期間の全部だと読めてしまうため
    */
   async findHistory(params: {
     days?: number;
@@ -500,7 +523,7 @@ export class TonerEntriesService {
     const from = new Date();
     from.setDate(from.getDate() - days);
 
-    const rows = await this.prisma.tonerEntry.findMany({
+    const found = await this.prisma.tonerEntry.findMany({
       where: {
         createdAt: { gte: from },
         ...(params.action ? { action: params.action as TonerAction } : {}),
@@ -508,26 +531,35 @@ export class TonerEntriesService {
         ...(params.companyId ? { companyId: params.companyId } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      take: 1000,
+      // 上限より 1 件多く引いて、続きがあるかどうかだけ見る
+      take: HISTORY_LIMIT + 1,
       include: { toner: { select: { name: true, color: true } } },
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      userId: row.userId,
-      tonerId: row.tonerId,
-      /** どの拠点の受け払いか。全拠点で見るときに列として出す */
-      companyId: row.companyId,
-      name: row.toner.name,
-      color: row.toner.color,
-      action: row.action,
-      quantity: row.quantity,
-      /** 操作直後の在庫 */
-      balance: row.balance,
-      /** 搬入日。搬入以外は null */
-      receivedOn: fromDate(row.receivedOn),
-      createdAt: row.createdAt,
-    }));
+    const truncated = found.length > HISTORY_LIMIT;
+    const rows = truncated ? found.slice(0, HISTORY_LIMIT) : found;
+
+    return {
+      /** 上限に達したか。立っていれば画面は「以降は表示していない」と出す */
+      truncated,
+      limit: HISTORY_LIMIT,
+      rows: rows.map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        tonerId: row.tonerId,
+        /** どの拠点の受け払いか。全拠点で見るときに列として出す */
+        companyId: row.companyId,
+        name: row.toner.name,
+        color: row.toner.color,
+        action: row.action,
+        quantity: row.quantity,
+        /** 操作直後の在庫 */
+        balance: row.balance,
+        /** 搬入日。搬入以外は null */
+        receivedOn: fromDate(row.receivedOn),
+        createdAt: row.createdAt,
+      })),
+    };
   }
 
   // ── 内部ヘルパー ──────────────────────

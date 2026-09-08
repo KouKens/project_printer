@@ -8,9 +8,22 @@ import { toText } from '../common/text';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMaintVendorDto } from './dto/create-maint-vendor.dto';
 
-/** メーカー名は表記ゆれ（RICOH / Ricoh）があるので、比べるときは畳む */
+/**
+ * メーカー名を突き合わせるための鍵。**表記ゆれを畳む。**
+ *
+ * - `NFKC` で全角英数（`ＲＩＣＯＨ`）を半角に、半角カナ（`ｷﾔﾉﾝ`）を全角に揃える
+ * - `toLowerCase()` で大文字小文字を畳む（`RICOH` / `Ricoh`）
+ *
+ * 画面側の入力候補（`lib/suggest.ts` の `foldKey`）と同じ畳み方にしてある。
+ * 片方だけ全角を畳むと、画面では 1 件にまとまって見えるのに DB では
+ * 別のメーカーとして扱われる、という食い違いが起きる。
+ *
+ * **判定が緩くなる方向にしか動かない。** 正規化は関数なので、等しい文字列は
+ * 正規化後も等しいまま。今ついている業者が外れることはなく、
+ * これまで引けなかった組み合わせが引けるようになるだけ
+ */
 export function makerKey(maker: string): string {
-  return maker.trim().toLowerCase();
+  return maker.trim().normalize('NFKC').toLowerCase();
 }
 
 /** 空欄と重複を落とす。並びは入力どおりに残す */

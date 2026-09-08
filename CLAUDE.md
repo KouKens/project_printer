@@ -16,11 +16,16 @@
 **検証系** — 変更したら都度かけてよい。
 
 ```
-npx tsc --noEmit          型チェック
+npx tsc --noEmit          型チェック（toner-api）
+npx tsc -b                型チェック（printer_manager はこちら）
 npx eslint <path>         Lint（--fix 込み。src/generated は対象外）
 npx jest / npm test       テスト
 npm run build             ビルド
 ```
+
+**フロントで `tsc --noEmit` を使わないこと。**`printer_manager/tsconfig.json` は
+`"files": []` の参照専用（`tsconfig.app.json` / `tsconfig.node.json` を指すだけ）なので、
+`--noEmit` は**何も検査せず 0 で返る**。必ず `npx tsc -b` を使う。
 
 **Prisma** — スキーマを変えたら `migrate dev` と `generate` まで通してよい。
 開発用 DB なので `migrate reset` によるリセットや、データの投入・削除もしてよい。
@@ -137,10 +142,16 @@ npm run dev               フロント（printer_manager）
   返さず、カラーの PX-M791FT 2 台だけが返す。列が無いのを「カラー 0」と読むと
   モノクロ機をカラー機として扱うことになるので、読めなかった扱いにして
   「カラーの消耗品を持たない → mono-only」の判定に任せる
-- **端末情報の画面は台帳の全項目を送って置き換える。** 画面のフォームに無い項目は
-  未入力として保存され、保存のたびに消える。台帳に列を足したら `AssetScreen.tsx` の
-  `toPayload` / `toForm` にも必ず足すこと（入力欄を出さないなら読んだ値を持ち回る）。
-  実際に `countLayout` が保存のたび `TOTAL` に戻る事故が起きている
+- **`PATCH` は送られてこなかった列に触らない。**`common/write-mode.ts` の `field()` が
+  未指定（undefined）を `create` では既定値に、`update` では undefined に畳み、
+  Prisma が undefined を「この列は変更しない」と読む。**値を消すときは画面が
+  明示的に `null` を送る。**以前は未指定と null を同じ扱いにしていたため、
+  `countLayout` が保存のたび `TOTAL` に、修理履歴の `status` が `INVESTIGATING` に
+  戻る事故が起きていた。`printer-assets` と `repairs` の `toData(dto, mode)` が
+  この形。新しく create/update を共用するサービスを書くときも同じにする
+- 台帳に列を足したら `AssetScreen.tsx` の `toPayload` / `toForm` にも足すこと。
+  `toPayload` の戻り値は `Record<keyof Asset, …>` なので**足し忘れるとコンパイルが
+  落ちる**（型で止めてある）
 - 保守の有無は保守終了日から判定し、**終了日が無いときだけ**手入力の `maintContract`
   （「有」「×」）を見る。日付があるときは日付が優先（`lib/maint.ts`）
 - 保守業者は `MaintVendor` マスタに会社名と電話番号を持ち、台帳は `maintVendorId` で
@@ -148,7 +159,10 @@ npm run dev               フロント（printer_manager）
   業者を消しても台帳は消えず、参照が null に戻る（`onDelete: SetNull`）
 - **その機器を見ている業者は「台帳の指定 → 無ければメーカーの既定」の順で決まる。**
   `MaintVendor.makers` が既定にするメーカー名（台帳の `maker` と突き合わせ、
-  表記ゆれは小文字化して比較）。台帳の `maintVendorId` が null は「未設定」ではなく
+  表記ゆれは `makerKey` で畳んで比較 —— **NFKC で全角半角、`toLowerCase` で
+  大文字小文字**。`ＲＩＣＯＨ` と `Ricoh` は同じメーカーになる）。
+  **画面の入力候補（`lib/suggest.ts` の `foldKey`）と同じ畳み方にしてある。**
+  片方だけ全角を畳むと、候補では 1 件に見えるのに DB では別物として扱われる。台帳の `maintVendorId` が null は「未設定」ではなく
   **「メーカーの既定に従う」**の意味。API は解決済みの `effectiveVendor`
   （`source: 'asset' | 'maker'`）を返すので、画面はそれを出すだけでよい。
   1 つのメーカーを 2 社が既定に名乗ることはできない（サービス側で弾く）
@@ -157,13 +171,27 @@ npm run dev               フロント（printer_manager）
   復旧日だけで判定すると完了済みの履歴が数から漏れる。
   期間が未入力の台帳は 0 回ではなくハイフンで出す。
   費用も未入力は 0 円ではないので合計に足さない（`costKnown` で件数を添える）
-- 定期実行は毎日 12 時の 2 つ。**枚数の記録**（`page-counts.service.ts`）と
-  **全機器の残量の取り直し**（`printers.service.ts` の `pollScheduled`）。
+- 定期実行は 2 つ。**枚数の記録は 12:00**（`page-counts.service.ts` の
+  `PAGE_COUNT_CRON`）、**全機器の残量の取り直しは 12:30**（`printers.service.ts` の
+  `PRINTER_POLL_CRON`）。**同じ時刻に置かないこと。**順に問い合わせるのは
+  各ジョブの中だけで、2 本の `@Cron` は並走する。重ねると 1 台の機器に
+  枚数の 1 本と残量の 6 本（`BULK_CONCURRENCY`）が同時に届き、返事が落ちて
+  消耗品の表が後ろから欠ける。間隔は `cron-schedule.spec.ts` が見張っている。
   常時起動でない環境では `POST /api/printers/page-counts/capture` と
-  `POST /api/printers/poll` を外から叩く
+  `POST /api/printers/poll` を外から叩く（**続けて叩かず、片方が終わってから**）
 - 画面から API を叩くのは `lib/request.ts` の `request()`。各画面に同じ実装を
   置き直さない（`api.ts` の `post` / `get` は受付・注文が使う別系統で、
   エラー文言の作り方だけが違う）
+- **「同じものか」を比べるときは `lib/fold.ts` の `foldKey()` を通す。**
+  NFKC で全角半角、`toLowerCase` で大文字小文字を畳む。API 側の `makerKey` と
+  同じ畳み方で、**片方だけ変えないこと**（画面では同じメーカーに見えるのに
+  業者が引けない、という食い違いになる）。メーカー・型番・シリアルの突き合わせと
+  入力候補（`lib/suggest.ts`）が使う。**一覧の絞り込み欄には使っていない** ——
+  あちらは部分一致で探すためのもので、同じものかどうかの判定ではない
+- **`GET /toner-entries/history` は配列でなく `{ rows, truncated, limit }` を返す。**
+  1 回に返すのは新しいほうから `HISTORY_LIMIT`（1000）件までで、切れたときは
+  `truncated` が立つ。黙って打ち切ると、並んだものがその期間の全部だと読めてしまう。
+  画面は `truncated` のとき断りを出す（`DeliveryScreen`）
 ## 拠点の分け方
 
 **`Company` は在庫と受け払いを分ける単位＝「拠点・事業所」。**
@@ -189,11 +217,20 @@ DB の列名まで変えると移行がもう 1 本要るので、名前はそ�
   拠点ごとの数はトナー個数状況で見る
 - **在庫の行は搬入して初めて作られる。**品番を登録した時点では拠点が決まらないので、
   受付側で upsert する（`bumpStock`）。**行が無い＝在庫 0** と同じ意味
+- **`toner_stocks` には CHECK 制約が 4 つ付いている**（quantity / received / disposed が
+  0 以上、disposed <= received）。サービス側でも持ち出し・廃棄の前に数を見ているが、
+  **検査と更新が別の操作**なので、既定の Read Committed では 2 人が同時に最後の 1 本を
+  持ち出すと両方が検査を通ってしまう。日本語の文面を出すのはサービス側の仕事で、
+  制約は最後の歯止め。Prisma のスキーマに CHECK は書けないので、定義は
+  `migrations/20260907000000_toner_stock_non_negative/migration.sql` にしかない
 - 拠点を持つのは `printer_assets` `toner_entries` `toner_orders` `toner_stocks` の 4 つ。
   **請求書は持たない**（全拠点まとめて見る画面なので絞る単位が要らない）
-- `GET /toner-entries/stock` と `/printer-assets/by-model` は **`companyId` が必須**。
-  省くと他の拠点の数が混ざるので 400 にする。台帳の一覧・注文・履歴は任意で、
-  付けなければ全拠点を返す（修理やプリンター状況が全拠点で見るため）
+- `GET /toner-entries/stock`・`/printer-assets/by-model`・`/toner-orders/delivery-check`
+  は **`companyId` が必須**。省くと他の拠点の数が混ざるので 400 にする。
+  突き合わせは鍵が「品番 ＋ 日付」だけなので、絞らないと他拠点の搬入が
+  同じ行にまとまり、こちらの注文が埋まったように見えて差が消える。
+  台帳の一覧・注文・履歴は任意で、付けなければ全拠点を返す
+  （修理やプリンター状況が全拠点で見るため）
 - **画面は拠点が決まるまで読み込みを待つ。**`useCompany()` の `companyId` は
   一覧が届くまで null で、そのあいだに叩くと必須の口が 400 になる。
   読み込みの `useCallback` には必ず `companyId` を依存に入れる（切り替えで取り直すため）

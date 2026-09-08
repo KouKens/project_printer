@@ -222,6 +222,12 @@ model TonerPrice {
 /// **拠点ごとに数える単位はここ。** 品番マスタ（Toner）は全拠点で共通なので、
 /// 「A 拠点の P500H が 3 本、B 拠点の P500H が 1 本」を分けて持てるのはこの表だけ。
 /// 行が無い組み合わせは在庫 0 と同じ意味（受け入れて初めて行ができる）
+/// 在庫は「品番 × 拠点」。ここが拠点ごとに数えられる唯一の場所
+///
+/// **4 つの CHECK 制約が付いている**（quantity / received / disposed が 0 以上、
+/// disposed <= received）。Prisma のスキーマには CHECK を書けないので、定義は
+/// migrations/20260907000000_toner_stock_non_negative/migration.sql にしかない。
+/// 列を触るときはそちらも見ること
 model TonerStock {
   tonerId   String  @map("toner_id")
   companyId Int     @map("company_id")

@@ -10,7 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 var PageCountsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PageCountsService = void 0;
+exports.PageCountsService = exports.PAGE_COUNT_CRON = void 0;
 const common_1 = require("@nestjs/common");
 const schedule_1 = require("@nestjs/schedule");
 const date_1 = require("../common/date");
@@ -62,6 +62,7 @@ function rangeOf(days, from, to) {
     }
     return end === null ? { gte: start } : { gte: start, lte: end };
 }
+exports.PAGE_COUNT_CRON = '0 12 * * *';
 let PageCountsService = PageCountsService_1 = class PageCountsService {
     prisma;
     snmp;
@@ -389,7 +390,7 @@ let PageCountsService = PageCountsService_1 = class PageCountsService {
 };
 exports.PageCountsService = PageCountsService;
 __decorate([
-    (0, schedule_1.Cron)('0 12 * * *', { name: 'capture-page-counts' }),
+    (0, schedule_1.Cron)(exports.PAGE_COUNT_CRON, { name: 'capture-page-counts' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

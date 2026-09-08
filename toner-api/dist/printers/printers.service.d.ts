@@ -4,6 +4,7 @@ import { CreatePrinterDto, SnmpVersionInput } from './dto/create-printer.dto';
 import { ProbePrinterDto } from './dto/probe-printer.dto';
 import { SatoStatusService, SatoStatusSnapshot } from './sato-status.service';
 import { SnmpService, SnmpVersionKey } from './snmp.service';
+export declare const PRINTER_POLL_CRON = "30 12 * * *";
 export type PollResultRow = {
     id: number;
     ipAddress: string;

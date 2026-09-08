@@ -9,11 +9,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TonerEntriesService = exports.GUEST_USER = void 0;
+exports.TonerEntriesService = exports.HISTORY_LIMIT = exports.GUEST_USER = void 0;
 const common_1 = require("@nestjs/common");
 const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
 exports.GUEST_USER = 'ゲスト';
+exports.HISTORY_LIMIT = 1000;
 let TonerEntriesService = class TonerEntriesService {
     prisma;
     constructor(prisma) {
@@ -287,9 +288,13 @@ let TonerEntriesService = class TonerEntriesService {
                 });
             }
             else if (entry.action === 'DISPOSE') {
+                if (disposed < count) {
+                    throw new common_1.UnprocessableEntityException(`取り消せません。廃棄した ${count} 本に対して、` +
+                        `記録上の廃棄累計は ${disposed} 本しかありません`);
+                }
                 await tx.tonerStock.update({
                     where: stockKey,
-                    data: { disposed: { decrement: Math.min(count, disposed) } },
+                    data: { disposed: { decrement: count } },
                 });
             }
             await tx.tonerEntry.delete({ where: { id } });
@@ -317,7 +322,7 @@ let TonerEntriesService = class TonerEntriesService {
         const days = params.days && params.days > 0 ? params.days : 60;
         const from = new Date();
         from.setDate(from.getDate() - days);
-        const rows = await this.prisma.tonerEntry.findMany({
+        const found = await this.prisma.tonerEntry.findMany({
             where: {
                 createdAt: { gte: from },
                 ...(params.action ? { action: params.action } : {}),
@@ -325,22 +330,28 @@ let TonerEntriesService = class TonerEntriesService {
                 ...(params.companyId ? { companyId: params.companyId } : {}),
             },
             orderBy: { createdAt: 'desc' },
-            take: 1000,
+            take: exports.HISTORY_LIMIT + 1,
             include: { toner: { select: { name: true, color: true } } },
         });
-        return rows.map((row) => ({
-            id: row.id,
-            userId: row.userId,
-            tonerId: row.tonerId,
-            companyId: row.companyId,
-            name: row.toner.name,
-            color: row.toner.color,
-            action: row.action,
-            quantity: row.quantity,
-            balance: row.balance,
-            receivedOn: (0, date_1.fromDate)(row.receivedOn),
-            createdAt: row.createdAt,
-        }));
+        const truncated = found.length > exports.HISTORY_LIMIT;
+        const rows = truncated ? found.slice(0, exports.HISTORY_LIMIT) : found;
+        return {
+            truncated,
+            limit: exports.HISTORY_LIMIT,
+            rows: rows.map((row) => ({
+                id: row.id,
+                userId: row.userId,
+                tonerId: row.tonerId,
+                companyId: row.companyId,
+                name: row.toner.name,
+                color: row.toner.color,
+                action: row.action,
+                quantity: row.quantity,
+                balance: row.balance,
+                receivedOn: (0, date_1.fromDate)(row.receivedOn),
+                createdAt: row.createdAt,
+            })),
+        };
     }
     async requireToner(tx, tonerId, companyId) {
         const toner = await tx.toner.findUnique({

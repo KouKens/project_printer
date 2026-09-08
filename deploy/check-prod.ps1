@@ -13,7 +13,9 @@
 # turn into garbage or a parse error. Do not add Japanese to this file.
 
 param(
-  [string]$AppDir  = 'C:\toner\app',
+  # The live site (checked 2026-09-05) is installed here. Note the space in the
+  # folder name -- always quote paths built from this.
+  [string]$AppDir  = 'C:\Printer Manager\app',
   [string]$DbUser  = 'printer',
   [string]$DbName  = 'printer',
   [string]$DbHost  = 'localhost'
@@ -54,9 +56,20 @@ Record "database: $DbUser@$DbHost/$DbName"
 # ---------------------------------------------------------------- 0. service
 Section '0. service state'
 
-Try-Run 'scheduled task' {
-  Get-ScheduledTask -TaskName 'toner-api' -ErrorAction Stop |
-    Select-Object TaskName, State | Format-List
+# The live site is started by hand with start.cmd -- there is no task and no
+# service. Look for one anyway: if someone registers it later, we want to know.
+Try-Run 'scheduled task / service (none expected -- start.cmd is run by hand)' {
+  $t = Get-ScheduledTask -ErrorAction SilentlyContinue |
+         Where-Object { $_.TaskName -match 'toner|tonerapi' }
+  if ($t) { $t | Select-Object TaskName, State | Format-List }
+  else    { 'no scheduled task matching "toner" (expected for this site)' }
+}
+
+Try-Run 'node process owned by this app dir' {
+  $p = Get-Process node -ErrorAction SilentlyContinue |
+         Where-Object { $_.Path -like "$AppDir*" }
+  if ($p) { $p | Select-Object Id, StartTime, Path | Format-List }
+  else    { 'no node process from this app dir (API is stopped)' }
 }
 
 Try-Run 'api responds (port 3000)' {
@@ -81,7 +94,7 @@ Try-Run 'free disk space on C:' {
 
 # ------------------------------------------------------- 2. migration status
 Section '2. migration status  <-- THE IMPORTANT ONE'
-Record 'dev machine has 38 migrations. Note the count and any unapplied names.'
+Record 'dev machine has 41 migrations. Note the count and any unapplied names.'
 
 $prismaCli = Join-Path $AppDir 'node_modules\prisma\build\index.js'
 

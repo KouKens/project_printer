@@ -5,6 +5,7 @@ import {
   maintLeftLabel,
   maintStatus,
 } from '../lib/maint';
+import { foldKey } from '../lib/fold';
 import { num } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -608,7 +609,7 @@ const underRepair = (row: Row) => row.repairs.open > 0;
  * SATO のラベルプリンターか。
  * この機種だけ SNMP を持たず、ENQ でしか状態を読めないので分けて扱う
  */
-const isSato = (row: Row) => (row.maker ?? '').trim().toLowerCase() === 'sato';
+const isSato = (row: Row) => foldKey(row.maker ?? '') === 'sato';
 
 /**
  * SNMP を持たず、**個別にしか読めない**機種の型番。
@@ -617,14 +618,17 @@ const isSato = (row: Row) => (row.maker ?? '').trim().toLowerCase() === 'sato';
  * 一括取得（SNMP）に混ぜても待ち時間が伸びるだけなので対象から外し、
  * 行ごとの「状態を読む」（ENQ）だけで読む。
  * 台帳にあるのは R408v-exSTD だが、レスプリはシリーズごと SNMP を持たないので
- * シリーズ名で見る。同じ SATO でも HC4-LX は SNMP で応答するため対象外
+ * シリーズ名で見る。同じ SATO でも HC4-LX は SNMP で応答するため対象外。
+ *
+ * 突き合わせる前に `foldKey` で畳むので、`ＬＥＳＰＲＩＴ`（全角）や
+ * `ﾚｽﾌﾟﾘ`（半角カナ）で登録されていても拾える
  */
-const ENQ_ONLY_MODEL = /レスプリ|l'?esprit/i;
+const ENQ_ONLY_MODEL = /レスプリ|l'?esprit/;
 
 /** 一括取得から外したことを知らせるときの呼び名 */
 const ENQ_ONLY_LABEL = 'レスプリ';
 
-const isEnqOnly = (row: Row) => ENQ_ONLY_MODEL.test(row.model ?? '');
+const isEnqOnly = (row: Row) => ENQ_ONLY_MODEL.test(foldKey(row.model ?? ''));
 
 /**
  * 状態を ENQ で読む行か。

@@ -155,6 +155,16 @@ function rangeOf(days: number, from?: string, to?: string) {
   return end === null ? { gte: start } : { gte: start, lte: end };
 }
 
+/**
+ * 枚数を記録する時刻。
+ *
+ * **残量の取り直し（`PRINTER_POLL_CRON`）と同じ時刻に置かないこと。**
+ * 2 本の @Cron は並走するので、重ねると 1 台の機器に両方の SNMP が同時に届き、
+ * UDP の返事が落ちて消耗品の表が後ろから欠ける。
+ * 間隔は cron-schedule.spec.ts が見張っている
+ */
+export const PAGE_COUNT_CRON = '0 12 * * *';
+
 @Injectable()
 export class PageCountsService {
   private readonly logger = new Logger(PageCountsService.name);
@@ -171,11 +181,15 @@ export class PageCountsService {
    * 12 時に読むと期間は前日 12 時から当日 12 時までになり、暦日とはずれる。
    * 記録する日付は読んだ日にして、その日の正午までの 24 時間分として扱う。
    *
+   * **残量の取り直し（printers の pollScheduled）は 12 時 30 分に置いてある。**
+   * 2 本の @Cron は並走するので、同じ時刻に置くと 1 台の機器に両方の SNMP が
+   * 同時に届き、返事が落ちて表が欠ける。外から叩く運用でも同じだけ間を空ける。
+   *
    * API プロセスが動いていないと発火しないので、常時起動でない環境では
    * タスクスケジューラから POST /api/printers/page-counts/capture を叩く。
    * 同じ日に二重に走っても upsert なので結果は変わらない。
    */
-  @Cron('0 12 * * *', { name: 'capture-page-counts' })
+  @Cron(PAGE_COUNT_CRON, { name: 'capture-page-counts' })
   async captureScheduled() {
     this.logger.log('日次の印刷枚数を記録します');
     const rows = await this.captureAll();

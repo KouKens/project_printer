@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { fromDate, toDate } from '../common/date';
 import { toText } from '../common/text';
+import { asIs, field, WriteMode } from '../common/write-mode';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateRepairDto,
@@ -45,7 +46,7 @@ export class RepairsService {
     this.ensureDateOrder(dto);
 
     const saved = await this.prisma.repairRecord.create({
-      data: this.toData(dto),
+      data: this.toData(dto, 'create'),
       include: { asset: { include: { company: true } } },
     });
     return this.toResponse(saved);
@@ -84,7 +85,7 @@ export class RepairsService {
 
     const saved = await this.prisma.repairRecord.update({
       where: { id },
-      data: this.toData(dto),
+      data: this.toData(dto, 'update'),
       include: { asset: { include: { company: true } } },
     });
     return this.toResponse(saved);
@@ -133,18 +134,25 @@ export class RepairsService {
     }
   }
 
-  private toData(dto: CreateRepairDto) {
+  /**
+   * DTO を Prisma の data に写す。
+   *
+   * **update では入力に無かった列に触らない。** status を送らない更新が
+   * 完了した履歴を「調査中」に戻してしまうため。値を消したいときは null を送る
+   */
+  private toData(dto: CreateRepairDto, mode: WriteMode) {
     return {
       // 空白だけの入力は未入力と同じ扱いにする
-      assignee: toText(dto.assignee),
+      assignee: field(mode, dto.assignee, toText, null),
       printerAssetId: dto.printerAssetId,
-      occurredOn: toDate(dto.occurredOn),
-      category: dto.category ?? null,
+      occurredOn: field(mode, dto.occurredOn, toDate, null),
+      category: field(mode, dto.category, asIs, null),
       handledBy: dto.handledBy,
-      detail: toText(dto.detail),
-      cost: dto.cost ?? null,
-      restoredOn: toDate(dto.restoredOn),
-      status: dto.status ?? 'INVESTIGATING',
+      detail: field(mode, dto.detail, toText, null),
+      cost: field(mode, dto.cost, asIs, null),
+      restoredOn: field(mode, dto.restoredOn, toDate, null),
+      // 選び直さなければ調査中から始まる
+      status: field(mode, dto.status, asIs, 'INVESTIGATING' as const),
     };
   }
 

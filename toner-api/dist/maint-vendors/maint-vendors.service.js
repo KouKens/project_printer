@@ -15,7 +15,7 @@ const common_1 = require("@nestjs/common");
 const text_1 = require("../common/text");
 const prisma_service_1 = require("../prisma/prisma.service");
 function makerKey(maker) {
-    return maker.trim().toLowerCase();
+    return maker.trim().normalize('NFKC').toLowerCase();
 }
 function toMakers(makers) {
     const seen = new Set();

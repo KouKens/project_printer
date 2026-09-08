@@ -111,6 +111,11 @@ export default function DeliveryScreen() {
   const { companyId } = useCompany()
   const [checks, setChecks] = useState<DeliveryCheckRow[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
+  /**
+   * 履歴が上限で切れたか。切れているのに黙って出すと、
+   * 並んだものがその期間の全部だと読めてしまう
+   */
+  const [truncated, setTruncated] = useState<{ limit: number } | null>(null);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [days, setDays] = useState(90);
   const [action, setAction] = useState<'' | 'RECEIVE' | 'ISSUE' | 'DISPOSE'>('');
@@ -131,14 +136,22 @@ export default function DeliveryScreen() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    /*
+     * 拠点が決まるまで読み込まない。必須の口は companyId なしだと 400 になるし、
+     * 履歴は任意なので**通ってしまう**。ここは拠点ごとに見る画面なので、
+     * 通ったぶんだけ全拠点の受け払いが一瞬並び、上の集計もその数になる
+     */
+    if (companyId === null) return;
+
     try {
       const [check, history, orderRows] = await Promise.all([
-        fetchDeliveryCheck(days),
-        fetchEntryHistory(days, action || undefined, companyId ?? undefined),
-        companyId === null ? Promise.resolve([]) : fetchOrders(companyId),
+        fetchDeliveryCheck(companyId, days),
+        fetchEntryHistory(days, action || undefined, companyId),
+        fetchOrders(companyId),
       ]);
       setChecks(check);
-      setEntries(history);
+      setEntries(history.rows);
+      setTruncated(history.truncated ? { limit: history.limit } : null);
       setOrders(orderRows);
       setError(null);
     } catch (err) {
@@ -300,6 +313,12 @@ export default function DeliveryScreen() {
 
       {error && <p className="dt-msg dt-msg-error">{error}</p>}
       {notice && <p className="dt-msg dt-msg-ok">{notice}</p>}
+      {truncated && (
+        <p className="dt-msg dt-msg-warn">
+          履歴が多いため、新しい順に {truncated.limit} 件までを出しています。
+          これより前の分は表示していません。日数を短くするか区分で絞ってください
+        </p>
+      )}
 
       <dl className="dt-summary">
         <div>

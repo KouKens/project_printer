@@ -38,7 +38,7 @@ export declare class TonerOrdersService {
         deliveryOn: string | null;
         status: string;
     }[]>;
-    findDeliveryCheck(days?: number): Promise<{
+    findDeliveryCheck(companyId: number, days?: number): Promise<{
         diff: number;
         status: "match" | "short" | "over" | "no-order" | "waiting" | "undated";
         key: string;
