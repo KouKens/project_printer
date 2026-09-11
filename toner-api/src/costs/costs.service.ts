@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { fromDate, toDate } from '../common/date';
+import { fromDate, startOfDay, toDate } from '../common/date';
 import { PrismaService } from '../prisma/prisma.service';
 import { indexPrinters, matchPrinter } from '../printers/printer-match';
 
@@ -216,15 +216,17 @@ export class CostsService {
     }
 
     /*
-     * 期間の終端は「その日いっぱい」。
-     * from / to は @db.Date に合わせた UTC 0 時なので、時刻を持つ createdAt を
-     * to とそのまま比べると**終了日に記録したぶんが丸ごと外れる**。
-     * 翌日 0 時を上限にして、当日を含める
+     * 期間は「開始日から終了日まで、両端を含む」。
+     *
+     * from / to は @db.Date に合わせた **UTC 0 時の器**。搬入日（receivedOn）も
+     * 同じ器なのでそのまま比べられるが、**createdAt は時刻を持つ本物の日時**で、
+     * そのまま比べると JST では丸ごと 9 時間ずれる。開始日の朝 9 時より前に
+     * 記録したぶんが前日扱いで外れ、代わりに終了日の翌朝 9 時までが入ってしまう。
+     * 暦日に直してから比べる（どの日かはローカル時刻で決める）
      */
-    const toExclusive = new Date(to.getTime() + 86_400_000);
     const inPeriod = entries.filter((entry) => {
-      const when = entry.receivedOn ?? entry.createdAt;
-      return when >= from && when < toExclusive;
+      const when = entry.receivedOn ?? startOfDay(entry.createdAt);
+      return when >= from && when <= to;
     });
 
     /*

@@ -31,7 +31,8 @@
   color: var(--ink-2, #5b6573);
 }
 
-.cp-form label {
+/* 入力欄。新規登録の欄と編集の小窓で同じ並びを使う */
+.cp-fields label {
   display: grid;
   grid-template-columns: 120px 1fr;
   align-items: center;
@@ -40,11 +41,15 @@
   max-width: 620px;
 }
 
-.cp-form label span {
+.cp-fields label:last-child {
+  margin-bottom: 0;
+}
+
+.cp-fields label span {
   font-size: 13px;
 }
 
-.cp-form input {
+.cp-fields input {
   padding: 7px 10px;
   font: inherit;
   font-size: 13px;
@@ -87,11 +92,6 @@
 .cp-actions button.cp-sub:disabled {
   color: #a7b3bd;
   background: transparent;
-}
-
-.cp-editing {
-  font-size: 12px;
-  color: var(--muted);
 }
 
 .cp-msg {

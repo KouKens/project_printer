@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { dataArg } from '../common/testing';
+import { callArg, dataArg } from '../common/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrintersService } from '../printers/printers.service';
 import { PrinterAssetsService } from './printer-assets.service';
@@ -32,21 +32,49 @@ const SAVED = {
   updatedAt: new Date(),
 };
 
+/** 引き継ぎ元の候補 1 台を組み立てる。持っているトナーは品番と有効・無効だけ見る */
+function source(
+  maker: string | null,
+  model: string | null,
+  toners: { id: string; disabledAt?: Date | null }[],
+  disabledAt: Date | null = null,
+) {
+  return {
+    maker,
+    model,
+    disabledAt,
+    toners: toners.map((toner) => ({
+      toner: {
+        id: toner.id,
+        name: `${toner.id} のトナー`,
+        disabledAt: toner.disabledAt ?? null,
+      },
+    })),
+  };
+}
+
 describe('PrinterAssetsService', () => {
   let service: PrinterAssetsService;
   let update: jest.Mock;
   let create: jest.Mock;
+  let findMany: jest.Mock;
+  let linkToners: jest.Mock;
 
   beforeEach(async () => {
     update = jest.fn().mockResolvedValue(SAVED);
     create = jest.fn().mockResolvedValue(SAVED);
+    // 引き継ぎ元の候補。既定は「同じ機種の登録がまだ無い」
+    findMany = jest.fn().mockResolvedValue([]);
+    linkToners = jest.fn().mockResolvedValue({ count: 0 });
 
     const prisma = {
       printerAsset: {
         findUnique: jest.fn().mockResolvedValue({ id: 1 }),
+        findMany,
         update,
         create,
       },
+      tonerPrinter: { createMany: linkToners },
       // toResponse がメーカー既定の業者を引く。空で足りる
       maintVendor: { findMany: jest.fn().mockResolvedValue([]) },
     };
@@ -63,6 +91,17 @@ describe('PrinterAssetsService', () => {
   });
 
   const dataOf = dataArg;
+
+  /**
+   * 引き継ぎ元を探した問い合わせだけを数える。
+   * 台帳の findMany は**採番（全件を select）と引き継ぎ（where 付き）で共用**
+   * しているので、where の有無で見分ける
+   */
+  const inheritLookups = () => {
+    // mock.calls は any[][] なので、読む形をここで 1 度だけ宣言する
+    const calls = findMany.mock.calls as [{ where?: unknown }][];
+    return calls.filter((call) => call[0].where !== undefined);
+  };
 
   describe('update', () => {
     /**
@@ -127,6 +166,213 @@ describe('PrinterAssetsService', () => {
       expect(data.maker).toBeNull();
       expect(data.note).toBeNull();
       expect(data.maintFee).toBeNull();
+    });
+  });
+
+  /**
+   * 管理番号は空欄で登録したときだけ、台帳全体の最大 + 1 を振る。
+   * 型番を渡さない呼び方にしてあるのは、トナーの引き継ぎが先に打ち切られて
+   * findMany が採番の 1 回だけになるため（同じモックを共有している）
+   */
+  describe('create の管理番号', () => {
+    it('空欄なら台帳全体の最大 + 1 を 3 桁で入れる', async () => {
+      findMany.mockResolvedValue([{ no: '092' }, { no: '911' }, { no: '041' }]);
+
+      await service.create({ companyId: 1 });
+
+      expect(dataOf(create).no).toBe('912');
+    });
+
+    /**
+     * **プリンター登録の画面は番号を送らない**（入力欄を置いていない）。
+     * ここを残してあるのは、移行や取り込みで番号を指定して入れる口のため
+     */
+    it('番号を指定して送ってきたらそちらを使う', async () => {
+      findMany.mockResolvedValue([{ no: '911' }]);
+
+      await service.create({ companyId: 1, no: '305' });
+
+      expect(dataOf(create).no).toBe('305');
+    });
+
+    it('番号がまだ 1 つも無ければ 001 から始める', async () => {
+      findMany.mockResolvedValue([{ no: null }, { no: '   ' }]);
+
+      await service.create({ companyId: 1 });
+
+      expect(dataOf(create).no).toBe('001');
+    });
+
+    /** 検証用に 'zzz-tmp' のような値が入っていても番号を出せること */
+    it('数として読めない番号は最大の計算に入れない', async () => {
+      findMany.mockResolvedValue([{ no: 'zzz-tmp' }, { no: '007' }]);
+
+      await service.create({ companyId: 1 });
+
+      expect(dataOf(create).no).toBe('008');
+    });
+
+    /**
+     * 無効にした台の番号を使い回すと、修理履歴やトナーの紐づけが
+     * どちらの台の記録か分からなくなる。**絞り込まずに全部読む**
+     */
+    it('無効にした台の番号も避ける', async () => {
+      await service.create({ companyId: 1 });
+
+      expect(callArg<{ where?: unknown }>(findMany).where).toBeUndefined();
+    });
+
+    /** 更新で振ると、画面で消した番号が保存のたび戻ってしまう */
+    it('更新では番号を振らない', async () => {
+      findMany.mockResolvedValue([{ no: '911' }]);
+
+      await service.update(1, { companyId: 1 });
+
+      expect(dataOf(update).no).toBeUndefined();
+    });
+  });
+
+  /**
+   * 同じ機種が既に登録されていれば、その台のトナーを新しい台にも紐づける。
+   * トナー個数状況を見ながら 1 台ずつ選び直す手間をなくすための仕掛け
+   */
+  describe('create のトナー引き継ぎ', () => {
+    it('同じ機種の台からトナーを写す', async () => {
+      findMany.mockResolvedValue([
+        source('RICOH', 'P C301', [{ id: 'C310H' }, { id: 'C310HC' }]),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(linkToners).toHaveBeenCalledWith({
+        data: [
+          { tonerId: 'C310H', printerAssetId: 1 },
+          { tonerId: 'C310HC', printerAssetId: 1 },
+        ],
+        skipDuplicates: true,
+      });
+      expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual([
+        'C310H',
+        'C310HC',
+      ]);
+      expect(saved.inheritedToners.fromAssets).toBe(1);
+      expect(saved.inheritedToners.model).toBe('RICOH P C301');
+    });
+
+    /** 台帳は手入力なので、同じ機種が 'P C301' と 'ｐc-301' で入っている */
+    it('メーカーと型番の表記ゆれを畳んで同じ機種とみなす', async () => {
+      findMany.mockResolvedValue([
+        source('Ｒｉｃｏｈ', 'ｐ c-301', [{ id: 'C310H' }]),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual(['C310H']);
+    });
+
+    it('機種が違う台のトナーは写さない', async () => {
+      findMany.mockResolvedValue([
+        source('RICOH', 'P 501', [{ id: 'SP4500H' }]),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(linkToners).not.toHaveBeenCalled();
+      expect(saved.inheritedToners.toners).toEqual([]);
+      expect(saved.inheritedToners.model).toBeNull();
+    });
+
+    /** 型番だけで畳むと、型番未入力の台がまとめて 1 機種になってしまう */
+    it('型番が未入力なら何も写さない', async () => {
+      findMany.mockResolvedValue([source('RICOH', null, [{ id: 'C310H' }])]);
+
+      const saved = await service.create({ companyId: 1, maker: 'RICOH' });
+
+      // 台帳を読むのは採番の 1 回だけで、引き継ぎ元は探しに行かない
+      expect(inheritLookups()).toHaveLength(0);
+      expect(linkToners).not.toHaveBeenCalled();
+      expect(saved.inheritedToners.toners).toEqual([]);
+    });
+
+    it('無効にした品番は写さない', async () => {
+      findMany.mockResolvedValue([
+        source('RICOH', 'P C301', [
+          { id: 'C310H' },
+          { id: 'C310HC', disabledAt: new Date() },
+        ]),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual(['C310H']);
+    });
+
+    /** 同じ機種でも台ごとに紐づけが違うことがある。足りない分を落とさない */
+    it('同じ機種が複数あれば全部のトナーを合わせる', async () => {
+      findMany.mockResolvedValue([
+        source('RICOH', 'P C301', [{ id: 'C310H' }, { id: 'C310HC' }]),
+        source('RICOH', 'P C301', [{ id: 'C310H' }, { id: 'C310HM' }]),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual([
+        'C310H',
+        'C310HC',
+        'C310HM',
+      ]);
+      expect(saved.inheritedToners.fromAssets).toBe(2);
+    });
+
+    /** 入れ替えのときは、同じ機種が有効な側に 1 台も残っていない */
+    it('有効な台が無ければ無効にした台から写す', async () => {
+      findMany.mockResolvedValue([
+        source('RICOH', 'P C301', [{ id: 'C310H' }], new Date()),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual(['C310H']);
+    });
+
+    it('有効な台があれば無効の台は見ない', async () => {
+      findMany.mockResolvedValue([
+        source('RICOH', 'P C301', [{ id: 'OLD' }], new Date()),
+        source('RICOH', 'P C301', [{ id: 'C310H' }]),
+      ]);
+
+      const saved = await service.create({
+        companyId: 1,
+        maker: 'RICOH',
+        model: 'P C301',
+      });
+
+      expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual(['C310H']);
+      expect(saved.inheritedToners.fromAssets).toBe(1);
     });
   });
 });

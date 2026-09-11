@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { OrderRow, TonerCatalogRow } from '../api'
+import type { PickOrigin } from '../components/TonerPickerRow'
 import TonerPickerRow from '../components/TonerPickerRow'
 import {
   fetchPendingOrders,
@@ -254,13 +255,6 @@ export default function OrderScreen() {
     setFailure(null)
   }
 
-  const pickToner = (row: TonerCatalogRow) => {
-    setValues((prev) => ({ ...prev, tonerId: row.id }))
-    setErrors((prev) => ({ ...prev, tonerId: undefined }))
-    setFailure(null)
-    setSearch(row.name ? `${row.id} ${row.name}` : row.id)
-  }
-
   const handleChange = (key: FieldKey, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }))
     setErrors((prev) => ({ ...prev, [key]: undefined }))
@@ -268,10 +262,38 @@ export default function OrderScreen() {
   }
 
   /**
-   * 明細に足す。トナーと本数だけを見る
+   * 明細に 1 行足す。本数だけを見る
    * （注文日時・ユーザーID・日付はまとめ全体で 1 つなので、送信時に確かめる）。
-   * 続けて読み取れるよう、トナーの欄に戻す
+   * 続けて読み取れるよう、トナーの欄に戻す。
+   *
+   * 品番を引数で受けるのは、候補を押したその場から呼ぶため。
+   * setValues の反映を待たないと values.tonerId はまだ前の値になる
    */
+  const appendLine = useCallback(
+    (tonerId: string, name: string, quantity: string): boolean => {
+      const parsed = Number(quantity)
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        setErrors((prev) => ({
+          ...prev,
+          quantity: '本数は 1 以上の整数で入力してください',
+        }))
+        return false
+      }
+
+      setLines((prev) => [...prev, { tonerId, name, quantity }])
+      setValues((prev) => ({ ...prev, tonerId: '', quantity: '1' }))
+      setSearch('')
+      setErrors({})
+      setFailure(null)
+
+      setActiveIndex(tonerIndex)
+      focusField(tonerIndex)
+      return true
+    },
+    [focusField, tonerIndex],
+  )
+
+  /** 入力欄に入っているトナーを明細へ。「明細に追加」と Enter から呼ぶ */
   const addLine = useCallback((): boolean => {
     const tonerId = values.tonerId.trim()
     if (!tonerId) {
@@ -279,27 +301,26 @@ export default function OrderScreen() {
       return false
     }
 
-    const quantity = values.quantity.trim()
-    const parsed = Number(quantity)
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      setErrors((prev) => ({
-        ...prev,
-        quantity: '本数は 1 以上の整数で入力してください',
-      }))
-      return false
+    const name = catalog.find((row) => row.id === tonerId)?.name ?? ''
+    return appendLine(tonerId, name, values.quantity.trim())
+  }, [appendLine, catalog, values])
+
+  const pickToner = (row: TonerCatalogRow, origin: PickOrigin) => {
+    // まとめ処理では候補を押した時点で明細へ積む。「明細に追加」を押さずに
+    // 次の品番を探せる。本数はその時の入力欄の値（既定 1 本）を使い、
+    // 足したあと 1 本に戻す。
+    // 読み取り（auto）と Enter は入力欄に入れるだけにしておく。
+    // 本数を直してから積む流れが残っているため
+    if (batch && origin === 'click') {
+      appendLine(row.id, row.name ?? '', values.quantity.trim())
+      return
     }
 
-    const name = catalog.find((row) => row.id === tonerId)?.name ?? ''
-    setLines((prev) => [...prev, { tonerId, name, quantity: quantity || '1' }])
-    setValues((prev) => ({ ...prev, tonerId: '', quantity: '1' }))
-    setSearch('')
-    setErrors({})
+    setValues((prev) => ({ ...prev, tonerId: row.id }))
+    setErrors((prev) => ({ ...prev, tonerId: undefined }))
     setFailure(null)
-
-    setActiveIndex(tonerIndex)
-    focusField(tonerIndex)
-    return true
-  }, [catalog, focusField, tonerIndex, values])
+    setSearch(row.name ? `${row.id} ${row.name}` : row.id)
+  }
 
   const removeLine = (index: number) =>
     setLines((prev) => prev.filter((_, i) => i !== index))
@@ -369,7 +390,9 @@ export default function OrderScreen() {
       }
 
       if (items.length === 0) {
-        setFailure('明細がありません。トナーを読み取って「明細に追加」してください')
+        setFailure(
+          '明細がありません。トナーを探して候補を押すか、読み取って「明細に追加」してください',
+        )
         return
       }
 
@@ -615,7 +638,7 @@ export default function OrderScreen() {
             />
             <span>まとめて{mode === 'ORDER' ? '注文する' : '受け付ける'}</span>
             <span className="batch__note">
-              読み取るごとに明細へ積み、最後にまとめて処理します
+              候補を押すたびに明細へ積み、最後にまとめて処理します
             </span>
           </label>
         </div>
@@ -751,7 +774,8 @@ export default function OrderScreen() {
 
             {lines.length === 0 ? (
               <p className="batch__empty">
-                トナーを読み取って Enter、または「明細に追加」で積みます。
+                トナーを探して候補を押すとその場で積まれます。読み取ったときは
+                本数を入れて Enter、または「明細に追加」で積みます。
               </p>
             ) : (
               <ul className="batch__list">

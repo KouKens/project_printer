@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
 import { num } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
+import type { CsvValue } from '../lib/csv';
 import { request } from '../lib/request';
 import './RepairScreen.css';
 
@@ -141,6 +143,35 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind }[] = [
   { key: 'restoredOn', label: '復旧日', kind: 'date' },
   { key: 'status', label: '状態', kind: 'text' },
   { key: 'assignee', label: '担当', kind: 'text' },
+];
+
+/**
+ * CSV に出す列。**画面の列とは分けて持つ。**
+ * 表では 1 つにまとめている「プリンター」を、拠点・部署・No.・メーカー・型番に
+ * 開く（Excel で拠点や部署ごとに集計できるようにするため）
+ */
+const CSV_COLUMNS: { label: string; value: (row: Repair) => CsvValue }[] = [
+  { label: '発生日', value: (row) => row.occurredOn },
+  { label: '拠点', value: (row) => row.company },
+  { label: '部署', value: (row) => row.department },
+  { label: 'No.', value: (row) => row.no },
+  { label: 'メーカー', value: (row) => row.maker },
+  { label: '型番', value: (row) => row.model },
+  {
+    label: '修理分類',
+    value: (row) => (row.category === null ? null : categoryLabel(row.category)),
+  },
+  { label: '対応区分', value: (row) => handlerLabel(row.handledBy) },
+  { label: '修理内容', value: (row) => row.detail },
+  // 未入力は 0 円ではない。空欄のままにして「まだ分からない」と区別する
+  { label: '費用', value: (row) => row.cost },
+  { label: '復旧日', value: (row) => row.restoredOn },
+  { label: '状態', value: (row) => statusLabel(row.status) },
+  { label: '担当', value: (row) => row.assignee },
+  {
+    label: '更新日時',
+    value: (row) => new Date(row.updatedAt).toLocaleString('ja-JP'),
+  },
 ];
 
 /** 空欄は「入力されなかった」ので null で送る */
@@ -605,6 +636,12 @@ export default function RepairScreen() {
       <section className="rp-list">
         <h2>
           過去の履歴（{counts.total} 件・対応中 {counts.open} 件）
+          <CsvButton
+            name="修理履歴"
+            header={CSV_COLUMNS.map((col) => col.label)}
+            rows={() => shown.map((row) => CSV_COLUMNS.map((col) => col.value(row)))}
+            count={shown.length}
+          />
         </h2>
         <p className="rp-hint">見出しを押すと並べ替わります。既定は発生日の新しい順です。</p>
 

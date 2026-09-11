@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
 import { isMeterUnit } from '../lib/counter';
 import { isoDaysAgo, todayIso } from '../lib/date';
 import { num } from '../lib/format';
@@ -132,6 +133,28 @@ const DAILY_COLUMNS: {
   { key: 'pages', label: '印字長（m）', kind: 'number', numeric: true },
   { key: 'total', label: '累計（m）', kind: 'number', numeric: true },
   { key: 'spanDays', label: '日数', kind: 'number', numeric: true },
+];
+
+/**
+ * CSV の見出し。**単位（m）を列の名前に入れておく。**
+ * この画面だけ長さで数えるので、枚数の CSV と並べたときに取り違えない
+ */
+const TOTAL_CSV_HEADER = [
+  '設置場所',
+  'IP アドレス',
+  '期間内の印字長（m）',
+  '累計（m）',
+  '記録日数',
+  '出せなかった日数',
+];
+
+const DAILY_CSV_HEADER = [
+  '日付',
+  '設置場所',
+  'IP アドレス',
+  '印字長（m）',
+  '累計（m）',
+  '日数',
 ];
 
 export default function LabelMeterScreen() {
@@ -353,7 +376,24 @@ export default function LabelMeterScreen() {
       ) : (
         <>
           <section className="dt-section">
-            <h2>機器ごとの合計</h2>
+            <h2>
+              機器ごとの合計
+              <CsvButton
+                name="ラベル印字状況_機器ごと"
+                header={TOTAL_CSV_HEADER}
+                rows={() =>
+                  totals.map((row) => [
+                    row.label,
+                    row.ipAddress,
+                    row.meters,
+                    row.total,
+                    row.days,
+                    row.unknownDays,
+                  ])
+                }
+                count={totals.length}
+              />
+            </h2>
             <div className="dt-wrap">
               <table>
                 <thead>
@@ -391,7 +431,25 @@ export default function LabelMeterScreen() {
           </section>
 
           <section className="dt-section">
-            <h2>日ごと</h2>
+            <h2>
+              日ごと
+              <CsvButton
+                name="ラベル印字状況_日ごと"
+                header={DAILY_CSV_HEADER}
+                rows={() =>
+                  daily.map((row) => [
+                    row.date,
+                    row.label,
+                    row.ipAddress,
+                    // 出せなかった日（初回・カウンタ巻き戻し）は 0 m ではないので空欄
+                    row.pages,
+                    row.total,
+                    row.spanDays,
+                  ])
+                }
+                count={daily.length}
+              />
+            </h2>
             <div className="dt-wrap">
               <table>
                 <thead>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
 import { num } from '../lib/format';
 import { request } from '../lib/request';
 import { nextSort, sortRows } from '../lib/table';
@@ -112,6 +113,27 @@ const COLUMNS: { key: Key; label: string; kind: CellKind; numeric?: boolean }[] 
   { key: 'dataAmount', label: 'データ 金額', kind: 'number', numeric: true },
   { key: 'amountDiff', label: '差', kind: 'number', numeric: true },
   { key: 'status', label: '状態', kind: 'text' },
+];
+
+/**
+ * CSV の見出し。**どの請求書の突き合わせかを頭 3 列に添える。**
+ * 1 通ぶんだけのファイルになるので、対象期間が入っていないと後から分からない
+ */
+const CSV_HEADER = [
+  '対象期間（開始）',
+  '対象期間（終了）',
+  '請求書番号',
+  'トナーID',
+  'トナー名',
+  '色',
+  '請求 本数',
+  '搬入 本数',
+  '差（本数）',
+  '請求 金額',
+  'データ 金額',
+  '差（金額）',
+  '状態',
+  '期間外の搬入',
 ];
 
 /** 差は符号を付ける。0 は「—」にせず 0 と出す（合っていることが分かるように） */
@@ -272,6 +294,33 @@ export default function InvoiceCheckScreen() {
         >
           確認済みにする
         </button>
+
+        <CsvButton
+          name="請求書状況"
+          header={CSV_HEADER}
+          rows={() =>
+            check === null
+              ? []
+              : shown.map((row) => [
+                  check.invoice.periodFrom,
+                  check.invoice.periodTo,
+                  check.invoice.invoiceNo,
+                  row.tonerId,
+                  row.name,
+                  row.color,
+                  // 請求書に明細が無い品番は 0 本ではないので空欄にする
+                  row.onInvoice ? row.invoiceQty : null,
+                  row.receivedQty,
+                  row.qtyDiff,
+                  row.invoiceAmount,
+                  row.dataAmount,
+                  row.amountDiff,
+                  STATUS[row.status].label,
+                  row.nearbyQty,
+                ])
+          }
+          count={shown.length}
+        />
       </div>
 
       {check === null ? (

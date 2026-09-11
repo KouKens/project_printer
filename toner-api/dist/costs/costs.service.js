@@ -159,10 +159,9 @@ let CostsService = class CostsService {
                 soleAsset.set(toner.id, toner.printers[0].printerAssetId);
             }
         }
-        const toExclusive = new Date(to.getTime() + 86_400_000);
         const inPeriod = entries.filter((entry) => {
-            const when = entry.receivedOn ?? entry.createdAt;
-            return when >= from && when < toExclusive;
+            const when = entry.receivedOn ?? (0, date_1.startOfDay)(entry.createdAt);
+            return when >= from && when <= to;
         });
         const unitsByToner = new Map();
         for (const entry of inPeriod) {

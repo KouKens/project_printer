@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isSheetUnit } from '../lib/counter';
+import { saveCsv } from '../lib/csv';
 import { isoDaysAgo, todayIso } from '../lib/date';
 import { num } from '../lib/format';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
@@ -548,41 +549,6 @@ const cellsOf = (row: ExportRow) => [
 const toClipboardText = (rows: ExportRow[]) =>
   rows.map((row) => cellsOf(row).join('\t')).join('\n');
 
-/** カンマ・引用符・改行を含む値だけ引用符で囲む。部署名にカンマが入っても崩れない */
-const escapeCsv = (value: string) =>
-  /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-
-/**
- * CSV に組み立てる。こちらは**見出し付き**。
- * ファイルとして残すので、後から開いたときに何の列か分かるようにする。
- * 改行は CRLF（エクセルがそのまま読む形）
- */
-const toCsv = (rows: ExportRow[]) =>
-  [HEADER, ...rows.map(cellsOf)]
-    .map((cells) => cells.map(escapeCsv).join(','))
-    .join('\r\n');
-
-/**
- * ファイルの先頭に置く印。**これが無いとエクセルが Shift-JIS として開き、
- * 部署名やプリンター名が化ける。** 目に見えない文字なので定数にして名前を付ける
- */
-const BOM = '﻿';
-
-/** CSV を保存する。押した時点で保持している行をそのまま書き出す */
-function downloadCsv(text: string, filename: string) {
-  const url = URL.createObjectURL(
-    new Blob([BOM, text], { type: 'text/csv;charset=utf-8' }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  // すぐ捨てると保存が始まらないことがあるので、少し置いてから解放する
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 /**
  * クリップボードへ入れる。
  *
@@ -854,10 +820,11 @@ export default function PageCountScreen() {
   /**
    * 同じ中身を CSV として保存する。
    * 貼り付けと違って手元にファイルが残るので、いつの分かが分かるよう日付を名前に入れる
+   * （名前と日付の付け方、囲み方、BOM は `lib/csv.ts` が持つ）
    */
-  const saveCsv = () => {
+  const saveAsCsv = () => {
     setError(null);
-    downloadCsv(toCsv(exportRows), `印刷枚数_${todayIso().replace(/-/g, '')}.csv`);
+    saveCsv('印刷枚数', HEADER, exportRows.map(cellsOf));
 
     const filled = exportRows.filter((row) => row.value !== null).length;
     setNotice(
@@ -951,7 +918,7 @@ export default function PageCountScreen() {
           {copied ? 'コピーしました' : `集計表用にコピー（${exportRows.length} 行）`}
         </button>
 
-        <button onClick={saveCsv} disabled={exportRows.length === 0} type="button">
+        <button onClick={saveAsCsv} disabled={exportRows.length === 0} type="button">
           CSV で保存
         </button>
       </div>

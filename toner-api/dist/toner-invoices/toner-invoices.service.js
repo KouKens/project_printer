@@ -129,9 +129,9 @@ let TonerInvoicesService = class TonerInvoicesService {
             throw new common_1.NotFoundException(`ID ${id} の請求書は登録されていません`);
         }
         const from = invoice.periodFrom;
-        const toExclusive = new Date(invoice.periodTo.getTime() + MS_PER_DAY);
+        const to = invoice.periodTo;
         const wideFrom = new Date(from.getTime() - NEARBY_DAYS * MS_PER_DAY);
-        const wideTo = new Date(toExclusive.getTime() + NEARBY_DAYS * MS_PER_DAY);
+        const wideTo = new Date(to.getTime() + (NEARBY_DAYS + 1) * MS_PER_DAY);
         const entries = await this.prisma.tonerEntry.findMany({
             where: {
                 action: 'RECEIVE',
@@ -178,10 +178,11 @@ let TonerInvoicesService = class TonerInvoicesService {
             received.set(tonerId, slot);
             return slot;
         };
+        const dayOf = (entry) => entry.receivedOn ?? (0, date_1.startOfDay)(entry.createdAt);
         for (const entry of entries) {
-            const when = entry.receivedOn ?? entry.createdAt;
+            const when = dayOf(entry);
             const slot = slotFor(entry.tonerId);
-            if (when < from || when >= toExclusive) {
+            if (when < from || when > to) {
                 slot.nearby += entry.quantity;
                 continue;
             }

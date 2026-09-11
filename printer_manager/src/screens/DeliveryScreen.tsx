@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
 import type { DeliveryCheckRow, EntryRow, OrderRow } from '../api';
 import {
   deleteEntry,
@@ -105,6 +106,49 @@ const ENTRY_COLUMNS: {
 /** 差の符号付き表示。0 は「—」にせず 0 と出す（一致していることが分かるように） */
 const signed = (value: number) =>
   value > 0 ? `+${num.format(value)}` : num.format(value);
+
+/**
+ * CSV の日時。**画面の `stamp`（月日と時刻だけ）ではなく年まで出す。**
+ * ファイルは期間をまたいで並べるので、年が無いと突き合わせられない
+ */
+const csvStamp = (value: string) => new Date(value).toLocaleString('ja-JP');
+
+/** 突き合わせの CSV。画面の表と同じ列に、トナー名を添える */
+const CHECK_CSV_HEADER = [
+  '搬入日',
+  'トナーID',
+  'トナー名',
+  '注文',
+  '搬入',
+  '差',
+  '状態',
+  '注文の件数',
+  '搬入の件数',
+];
+
+/** 受付の履歴の CSV */
+const ENTRY_CSV_HEADER = [
+  '受付日時',
+  '搬入日',
+  '区分',
+  'トナーID',
+  'トナー名',
+  '色',
+  '本数',
+  '操作後の在庫',
+  '担当',
+];
+
+/** 注文の一覧の CSV */
+const ORDER_CSV_HEADER = [
+  '注文日時',
+  '次回搬入日',
+  'トナーID',
+  'トナー名',
+  '本数',
+  '状態',
+  '注文した人',
+];
 
 export default function DeliveryScreen() {
   // 入出庫は拠点ごとに見る
@@ -363,7 +407,28 @@ export default function DeliveryScreen() {
       </p>
 
       <section className="dt-section">
-        <h2>注文と搬入の突き合わせ（{shownChecks.length} 件）</h2>
+        <h2>
+          注文と搬入の突き合わせ（{shownChecks.length} 件）
+          <CsvButton
+            name="トナー入出状況_突き合わせ"
+            header={CHECK_CSV_HEADER}
+            rows={() =>
+              shownChecks.map((row) => [
+                row.date,
+                row.tonerId,
+                row.name,
+                row.ordered,
+                row.received,
+                // 注文が無い行の差は画面でもハイフン。数として意味を持たない
+                row.ordered === 0 ? null : row.diff,
+                STATUS[row.status].label,
+                row.orders.length,
+                row.entries.length,
+              ])
+            }
+            count={shownChecks.length}
+          />
+        </h2>
 
         {shownChecks.length === 0 ? (
           <p className="dt-empty">
@@ -501,7 +566,32 @@ export default function DeliveryScreen() {
       </section>
 
       <section className="dt-section">
-        <h2>受付の履歴（{shownEntries.length} 件）</h2>
+        <h2>
+          受付の履歴（{shownEntries.length} 件）
+          <CsvButton
+            name="トナー入出状況_受付の履歴"
+            header={ENTRY_CSV_HEADER}
+            rows={() =>
+              shownEntries.map((row) => [
+                csvStamp(row.createdAt),
+                row.receivedOn,
+                ACTION_LABEL[row.action] ?? row.action,
+                row.tonerId,
+                row.name,
+                row.color,
+                row.quantity,
+                row.balance,
+                row.userId,
+              ])
+            }
+            count={shownEntries.length}
+            title={
+              truncated
+                ? `いま出ている ${shownEntries.length} 件を保存します。履歴は上限で切れているので、これが期間の全部ではありません`
+                : undefined
+            }
+          />
+        </h2>
         <p className="dt-hint">
           搬入・持ち出し・廃棄の記録です。搬入日が入るのは搬入だけで、
           それ以外はハイフンになります。
@@ -584,7 +674,25 @@ export default function DeliveryScreen() {
       </section>
 
       <section className="dt-section">
-        <h2>注文の一覧（直近 {orders.length} 件 / 未入荷 {counts.pending} 件）</h2>
+        <h2>
+          注文の一覧（直近 {orders.length} 件 / 未入荷 {counts.pending} 件）
+          <CsvButton
+            name="トナー入出状況_注文"
+            header={ORDER_CSV_HEADER}
+            rows={() =>
+              orders.map((order) => [
+                csvStamp(order.orderedAt),
+                order.deliveryOn,
+                order.tonerId,
+                order.name,
+                order.quantity,
+                order.status,
+                order.userId,
+              ])
+            }
+            count={orders.length}
+          />
+        </h2>
 
         {orders.length === 0 ? (
           <p className="dt-empty">注文の記録がありません。</p>

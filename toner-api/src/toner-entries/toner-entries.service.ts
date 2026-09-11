@@ -27,6 +27,27 @@ export const GUEST_USER = 'ゲスト';
  */
 export const HISTORY_LIMIT = 1000;
 
+/** 在庫の増減。渡さなかった列は動かさない */
+type StockDelta = { quantity?: number; received?: number; disposed?: number };
+
+/**
+ * 在庫の行を増減させる data。**指定の無い列には触らない。**
+ * 行を作る側と動かす側で同じ delta を読むので、組み立てはここ 1 か所にする
+ */
+function increments(delta: StockDelta) {
+  return {
+    ...(delta.quantity === undefined
+      ? {}
+      : { quantity: { increment: delta.quantity } }),
+    ...(delta.received === undefined
+      ? {}
+      : { received: { increment: delta.received } }),
+    ...(delta.disposed === undefined
+      ? {}
+      : { disposed: { increment: delta.disposed } }),
+  };
+}
+
 /** 棚卸しの結果 1 行分 */
 export type StockTakeRow = {
   tonerId: string;
@@ -190,7 +211,7 @@ export class TonerEntriesService {
       );
     }
 
-    const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+    const stock = await this.stepStock(tx, dto.tonerId, dto.companyId, {
       quantity: -count,
     });
 
@@ -234,7 +255,7 @@ export class TonerEntriesService {
       );
     }
 
-    const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+    const stock = await this.stepStock(tx, dto.tonerId, dto.companyId, {
       disposed: count,
     });
 
@@ -585,16 +606,18 @@ export class TonerEntriesService {
   }
 
   /**
-   * その拠点の在庫を動かす。**行が無ければ作る。**
+   * その拠点の在庫を増やす。**行が無ければ作る。搬入だけが通る道。**
    *
    * 在庫は「品番 × 拠点」で、行ができるのは初めて受け入れたとき。
-   * 品番を登録した時点では拠点が決まらないので、ここで upsert する
+   * 品番を登録した時点では拠点が決まらないので、ここで upsert する。
+   *
+   * **減らす操作をここに通さないこと。** 理由は `stepStock` を参照
    */
   private bumpStock(
     tx: Tx,
     tonerId: string,
     companyId: number,
-    delta: { quantity?: number; received?: number; disposed?: number },
+    delta: StockDelta,
   ) {
     return tx.tonerStock.upsert({
       where: { tonerId_companyId: { tonerId, companyId } },
@@ -605,17 +628,36 @@ export class TonerEntriesService {
         received: delta.received ?? 0,
         disposed: delta.disposed ?? 0,
       },
-      update: {
-        ...(delta.quantity === undefined
-          ? {}
-          : { quantity: { increment: delta.quantity } }),
-        ...(delta.received === undefined
-          ? {}
-          : { received: { increment: delta.received } }),
-        ...(delta.disposed === undefined
-          ? {}
-          : { disposed: { increment: delta.disposed } }),
-      },
+      update: increments(delta),
+    });
+  }
+
+  /**
+   * すでにある在庫の行を動かす。**持ち出しと廃棄はこちら。**
+   *
+   * upsert を使わない。Prisma の upsert は
+   * `INSERT ... ON CONFLICT DO UPDATE` になるが、**PostgreSQL は
+   * 挿入しようとした行にも CHECK 制約を当てる。**行が既にあって update に
+   * 進む場合でも、先に create 側の値が検査される。
+   * 持ち出しの create は `quantity: -N`、廃棄の create は
+   * `disposed: N` に対して `received: 0` なので、
+   * `toner_stocks_quantity_non_negative` と
+   * `toner_stocks_disposed_within_received` に必ず引っかかり、
+   * **在庫が足りていても 500 になる**（実際に持ち出しと廃棄が全て落ちていた）。
+   *
+   * 行が無いときは呼び出し側が先に 422 で断っている
+   * （在庫 0 からは持ち出せず、搬入 0 本からは廃棄できない）ので、
+   * ここに来る時点で行は必ずある。update で足りる
+   */
+  private stepStock(
+    tx: Tx,
+    tonerId: string,
+    companyId: number,
+    delta: StockDelta,
+  ) {
+    return tx.tonerStock.update({
+      where: { tonerId_companyId: { tonerId, companyId } },
+      data: increments(delta),
     });
   }
 

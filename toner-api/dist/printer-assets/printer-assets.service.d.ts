@@ -9,6 +9,14 @@ type TonerPrinter = {
     ipAddress: string | null;
     sameModel: boolean;
 };
+export type InheritedToners = {
+    model: string | null;
+    toners: {
+        id: string;
+        name: string | null;
+    }[];
+    fromAssets: number;
+};
 type ModelToner = {
     id: string;
     name: string | null;
@@ -35,6 +43,7 @@ export declare class PrinterAssetsService {
     private readonly printers;
     constructor(prisma: PrismaService, printers: PrintersService);
     create(dto: CreatePrinterAssetDto): Promise<{
+        inheritedToners: InheritedToners;
         id: number;
         companyId: number;
         company: {
@@ -487,10 +496,12 @@ export declare class PrinterAssetsService {
             toners: number;
         };
     }>;
+    private inheritToners;
     private fillSerial;
     private ensureExists;
     private countRepairs;
     private toData;
+    private nextNo;
     private vendorsByMaker;
     private effectiveVendor;
     private toResponse;

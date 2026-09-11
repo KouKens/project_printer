@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { fromDate, toDate } from '../common/date';
+import { fromDate, startOfDay, toDate } from '../common/date';
 import { toText } from '../common/text';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTonerInvoiceDto } from './dto/create-toner-invoice.dto';
@@ -188,19 +188,20 @@ export class TonerInvoicesService {
     }
 
     /*
-     * 期間の終わりは「その日いっぱい」。
-     * periodTo は @db.Date に合わせた UTC 0 時なので、時刻を持つ createdAt と
-     * そのまま比べると**終了日に受け付けたぶんが丸ごと外れる**。翌日 0 時を上限にする
+     * 期間は「開始日から終了日まで、両端を含む」。
+     * periodFrom / periodTo は @db.Date に合わせた UTC 0 時の器なので、
+     * 比べる相手も暦日に直してから当てる（下の `dayOf` を参照）
      */
     const from = invoice.periodFrom;
-    const toExclusive = new Date(invoice.periodTo.getTime() + MS_PER_DAY);
+    const to = invoice.periodTo;
 
     /*
      * 期間の前後 NEARBY_DAYS 日ぶんまで読む。
-     * 期間内は突き合わせに、外は「期ずれかもしれない」の手がかりに使う
+     * 期間内は突き合わせに、外は「期ずれかもしれない」の手がかりに使う。
+     * ここは粗く広く取るだけの絞り込みで、期間内かどうかの判定は下で改めて行う
      */
     const wideFrom = new Date(from.getTime() - NEARBY_DAYS * MS_PER_DAY);
-    const wideTo = new Date(toExclusive.getTime() + NEARBY_DAYS * MS_PER_DAY);
+    const wideTo = new Date(to.getTime() + (NEARBY_DAYS + 1) * MS_PER_DAY);
 
     /*
      * **搬入日が未入力の古い記録がある。** receivedOn は後から足した列なので、
@@ -267,12 +268,23 @@ export class TonerInvoicesService {
       return slot;
     };
 
+    /**
+     * その搬入をどの暦日として扱うか。
+     *
+     * 搬入日（receivedOn）は @db.Date で **UTC 0 時の器**なのでそのまま使う。
+     * 代わりに使う createdAt は時刻を持つ本物の日時で、そのまま期間と比べると
+     * JST では 9 時間ずれる（開始日の朝 9 時より前が前期に外れ、終了日の翌朝
+     * 9 時までが入ってしまう）。暦日に直してから当てる
+     */
+    const dayOf = (entry: { receivedOn: Date | null; createdAt: Date }) =>
+      entry.receivedOn ?? startOfDay(entry.createdAt);
+
     for (const entry of entries) {
       // 搬入日が入っていない古い記録は、受け付けた日で代える
-      const when = entry.receivedOn ?? entry.createdAt;
+      const when = dayOf(entry);
 
       const slot = slotFor(entry.tonerId);
-      if (when < from || when >= toExclusive) {
+      if (when < from || when > to) {
         slot.nearby += entry.quantity;
         continue;
       }

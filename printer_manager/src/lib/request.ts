@@ -20,7 +20,11 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    const message = Array.isArray(body?.message) ? body.message.join(' / ') : body?.message;
+    // 1 つの欄に検査が 2 つ付いていると、同じ文面が 2 回届く
+    // （拠点の「拠点を選んでください / 拠点を選んでください」）。重なった分は 1 回にする
+    const message = Array.isArray(body?.message)
+      ? [...new Set(body.message)].join(' / ')
+      : body?.message;
     throw new Error(message ?? `通信に失敗しました (HTTP ${res.status})`);
   }
   return body as T;

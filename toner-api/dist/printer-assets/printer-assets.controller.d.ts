@@ -4,6 +4,7 @@ export declare class PrinterAssetsController {
     private readonly service;
     constructor(service: PrinterAssetsService);
     create(dto: CreatePrinterAssetDto): Promise<{
+        inheritedToners: import("./printer-assets.service").InheritedToners;
         id: number;
         companyId: number;
         company: {

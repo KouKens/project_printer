@@ -1,0 +1,35 @@
+/*
+ * CSV に落とすボタン。**絞り込みの列にも、表の見出しの横にも置く。**
+ *
+ * 絞り込みの列（.dt-tools / .st-tools など）に置いたときは、そちらの
+ * `… button` の指定のほうが強いので隣のボタンと同じ見た目になる。
+ * ここの指定が効くのは、見出しの横に単体で置いたとき。
+ */
+.csv-btn {
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: normal;
+  color: #1f6f8b;
+  background: transparent;
+  border: 1px solid #dbe2ea;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.csv-btn:hover:not(:disabled) {
+  background: #f2f7f9;
+}
+
+.csv-btn:disabled {
+  color: #a7b3bd;
+  cursor: not-allowed;
+}
+
+/* 見出しの中に置いたとき。見出しの文字と同じ行に、少し離して並べる */
+h1 > .csv-btn,
+h2 > .csv-btn {
+  margin-left: 10px;
+  vertical-align: middle;
+}

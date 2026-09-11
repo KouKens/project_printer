@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
 import {
   MAINT_SOON_DAYS,
   maintDaysLeft,
   maintLeftLabel,
   maintStatus,
 } from '../lib/maint';
+import type { CsvValue } from '../lib/csv';
 import { foldKey } from '../lib/fold';
 import { num } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
@@ -714,6 +716,102 @@ function pick(row: Row, key: SortKey): unknown {
   }
 }
 
+/** 交換部品のうち、残量を数値で返しているもののいちばん低い値 */
+function lowestPartPercent(row: Row): number | null {
+  if (!row.printer) return null;
+  const parts = partsOf(row.printer.readings).filter((s) => s.percent !== null);
+  return parts.length > 0 ? (parts[0].percent as number) : null;
+}
+
+/** 消耗品を 1 つのセルに収める。「名前: 残量」を並べる */
+const suppliesText = (readings: SupplyReading[]) =>
+  readings.map((supply) => `${supply.name}: ${levelText(supply)}`).join(' / ');
+
+/**
+ * CSV に出す列。**画面の COLUMNS とは別に持つ。**
+ *
+ * 表では色や印で示しているもの（修理中の帯、残りの色、消耗品の点）は、
+ * ファイルにすると何も残らない。文字にして出す。
+ * 「残り」は「あと 3 か月」ではなく日数にする（Excel で並べ替えられるように）
+ */
+const CSV_COLUMNS: { label: string; value: (row: Row) => CsvValue }[] = [
+  { label: '拠点', value: (row) => row.company?.name ?? null },
+  { label: '部署', value: (row) => row.department },
+  { label: 'No.', value: (row) => row.no },
+  { label: 'IP アドレス', value: (row) => row.ipAddress },
+  { label: 'メーカー', value: (row) => row.maker },
+  { label: '型番', value: (row) => row.model },
+  { label: 'シリアル', value: (row) => row.serialNumber },
+  {
+    label: '保守',
+    value: (row) => maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract),
+  },
+  { label: '保守開始', value: (row) => row.maintStartOn },
+  { label: '保守終了', value: (row) => row.maintEndOn },
+  { label: '残り日数', value: (row) => maintDaysLeft(row.maintEndOn) },
+  { label: '保守金額', value: (row) => row.maintFee },
+  { label: '保守企業', value: (row) => maintVendorOf(row)?.name ?? null },
+  {
+    label: '電話番号',
+    value: (row) => maintVendorOf(row)?.phones.join(' / ') ?? null,
+  },
+  { label: '修理', value: (row) => (underRepair(row) ? '修理中' : '') },
+  { label: '未完了の修理', value: (row) => row.repairs.open },
+  // 保守期間が入っていない台帳は 0 回ではなく「出せない」ので空欄にする
+  {
+    label: '保守内・自分で対応',
+    value: (row) => (row.repairs.hasMaint ? row.repairs.inHouse : null),
+  },
+  {
+    label: '保守内・業者',
+    value: (row) => (row.repairs.hasMaint ? row.repairs.vendor : null),
+  },
+  // 費用が 1 件も入っていなければ 0 円ではないので空欄にする
+  {
+    label: '保守内・費用',
+    value: (row) =>
+      row.repairs.hasMaint && row.repairs.costKnown > 0 ? row.repairs.cost : null,
+  },
+  {
+    label: '状態',
+    value: (row) =>
+      row.printer === null ? '' : row.printer.reachable ? '応答あり' : '応答なし',
+  },
+  { label: '機種（実機）', value: (row) => row.printer?.model ?? null },
+  { label: '累計印刷', value: (row) => row.printer?.pageCount ?? null },
+  {
+    label: '取得できた時刻',
+    value: (row) =>
+      row.printer?.lastSuccessAt
+        ? new Date(row.printer.lastSuccessAt).toLocaleString('ja-JP')
+        : null,
+  },
+  { label: '交換部品の最低残量', value: lowestPartPercent },
+  { label: '直近 1 日', value: (row) => row.latest?.pages ?? null },
+  { label: 'モノクロ', value: (row) => row.latest?.monoPages ?? null },
+  { label: 'カラー', value: (row) => row.latest?.colorPages ?? null },
+  {
+    label: 'トナー・インク',
+    value: (row) =>
+      row.printer ? suppliesText(row.printer.readings.filter((s) => !isPart(s))) : '',
+  },
+  {
+    label: '交換部品',
+    value: (row) => (row.printer ? suppliesText(partsOf(row.printer.readings)) : ''),
+  },
+  {
+    label: '警告',
+    value: (row) => {
+      if (!row.printer) return '';
+      const alerts = row.printer.alerts
+        .map((alert) => alert.description)
+        .filter(Boolean);
+      // 警告が無いときは操作パネルの表示を出す。画面の「警告」の欄と同じ
+      return alerts.length > 0 ? alerts.join(' / ') : (row.printer.consoleText ?? '');
+    },
+  },
+];
+
 export default function PrinterListScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -1234,6 +1332,14 @@ export default function PrinterListScreen() {
         <button onClick={() => void load()} disabled={busy} type="button">
           一覧を更新
         </button>
+
+        <CsvButton
+          name="プリンター状況"
+          header={CSV_COLUMNS.map((col) => col.label)}
+          rows={() => shown.map((row) => CSV_COLUMNS.map((col) => col.value(row)))}
+          count={shown.length}
+          title="いま出ている行を CSV に保存します。表で色や点にしている保守の残り・消耗品の残量も、文字にして入ります"
+        />
       </div>
 
       {error && <p className="dt-msg dt-msg-error">{error}</p>}

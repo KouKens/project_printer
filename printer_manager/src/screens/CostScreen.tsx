@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
+import type { CsvValue } from '../lib/csv';
 import { num } from '../lib/format';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -181,6 +183,72 @@ function pickPrinter(row: CostRow, key: PrinterKey): unknown {
       return row.catalog[key];
   }
 }
+
+/** CSV の金額。画面と同じく円未満は出さない。未計算は空欄にする */
+const csvYen = (value: number | null | undefined): CsvValue =>
+  value === null || value === undefined ? null : Math.round(value);
+
+/** CSV の 1 枚あたり。銭の桁まで。数として読ませたいので円は付けない */
+const csvPerPage = (value: number | null | undefined): CsvValue =>
+  value === null || value === undefined ? null : Number(value.toFixed(2));
+
+/**
+ * 台ごとの CSV。**画面で ※ や棒にしている事情も列にする。**
+ * 「単価の出せない品番」「共用で割り振れない品番」が入っていれば、
+ * その行のトナー代や実績が欠けていると分かる
+ */
+const PRINTER_CSV_COLUMNS: { label: string; value: (row: CostRow) => CsvValue }[] = [
+  { label: '拠点', value: (row) => row.company },
+  { label: '部署', value: (row) => row.department },
+  { label: 'No.', value: (row) => row.no },
+  { label: 'メーカー', value: (row) => row.maker },
+  { label: '型番', value: (row) => row.model },
+  { label: '枚数', value: (row) => row.pages },
+  { label: 'カラー枚数', value: (row) => row.colorPages },
+  { label: 'トナー（カタログ）', value: (row) => csvYen(row.catalog.tonerCost) },
+  { label: '本体', value: (row) => csvYen(row.catalog.body) },
+  { label: '保守', value: (row) => csvYen(row.catalog.maint) },
+  {
+    // 費用が 1 件も入っていない台は 0 円ではないので空欄にする
+    label: '修理',
+    value: (row) =>
+      row.catalog.repairKnown === 0 ? null : csvYen(row.catalog.repairCost),
+  },
+  { label: '合計（カタログ）', value: (row) => csvYen(row.catalog.total) },
+  { label: '円/枚', value: (row) => csvPerPage(row.catalog.totalCostPerPage) },
+  { label: 'トナー（実績）', value: (row) => csvYen(row.actual?.tonerCost) },
+  { label: '持出本数', value: (row) => row.actual?.issues ?? null },
+  { label: '差（実績 − カタログ）', value: (row) => csvYen(diffOf(row)) },
+  { label: '単価の出せない品番', value: (row) => row.catalog.missingCost.join(' / ') },
+  { label: '共用で割り振れない品番', value: (row) => row.sharedToners.join(' / ') },
+];
+
+/** 品番ごとの CSV。画面の表と同じ列 */
+const TONER_CSV_COLUMNS: { label: string; value: (row: TonerRow) => CsvValue }[] = [
+  { label: '品番', value: (row) => row.id },
+  { label: '名前', value: (row) => row.name },
+  { label: '色', value: (row) => row.color },
+  { label: '円/枚', value: (row) => csvPerPage(row.costPerPage) },
+  { label: '対象枚数', value: (row) => row.pages },
+  {
+    label: '想定本数',
+    value: (row) =>
+      row.expectedUnits === null ? null : Number(row.expectedUnits.toFixed(2)),
+  },
+  { label: '想定金額', value: (row) => csvYen(row.expectedCost) },
+  { label: '搬入本数', value: (row) => row.receivedUnits },
+  { label: '搬入支出', value: (row) => csvYen(row.receivedCost) },
+  { label: '持出本数', value: (row) => row.issuedUnits },
+  { label: '持出金額', value: (row) => csvYen(row.issuedCost) },
+  {
+    // 1 本も持ち出していない品番は差を出さない（画面と同じ扱い）
+    label: '差（持出 − 想定）',
+    value: (row) =>
+      row.issuedUnits === 0 || row.issuedCost === null || row.expectedCost === null
+        ? null
+        : csvYen(row.issuedCost - row.expectedCost),
+  },
+];
 
 /**
  * 差を横棒で出す。0 を中心に、左（緑）が想定より安い・右（赤）が高い。
@@ -566,7 +634,17 @@ export default function CostScreen() {
           </p>
 
           <div className="dt-section">
-            <h2>台ごと（{data.coverage.assets} 台）</h2>
+            <h2>
+              台ごと（{data.coverage.assets} 台）
+              <CsvButton
+                name="運用コスト_台ごと"
+                header={PRINTER_CSV_COLUMNS.map((col) => col.label)}
+                rows={() =>
+                  shown.map((row) => PRINTER_CSV_COLUMNS.map((col) => col.value(row)))
+                }
+                count={shown.length}
+              />
+            </h2>
             <p className="dt-hint">
               枚数が取れているのは {data.coverage.withPages} 台、購入金額があるのは{' '}
               {data.coverage.withPurchasePrice} 台、保守金額があるのは{' '}
@@ -644,7 +722,19 @@ export default function CostScreen() {
           </div>
 
           <div className="dt-section">
-            <h2>品番ごと（{data.toners.length} 品番）</h2>
+            <h2>
+              品番ごと（{data.toners.length} 品番）
+              <CsvButton
+                name="運用コスト_品番ごと"
+                header={TONER_CSV_COLUMNS.map((col) => col.label)}
+                rows={() =>
+                  shownToners.map((row) =>
+                    TONER_CSV_COLUMNS.map((col) => col.value(row)),
+                  )
+                }
+                count={shownToners.length}
+              />
+            </h2>
             <p className="dt-hint">
               台に割り振らずに突き合わせます。**持ち出しの記録があれば、こちらは今の履歴のままでも差が出ます。**
               「想定」は期間内の枚数をカタログの印刷可能枚数で割った本数、「持出」は実際に棚から出した本数です。

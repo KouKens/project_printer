@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -53,6 +54,9 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
   { key: 'received', label: '搬入累計', kind: 'number', numeric: true },
   { key: 'disposed', label: '廃棄累計', kind: 'number', numeric: true },
 ];
+
+/** CSV の見出し。画面の列と同じものを出すので、列の定義から作る */
+const CSV_HEADER = COLUMNS.map((col) => col.label);
 
 export default function StockTakeScreen() {
   // 数える対象も書き戻す先も、右上で選んでいる拠点の在庫
@@ -147,6 +151,22 @@ export default function StockTakeScreen() {
       (row) => rows.indexOf(row),
     );
   }, [rows, filter, mode, entered, diffOf, sort, pick]);
+
+  /**
+   * CSV に出す行。**表示中の行だけ**（絞り込みと並べ替えを通したもの）。
+   * 実数と差は入力欄から出す値なので、未入力の行は空欄にして 0 と区別する
+   */
+  const csvRows = () =>
+    shown.map((row) => [
+      row.id,
+      row.name,
+      row.color,
+      row.quantity,
+      entered.get(row.id) ?? null,
+      diffOf(row),
+      row.received,
+      row.disposed,
+    ]);
 
   const summary = useMemo(() => {
     let diffRows = 0;
@@ -265,6 +285,17 @@ export default function StockTakeScreen() {
         <button className="st-sub" onClick={clear} disabled={busy} type="button">
           入力をクリア
         </button>
+
+        {/*
+          * 数え終わる前でも押せる。打ち込んだ実数と差もそのまま出るので、
+          * 棚の前で数えた紙の代わりに残せる
+          */}
+        <CsvButton
+          name="棚卸"
+          header={CSV_HEADER}
+          rows={csvRows}
+          count={shown.length}
+        />
       </div>
 
       {error && <p className="st-msg st-msg-error">{error}</p>}

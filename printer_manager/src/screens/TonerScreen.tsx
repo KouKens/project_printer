@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import CsvButton from '../components/CsvButton';
+import Modal from '../components/Modal';
+import type { CsvValue } from '../lib/csv';
 import { todayIso } from '../lib/date';
 import { num, orNull } from '../lib/format';
 import { suggestions } from '../lib/suggest';
@@ -126,7 +130,12 @@ const COLORS = [
   '6色パック',
 ];
 
-const EMPTY: Form = {
+/**
+ * 新規の欄の初期値。**呼んだ時点の今日を適用開始日に入れる。**
+ * 定数にすると画面を読み込んだ日で固まり、開きっぱなしの端末では
+ * 登録して空に戻すたびに何日も前の日付が初期値に出る
+ */
+const emptyForm = (): Form => ({
   id: '',
   name: '',
   color: '',
@@ -136,7 +145,7 @@ const EMPTY: Form = {
   yieldPages: '',
   effectiveFrom: todayIso(),
   printerAssetIds: [],
-};
+});
 
 /** 空欄は「警告しない」なので null で送る。0 は「在庫 0 で警告」の意味で残す */
 function toCount(value: string): number | null {
@@ -179,14 +188,324 @@ const printerShort = (printer: Printer) =>
   printer.model ??
   `ID ${printer.id}`;
 
+/**
+ * CSV の 1 セルに機器を並べるときの呼び名。
+ * 区切りに使う「 / 」は入れず、空白で繋ぐ（画面の `printerLabel` と別に持つ理由）
+ */
+const csvPrinterLabel = (printer: Printer) =>
+  [
+    printer.no ? `No.${printer.no}` : null,
+    printer.department,
+    printer.ipAddress,
+    printer.model,
+  ]
+    .filter(Boolean)
+    .join(' ') || `ID ${printer.id}`;
+
+/** CSV に出す列。画面の COLUMNS に、台数と機器の中身を足したもの */
+const CSV_COLUMNS: { label: string; value: (toner: SavedToner) => CsvValue }[] = [
+  { label: 'トナーID', value: (toner) => toner.id },
+  { label: 'トナー名', value: (toner) => toner.name },
+  { label: '色', value: (toner) => toner.color },
+  { label: 'リサイクル', value: (toner) => (toner.recycled ? '○' : '') },
+  { label: '価格（税別）', value: (toner) => toner.price },
+  { label: '印刷可能枚数', value: (toner) => toner.yieldPages },
+  {
+    // 銭の桁まで。数として読ませたいので円は付けない
+    label: '1 枚あたり',
+    value: (toner) =>
+      toner.costPerPage === null ? null : Number(toner.costPerPage.toFixed(2)),
+  },
+  { label: '適用開始', value: (toner) => toner.priceFrom },
+  { label: '改定', value: (toner) => toner.priceCount },
+  { label: '対応プリンター台数', value: (toner) => toner.printers.length },
+  {
+    label: '対応プリンター',
+    value: (toner) => toner.printers.map(csvPrinterLabel).join(' / '),
+  },
+  { label: '警告本数', value: (toner) => toner.alertThreshold },
+  { label: '在庫', value: (toner) => toner.stock },
+];
+
+/** 無効にした品番の CSV。画面の別枠と同じ列 */
+const DISABLED_CSV_COLUMNS: { label: string; value: (toner: SavedToner) => CsvValue }[] = [
+  { label: 'トナーID', value: (toner) => toner.id },
+  { label: 'トナー名', value: (toner) => toner.name },
+  { label: '色', value: (toner) => toner.color },
+  { label: '在庫', value: (toner) => toner.stock },
+  { label: '対応プリンター台数', value: (toner) => toner.printers.length },
+  {
+    label: '対応プリンター',
+    value: (toner) => toner.printers.map(csvPrinterLabel).join(' / '),
+  },
+  {
+    label: '無効にした日時',
+    value: (toner) =>
+      toner.disabledAt ? new Date(toner.disabledAt).toLocaleString('ja-JP') : null,
+  },
+];
+
+/** 編集の小窓が持つもの。価格の履歴も一緒に持ち、改定したら取り直す */
+type Editing = {
+  id: string;
+  /** 見出しに出す保存済みの名前。下書きの名前ではない */
+  name: string | null;
+  /** 下書き。price と effectiveFrom は改定の欄の値 */
+  form: Form;
+  prices: PriceRow[];
+  /**
+   * 紐づいているのに、有効な台帳の一覧に無い機器（無効にした台）。開いた時点で決める。
+   * 選択肢は有効な台だけなので、足さないと「N 台選択中」に数えられるのに
+   * 見えず、1 台ずつ外すこともできない
+   */
+  retired: Printer[];
+};
+
+const NO_PRINTERS: Printer[] = [];
+
+/**
+ * 対応するプリンターの複数選択。
+ * **絞り込みの文字は欄ごとに持つ**（新規の欄と編集の小窓で、別々に絞れるようにする）
+ */
+function PrinterPicker({
+  printers,
+  retired = NO_PRINTERS,
+  selected,
+  onChange,
+}: {
+  printers: Printer[];
+  /** 紐づいている無効の台。有効な台の後ろに印を付けて並べる（編集の小窓だけ） */
+  retired?: Printer[];
+  selected: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const [filter, setFilter] = useState('');
+
+  const retiredIds = useMemo(() => new Set(retired.map((printer) => printer.id)), [retired]);
+  const choices = useMemo(
+    () => [...printers, ...retired.filter((r) => !printers.some((p) => p.id === r.id))],
+    [printers, retired],
+  );
+
+  const shownPrinters = useMemo(() => {
+    const needle = filter.trim().toLowerCase();
+    if (!needle) return choices;
+    return choices.filter((printer) =>
+      `${printer.ipAddress ?? ''} ${printer.no ?? ''} ${printer.department ?? ''} ${
+        printer.maker ?? ''
+      } ${printer.model ?? ''}`
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [choices, filter]);
+
+  const toggle = (id: number) =>
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+  /** 表示中の機器がすべて選択済みか。押しても何も起きないボタンを止めるため */
+  const shownAllSelected =
+    shownPrinters.length > 0 && shownPrinters.every((printer) => selected.includes(printer.id));
+
+  /**
+   * いま表示している機器をまとめて選ぶ。
+   *
+   * 同じトナーが 20 台に対応することがあり、1 台ずつ押していられない。
+   * **絞り込みの外で選んである機器は残す。** 絞り込みを変えながら
+   * 「RICOH の分」「Canon の分」と足していけるようにするため、
+   * 置き換えではなく追加にする（外すときは隣の「選択を外す」）
+   */
+  const selectShown = () =>
+    onChange([
+      ...selected,
+      ...shownPrinters
+        .filter((printer) => !selected.includes(printer.id))
+        .map((printer) => printer.id),
+    ]);
+
+  return (
+    <div className="tn-printers">
+      <div className="tn-printers-head">
+        <span>対応するプリンター（{selected.length} 台選択中）</span>
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="IP・No.・部署・機種で絞り込み"
+        />
+        <button
+          type="button"
+          onClick={selectShown}
+          disabled={shownPrinters.length === 0 || shownAllSelected}
+          title={
+            shownAllSelected
+              ? '表示中の機器はすべて選択済みです'
+              : 'いま表示している機器をまとめて選びます。絞り込みの外で選んである機器はそのまま残ります'
+          }
+        >
+          表示中の {shownPrinters.length} 台を選ぶ
+        </button>
+        <button type="button" onClick={() => onChange([])}>
+          選択を外す
+        </button>
+      </div>
+
+      <div className="tn-printer-list">
+        {shownPrinters.length === 0 ? (
+          <span className="tn-muted">該当する機器がありません</span>
+        ) : (
+          shownPrinters.map((printer) => (
+            <label key={printer.id}>
+              <input
+                type="checkbox"
+                checked={selected.includes(printer.id)}
+                onChange={() => toggle(printer.id)}
+              />
+              <span className="tn-ip">{printer.ipAddress ?? '—'}</span>
+              <span className="tn-no">{printer.no ? `No.${printer.no}` : ''}</span>
+              <span className="tn-model">
+                {[printer.department, printer.model].filter(Boolean).join(' / ') || '—'}
+              </span>
+              {retiredIds.has(printer.id) && (
+                <span
+                  className="tn-retired"
+                  title="無効にした機器です。紐づけは残っています。外すときは印を外して更新してください"
+                >
+                  無効
+                </span>
+              )}
+            </label>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 入力欄。新規登録の欄と、編集の小窓で同じものを使う。
+ * 親の `.tn-fields`（3 列の格子）にそのまま並ぶよう、囲みを持たずに返す
+ */
+function TonerFields({
+  form,
+  onChange,
+  printers,
+  retired,
+  nameHints,
+  head,
+  price,
+}: {
+  form: Form;
+  onChange: <K extends keyof Form>(key: K, value: Form[K]) => void;
+  printers: Printer[];
+  /** 紐づいている無効の台（編集の小窓だけ）。`Editing.retired` を参照 */
+  retired?: Printer[];
+  nameHints: string[];
+  /** 先頭の欄。新規はトナーID の入力、編集は変えられない ID の表示 */
+  head: ReactNode;
+  /**
+   * 印刷可能枚数の後ろに入れる欄。新規だけ初回の価格を入れる
+   * （編集では価格を上書きさせず、小窓の中に改定の欄を別に置く）
+   */
+  price?: ReactNode;
+}) {
+  // 新規の欄と小窓が同時に並ぶので、datalist の id を欄ごとに分ける
+  const namesId = useId();
+  const colorsId = useId();
+
+  return (
+    <>
+      {head}
+
+      <label>
+        <span>トナー名</span>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => onChange('name', e.target.value)}
+          placeholder="トナーカートリッジ P500H"
+          list={namesId}
+        />
+        {/* 候補は縛りではない。一覧に無い名前もそのまま打てる */}
+        <datalist id={namesId}>
+          {nameHints.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
+      </label>
+
+      <label>
+        <span>色</span>
+        <input
+          type="text"
+          list={colorsId}
+          value={form.color}
+          onChange={(e) => onChange('color', e.target.value)}
+          placeholder="ブラック"
+        />
+        <datalist id={colorsId}>
+          {COLORS.map((color) => (
+            <option key={color} value={color} />
+          ))}
+        </datalist>
+      </label>
+
+      <label>
+        <span>この本数以下で警告</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          inputMode="numeric"
+          value={form.alertThreshold}
+          onChange={(e) => onChange('alertThreshold', e.target.value)}
+          placeholder="空欄なら警告しない"
+        />
+      </label>
+
+      <label>
+        <span>印刷可能枚数（1 本あたり）</span>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          inputMode="numeric"
+          value={form.yieldPages}
+          onChange={(e) => onChange('yieldPages', e.target.value)}
+          placeholder="カタログ値（A4・5%）"
+        />
+      </label>
+
+      {price}
+
+      <label className="tn-check">
+        <input
+          type="checkbox"
+          checked={form.recycled}
+          onChange={(e) => onChange('recycled', e.target.checked)}
+        />
+        <span>リサイクル品・互換品</span>
+      </label>
+
+      <PrinterPicker
+        printers={printers}
+        retired={retired}
+        selected={form.printerAssetIds}
+        onChange={(ids) => onChange('printerAssetIds', ids)}
+      />
+    </>
+  );
+}
+
 export default function TonerScreen() {
-  const [form, setForm] = useState<Form>(EMPTY);
-  /** 編集中のトナーID。null なら新規登録 */
-  const [editingId, setEditingId] = useState<string | null>(null);
+  /** 新規登録の欄。**新規専用。** 登録済みの品番を直すのは下の小窓 */
+  const [form, setForm] = useState<Form>(emptyForm);
+  /** 編集の小窓。null なら閉じている。新規の欄とは別に下書きを持つ */
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  /** 小窓を閉じずに済む操作（価格の改定）の結果 */
+  const [editNotice, setEditNotice] = useState<string | null>(null);
   const [toners, setToners] = useState<SavedToner[]>([]);
   const [printers, setPrinters] = useState<Printer[]>([]);
-  const [prices, setPrices] = useState<PriceRow[]>([]);
-  const [filter, setFilter] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: 'id',
     dir: 'asc',
@@ -220,8 +539,11 @@ export default function TonerScreen() {
     void load();
   }, [load]);
 
-  const set = <K extends keyof Form>(key: K) => (value: Form[K]) =>
+  const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const setDraft = <K extends keyof Form>(key: K, value: Form[K]) =>
+    setEditing((prev) => prev && { ...prev, form: { ...prev.form, [key]: value } });
 
   /** 有効な品番だけ。無効にしたものは下の別枠に分ける */
   const active = useMemo(
@@ -272,50 +594,6 @@ export default function TonerScreen() {
     );
   }, [active, sort]);
 
-  const shownPrinters = useMemo(() => {
-    const needle = filter.trim().toLowerCase();
-    if (!needle) return printers;
-    return printers.filter((printer) =>
-      `${printer.ipAddress ?? ''} ${printer.no ?? ''} ${printer.department ?? ''} ${
-        printer.maker ?? ''
-      } ${printer.model ?? ''}`
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [printers, filter]);
-
-  const togglePrinter = (id: number) =>
-    setForm((prev) => ({
-      ...prev,
-      printerAssetIds: prev.printerAssetIds.includes(id)
-        ? prev.printerAssetIds.filter((x) => x !== id)
-        : [...prev.printerAssetIds, id],
-    }));
-
-  /** 表示中の機器がすべて選択済みか。押しても何も起きないボタンを止めるため */
-  const shownAllSelected =
-    shownPrinters.length > 0 &&
-    shownPrinters.every((printer) => form.printerAssetIds.includes(printer.id));
-
-  /**
-   * いま表示している機器をまとめて選ぶ。
-   *
-   * 同じトナーが 20 台に対応することがあり、1 台ずつ押していられない。
-   * **絞り込みの外で選んである機器は残す。** 絞り込みを変えながら
-   * 「RICOH の分」「Canon の分」と足していけるようにするため、
-   * 置き換えではなく追加にする（外すときは隣の「選択を外す」）
-   */
-  const selectShown = () =>
-    setForm((prev) => ({
-      ...prev,
-      printerAssetIds: [
-        ...prev.printerAssetIds,
-        ...shownPrinters
-          .filter((printer) => !prev.printerAssetIds.includes(printer.id))
-          .map((printer) => printer.id),
-      ],
-    }));
-
   /** マスタ登録。対応機器と初回価格も一緒に送る */
   const create = async () => {
     setBusy(true);
@@ -337,7 +615,8 @@ export default function TonerScreen() {
         }),
       });
       setNotice(`${saved.name ?? saved.id} を登録しました`);
-      await edit(saved.id);
+      // 上の欄は新規専用。空に戻して、続けて押しても二重に登録しないようにする
+      setForm(emptyForm());
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -346,86 +625,113 @@ export default function TonerScreen() {
     }
   };
 
-  /** 名前・色・リサイクル区分・対応機器の更新。価格はここでは変えない */
+  /**
+   * 小窓の保存。名前・色・リサイクル区分・対応機器。**価格はここでは変えない**（改定の欄で足す）。
+   * 失敗したら小窓を開いたまま、中に文面を出す（閉じると直した値が消える）
+   */
   const update = async () => {
-    if (editingId === null) return;
+    if (editing === null) return;
+    const { id, form: draft } = editing;
     setBusy(true);
-    setError(null);
-    setNotice(null);
+    setEditError(null);
+    setEditNotice(null);
     try {
-      const saved = await request<SavedToner>(`/toners/${encodeURIComponent(editingId)}`, {
+      const saved = await request<SavedToner>(`/toners/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          name: orNull(form.name),
-          color: orNull(form.color),
-          recycled: form.recycled,
-          alertThreshold: toCount(form.alertThreshold),
-          yieldPages: toCount(form.yieldPages),
-          printerAssetIds: form.printerAssetIds,
+          name: orNull(draft.name),
+          color: orNull(draft.color),
+          recycled: draft.recycled,
+          alertThreshold: toCount(draft.alertThreshold),
+          yieldPages: toCount(draft.yieldPages),
+          printerAssetIds: draft.printerAssetIds,
         }),
       });
       setNotice(`${saved.name ?? saved.id} を更新しました`);
+      setError(null);
+      setEditing(null);
       await load();
     } catch (err) {
-      setError((err as Error).message);
+      setEditError((err as Error).message);
     } finally {
       setBusy(false);
     }
   };
 
-  /** 価格改定。過去の価格は残したまま、適用開始日を持つ行を足す */
+  /**
+   * 価格改定。過去の価格は残したまま、適用開始日を持つ行を足す
+   * （同じ適用開始日なら API がその日の価格を上書きする。打ち間違いの直し）。
+   *
+   * **押した時点で保存する。** 小窓は開いたまま履歴だけ取り直し、
+   * 他の欄は読み直さない（書きかけの修正を消さないため）
+   */
   const addPrice = async () => {
-    if (editingId === null) return;
-    if (form.price.trim() === '') {
-      setError('価格を入力してください');
+    if (editing === null) return;
+    const { id, form: draft } = editing;
+    if (draft.price.trim() === '') {
+      setEditError('価格を入力してください');
       return;
     }
 
     setBusy(true);
-    setError(null);
-    setNotice(null);
+    setEditError(null);
+    setEditNotice(null);
     try {
-      await request<SavedToner>(`/toners/${encodeURIComponent(editingId)}/prices`, {
+      await request<SavedToner>(`/toners/${encodeURIComponent(id)}/prices`, {
         method: 'POST',
         body: JSON.stringify({
-          price: Number(form.price),
-          effectiveFrom: form.effectiveFrom,
+          price: Number(draft.price),
+          effectiveFrom: draft.effectiveFrom,
         }),
       });
-      setNotice(
-        `${form.effectiveFrom} から ${num.format(Number(form.price))} 円（税別）にしました`,
+      const history = await request<PriceRow[]>(`/toners/${encodeURIComponent(id)}/prices`);
+      setEditing((prev) => (prev && prev.id === id ? { ...prev, prices: history } : prev));
+      setEditNotice(
+        `${draft.effectiveFrom} から ${num.format(Number(draft.price))} 円（税別）にしました`,
       );
-      await edit(editingId);
       await load();
     } catch (err) {
-      setError((err as Error).message);
+      setEditError((err as Error).message);
     } finally {
       setBusy(false);
     }
   };
 
-  /** 一覧の行を編集に載せる。価格の履歴もここで読む */
+  /**
+   * 一覧の「編集」。最新の値と価格の履歴を読んで小窓を開く。上の新規の欄には触らない。
+   * 改定の欄は今の価格と適用開始日で埋めておく（そのまま直せば打ち間違いの訂正になる）
+   */
   const edit = async (id: string) => {
+    setError(null);
+    setNotice(null);
     try {
       const [toner, history] = await Promise.all([
         request<SavedToner>(`/toners/${encodeURIComponent(id)}`),
         request<PriceRow[]>(`/toners/${encodeURIComponent(id)}/prices`),
       ]);
 
-      setForm({
+      setEditing({
         id: toner.id,
-        name: toner.name ?? '',
-        color: toner.color ?? '',
-        recycled: toner.recycled,
-        alertThreshold:
-          toner.alertThreshold === null ? '' : String(toner.alertThreshold),
-        yieldPages: toner.yieldPages === null ? '' : String(toner.yieldPages),
-        price: toner.price === null ? '' : String(toner.price),
-        effectiveFrom: toner.priceFrom ?? todayIso(),
-        printerAssetIds: toner.printers.map((printer) => printer.id),
+        name: toner.name,
+        form: {
+          id: toner.id,
+          name: toner.name ?? '',
+          color: toner.color ?? '',
+          recycled: toner.recycled,
+          alertThreshold:
+            toner.alertThreshold === null ? '' : String(toner.alertThreshold),
+          yieldPages: toner.yieldPages === null ? '' : String(toner.yieldPages),
+          price: toner.price === null ? '' : String(toner.price),
+          effectiveFrom: toner.priceFrom ?? todayIso(),
+          printerAssetIds: toner.printers.map((printer) => printer.id),
+        },
+        prices: history,
+        retired: toner.printers.filter(
+          (linked) => !printers.some((printer) => printer.id === linked.id),
+        ),
       });
-      setEditingId(toner.id);
-      setPrices(history);
+      setEditError(null);
+      setEditNotice(null);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -471,12 +777,6 @@ export default function TonerScreen() {
         { method: 'POST' },
       );
       setNotice(`${label} を${disable ? '無効にしました' : '元に戻しました'}`);
-      // 無効にした品番を編集中なら、フォームも空に戻す
-      if (disable && editingId === toner.id) {
-        setForm(EMPTY);
-        setEditingId(null);
-        setPrices([]);
-      }
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -517,11 +817,6 @@ export default function TonerScreen() {
     try {
       await request(`/toners/${encodeURIComponent(toner.id)}`, { method: 'DELETE' });
       setNotice(`${label} を削除しました`);
-      if (editingId === toner.id) {
-        setForm(EMPTY);
-        setEditingId(null);
-        setPrices([]);
-      }
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -531,12 +826,18 @@ export default function TonerScreen() {
   };
 
   const clear = () => {
-    setForm(EMPTY);
-    setEditingId(null);
-    setPrices([]);
+    setForm(emptyForm());
     setError(null);
     setNotice(null);
   };
+
+  /**
+   * 小窓の価格の履歴で「現在」を付ける行。**適用開始日が今日以前の最初の行**
+   * （API の currentPrice と同じ決め方。一覧の価格の列もこれ）。
+   * 先の日付で改定を入れてあると、先頭の行はまだ効いていない
+   */
+  const currentPriceId =
+    editing?.prices.find((row) => row.effectiveFrom <= todayIso())?.id ?? null;
 
   return (
     <div className="tn">
@@ -550,203 +851,77 @@ export default function TonerScreen() {
         </p>
       </header>
 
-      <section className="tn-form">
-        <label>
-          <span>トナーID（品番・バーコード）</span>
-          <input
-            type="text"
-            value={form.id}
-            onChange={(e) => set('id')(e.target.value)}
-            disabled={editingId !== null}
-            placeholder="P500H"
-          />
-        </label>
+      {/* 新規登録専用。登録済みの品番は一覧の「編集」から小窓で直す */}
+      <section className="tn-form tn-fields">
+        <TonerFields
+          form={form}
+          onChange={set}
+          printers={printers}
+          nameHints={nameHints}
+          head={
+            <label>
+              <span>トナーID（品番・バーコード）</span>
+              <input
+                type="text"
+                value={form.id}
+                onChange={(e) => set('id', e.target.value)}
+                placeholder="P500H"
+              />
+            </label>
+          }
+          price={
+            <>
+              <label>
+                <span>価格（税別・円）</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={form.price}
+                  onChange={(e) => set('price', e.target.value)}
+                  placeholder="7200"
+                />
+              </label>
 
-        <label>
-          <span>トナー名</span>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => set('name')(e.target.value)}
-            placeholder="トナーカートリッジ P500H"
-            list="tn-names"
-          />
-          {/* 候補は縛りではない。一覧に無い名前もそのまま打てる */}
-          <datalist id="tn-names">
-            {nameHints.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
-        </label>
-
-        <label>
-          <span>色</span>
-          <input
-            type="text"
-            list="tn-colors"
-            value={form.color}
-            onChange={(e) => set('color')(e.target.value)}
-            placeholder="ブラック"
-          />
-          <datalist id="tn-colors">
-            {COLORS.map((color) => (
-              <option key={color} value={color} />
-            ))}
-          </datalist>
-        </label>
-
-        <label>
-          <span>この本数以下で警告</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            inputMode="numeric"
-            value={form.alertThreshold}
-            onChange={(e) => set('alertThreshold')(e.target.value)}
-            placeholder="空欄なら警告しない"
-          />
-        </label>
-
-        <label>
-          <span>印刷可能枚数（1 本あたり）</span>
-          <input
-            type="number"
-            min="1"
-            step="1"
-            inputMode="numeric"
-            value={form.yieldPages}
-            onChange={(e) => set('yieldPages')(e.target.value)}
-            placeholder="カタログ値（A4・5%）"
-          />
-        </label>
-
-        <label>
-          <span>価格（税別・円）</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            inputMode="numeric"
-            value={form.price}
-            onChange={(e) => set('price')(e.target.value)}
-            placeholder="7200"
-          />
-        </label>
-
-        <label>
-          <span>この価格の適用開始日</span>
-          <input
-            type="date"
-            value={form.effectiveFrom}
-            onChange={(e) => set('effectiveFrom')(e.target.value)}
-          />
-        </label>
-
-        <label className="tn-check">
-          <input
-            type="checkbox"
-            checked={form.recycled}
-            onChange={(e) => set('recycled')(e.target.checked)}
-          />
-          <span>リサイクル品・互換品</span>
-        </label>
-
-        <div className="tn-printers">
-          <div className="tn-printers-head">
-            <span>対応するプリンター（{form.printerAssetIds.length} 台選択中）</span>
-            <input
-              type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="IP・No.・部署・機種で絞り込み"
-            />
-            <button
-              type="button"
-              onClick={selectShown}
-              disabled={shownPrinters.length === 0 || shownAllSelected}
-              title={
-                shownAllSelected
-                  ? '表示中の機器はすべて選択済みです'
-                  : 'いま表示している機器をまとめて選びます。絞り込みの外で選んである機器はそのまま残ります'
-              }
-            >
-              表示中の {shownPrinters.length} 台を選ぶ
-            </button>
-            <button type="button" onClick={() => set('printerAssetIds')([])}>
-              選択を外す
-            </button>
-          </div>
-
-          <div className="tn-printer-list">
-            {shownPrinters.length === 0 ? (
-              <span className="tn-muted">該当する機器がありません</span>
-            ) : (
-              shownPrinters.map((printer) => (
-                <label key={printer.id}>
-                  <input
-                    type="checkbox"
-                    checked={form.printerAssetIds.includes(printer.id)}
-                    onChange={() => togglePrinter(printer.id)}
-                  />
-                  <span className="tn-ip">{printer.ipAddress ?? '—'}</span>
-                  <span className="tn-no">{printer.no ? `No.${printer.no}` : ''}</span>
-                  <span className="tn-model">
-                    {[printer.department, printer.model].filter(Boolean).join(' / ') || '—'}
-                  </span>
-                </label>
-              ))
-            )}
-          </div>
-        </div>
+              <label>
+                <span>この価格の適用開始日</span>
+                <input
+                  type="date"
+                  value={form.effectiveFrom}
+                  onChange={(e) => set('effectiveFrom', e.target.value)}
+                />
+              </label>
+            </>
+          }
+        />
 
         <div className="tn-actions">
-          {editingId === null ? (
-            <button onClick={() => void create()} disabled={busy || !form.id.trim()}>
-              登録
-            </button>
-          ) : (
-            <>
-              <button onClick={() => void update()} disabled={busy}>
-                更新
-              </button>
-              <button className="tn-sub" onClick={() => void addPrice()} disabled={busy} type="button">
-                この価格で改定
-              </button>
-            </>
-          )}
+          <button onClick={() => void create()} disabled={busy || !form.id.trim()}>
+            登録
+          </button>
           <button className="tn-sub" onClick={clear} disabled={busy} type="button">
             クリア
           </button>
-          {editingId !== null && <span className="tn-editing">{editingId} を編集中</span>}
         </div>
       </section>
 
       {error && <p className="tn-msg tn-msg-error">{error}</p>}
       {notice && <p className="tn-msg tn-msg-ok">{notice}</p>}
 
-      {editingId !== null && prices.length > 0 && (
-        <section className="tn-history">
-          <h2>価格の履歴（{prices.length} 件）</h2>
-          <ol>
-            {prices.map((row, index) => (
-              <li key={row.id}>
-                <span className="tn-from">{row.effectiveFrom} 〜</span>
-                <span>{num.format(row.price)} 円</span>
-                {index === 0 && row.effectiveFrom <= todayIso() && (
-                  <span className="tn-now">現在</span>
-                )}
-                {row.note && <span className="tn-note">{row.note}</span>}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
       <section className="tn-list">
-        <h2>登録したトナー（{toners.length} 件）</h2>
+        <h2>
+          {/* 数えるのは下に並べる有効な品番だけ。無効の品番は別枠で数える */}
+          登録したトナー（{active.length} 件）
+          <CsvButton
+            name="トナー登録"
+            header={CSV_COLUMNS.map((col) => col.label)}
+            rows={() => shown.map((toner) => CSV_COLUMNS.map((col) => col.value(toner)))}
+            count={shown.length}
+          />
+        </h2>
         <p className="tn-hint">
-          価格は今日の時点で有効なものです。「編集」で読み込むと履歴も見られます。
+          価格は今日の時点で有効なものです。「編集」を押すと、価格の履歴を見て改定できます。
         </p>
 
         <p className="tn-legend">
@@ -791,7 +966,7 @@ export default function TonerScreen() {
               </thead>
               <tbody>
                 {shown.map((toner) => (
-                  <tr key={toner.id} className={toner.id === editingId ? 'tn-row-on' : undefined}>
+                  <tr key={toner.id} className={toner.id === editing?.id ? 'tn-row-on' : undefined}>
                     <td className="tn-mono">{toner.id}</td>
                     <td>{toner.name ?? '—'}</td>
                     <td>{toner.color ?? '—'}</td>
@@ -882,7 +1057,19 @@ export default function TonerScreen() {
 
       {disabled.length > 0 && (
         <section className="tn-list tn-disabled">
-          <h2>無効にした品番（{disabled.length} 件）</h2>
+          <h2>
+            無効にした品番（{disabled.length} 件）
+            <CsvButton
+              name="トナー登録_無効"
+              header={DISABLED_CSV_COLUMNS.map((col) => col.label)}
+              rows={() =>
+                disabled.map((toner) =>
+                  DISABLED_CSV_COLUMNS.map((col) => col.value(toner)),
+                )
+              }
+              count={disabled.length}
+            />
+          </h2>
           <p className="tn-hint">
             使わなくなった品番です。<strong>受付の履歴・注文・価格の履歴は消えていません。</strong>
             受付の検索・注文・請求書の候補からは外れています。
@@ -951,6 +1138,113 @@ export default function TonerScreen() {
             </table>
           </div>
         </section>
+      )}
+
+      {editing && (
+        <Modal
+          title={`${editing.name ?? editing.id} を編集`}
+          onClose={() => setEditing(null)}
+          busy={busy}
+          error={editError}
+          notice={editNotice}
+          width={1000}
+          footer={
+            <>
+              <button
+                className="md-sub"
+                type="button"
+                onClick={() => setEditing(null)}
+                disabled={busy}
+              >
+                キャンセル
+              </button>
+              <button type="button" onClick={() => void update()} disabled={busy}>
+                {busy ? '保存中…' : '更新'}
+              </button>
+            </>
+          }
+        >
+          <div className="tn-fields">
+            <TonerFields
+              form={editing.form}
+              onChange={setDraft}
+              printers={printers}
+              retired={editing.retired}
+              nameHints={nameHints}
+              head={
+                <label>
+                  <span>トナーID（品番・バーコード）</span>
+                  <input
+                    type="text"
+                    value={editing.id}
+                    disabled
+                    title="品番は変えられません。間違えて登録したときは、無効にしてから登録し直してください"
+                  />
+                </label>
+              }
+            />
+          </div>
+
+          <section className="md-section">
+            <h3>価格の改定と履歴（{editing.prices.length} 件）</h3>
+            <p className="md-section-hint">
+              <strong>「この価格で改定」を押した時点で保存します</strong>
+              （下の「更新」では価格は変わりません）。過去の価格は残したまま、
+              適用開始日を持つ行を足します。今の価格と同じ適用開始日のまま直すと、
+              その日の価格を置き換えます（打ち間違いの直し）。
+            </p>
+
+            <div className="tn-fields">
+              <label>
+                <span>価格（税別・円）</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={editing.form.price}
+                  onChange={(e) => setDraft('price', e.target.value)}
+                  placeholder="7200"
+                />
+              </label>
+
+              <label>
+                <span>この価格の適用開始日</span>
+                <input
+                  type="date"
+                  value={editing.form.effectiveFrom}
+                  onChange={(e) => setDraft('effectiveFrom', e.target.value)}
+                />
+              </label>
+
+              <div className="tn-price-go">
+                <button
+                  type="button"
+                  onClick={() => void addPrice()}
+                  disabled={busy || editing.form.price.trim() === ''}
+                >
+                  この価格で改定
+                </button>
+              </div>
+            </div>
+
+            {editing.prices.length === 0 ? (
+              <p className="tn-muted tn-prices-empty">価格はまだ登録されていません。</p>
+            ) : (
+              <ol className="tn-prices" aria-label="価格の履歴">
+                {editing.prices.map((row) => (
+                  <li key={row.id}>
+                    <span className="tn-from">{row.effectiveFrom} 〜</span>
+                    <span>{num.format(row.price)} 円</span>
+                    {row.id === currentPriceId && <span className="tn-now">現在</span>}
+                    {row.effectiveFrom > todayIso() && <span className="tn-soon">予定</span>}
+                    {row.note && <span className="tn-note">{row.note}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </Modal>
       )}
     </div>
   );

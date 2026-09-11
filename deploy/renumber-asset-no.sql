@@ -1,0 +1,109 @@
+-- 管理番号（No.）を 001 から振り直す。**間の空きを詰め、部署ごとにまとめる。**
+--
+-- **並びの土台は今の番号の順。** 健診 → 救急外来 → 総合外来 → 予約外来 →
+-- 医事課 →（中略）→ 各事業所 という今の並びをそのまま使い、間の空きだけを詰める。
+-- 印刷状況の「集計表用にコピー」は No. の昇順で行を並べるので、
+-- **土台の鍵を変えると貼り付け先の集計表と行がずれる。**
+--
+-- **例外が下の `place` の 16 台。** 自動採番より前に登録されて番号を持たず、
+-- そのままだと末尾にまとまってしまう台を、**同じ部署の台の直後**へ差し込む。
+-- 部署名が「3階病棟」と「３階病棟」、「内視鏡センター」と「内視鏡室」のように
+-- 揺れていて機械的には結べないので、入れ先を 1 台ずつ書き出してある。
+-- 鍵は**部署名 ＋ IP アドレス**（台帳でこの 2 つが同じ台は無い）。
+--
+-- No. は台帳の鍵として使うが、外部キーではない（修理履歴もトナーの紐づけも
+-- 台帳の id を指している）ので、振り直しても記録は壊れない。
+-- **壊れるのは現物のラベルとの対応**なので、流す前に出る対応表を残すこと。
+--
+-- **何度流しても壊れない。** 2 度目は既にこの並びなので `UPDATE 0` になる
+-- （番号が変わらない行は更新しないので、更新日も動かない）。
+--
+-- **このファイルは UTF-8。** PGCLIENTENCODING=SJIS を置いたままでも
+-- 化けないよう、ここで宣言する（assign-sites.sql と同じ）。
+\encoding UTF8
+
+BEGIN;
+
+CREATE TEMP TABLE new_no ON COMMIT DROP AS
+WITH place(dept, ip, after_dept, after_ip) AS (
+  VALUES
+    -- 動かす台（部署・IP）              → 直後に置く台（部署・IP）
+    ('健診センター',     NULL::text,      '健診（インボディー）', NULL::text),
+    ('救急外来',         '172.31.14.211', '救急外来（夜間受付）', '172.31.14.207'),
+    ('総合外来',         '172.31.29.203', '総合外来（16診）',     '172.31.99.206'),
+    ('予約外来',         '172.31.13.202', '予約外来（８診）',     '172.31.13.218'),
+    ('予約外来（中央）', '172.31.13.201', '予約外来（中央）',     '172.31.13.203'),
+    ('医事課',           '172.31.10.202', '医事課（レセプト）',   '172.31.10.209'),
+    ('内視鏡センター',   '172.31.17.242', '内視鏡室',             '172.31.17.221'),
+    ('3階病棟',          '172.31.6.202',  '３階病棟',             '172.31.6.207'),
+    ('3階病棟',          '172.31.6.203',  '３階病棟',             '172.31.6.207'),
+    ('4階病棟',          '172.31.8.213',  '４階病棟',             '172.31.8.208'),
+    -- 同じ名前の台が無い 1 台。病棟のまとまりの中（4 階の後・緩和ケアの前）に置く
+    ('回復期リハ病棟',   '172.31.3.212',  '４階病棟',             '172.31.8.208'),
+    ('緩和ケア病棟',     '172.31.5.201',  '緩和ケア',             '172.31.5.203'),
+    ('緩和ケア病棟',     '172.31.5.202',  '緩和ケア',             '172.31.5.203'),
+    ('ICU病棟',          '172.31.7.213',  'ＩＣＵ',               '172.31.7.6'),
+    ('手術室',           '172.31.21.206', '手術室',               '172.31.21.125'),
+    ('HCU（感染病棟）',  '172.31.33.201', 'HCU（感染病棟）',      '172.31.99.201')
+),
+moved AS (
+  -- 差し込む台と、その入れ先が今持っている番号
+  SELECT a.id, anchor.no AS base
+  FROM printer_assets a
+  JOIN place p
+    ON p.dept = a.department
+   AND p.ip IS NOT DISTINCT FROM a.ip_address
+  JOIN printer_assets anchor
+    ON anchor.department = p.after_dept
+   AND anchor.ip_address IS NOT DISTINCT FROM p.after_ip
+)
+SELECT
+  a.id,
+  a.no AS old_no,
+  COALESCE(a.department, '(部署なし)') AS department,
+  COALESCE(a.ip_address, '-') AS ip_address,
+  lpad(
+    row_number() OVER (
+      ORDER BY
+        -- ① 土台は今の番号。差し込む台は入れ先の番号を借りる
+        CASE
+          WHEN COALESCE(m.base, a.no) ~ '^[0-9]+$'
+          THEN COALESCE(m.base, a.no)::bigint
+        END NULLS LAST,
+        -- ② 同じ番号のところでは、元からいる台が先で差し込む台が後
+        CASE WHEN m.id IS NULL THEN 0 ELSE 1 END,
+        -- ③ 同じ入れ先に 2 台差し込むときは、今の並びのまま
+        CASE WHEN a.no ~ '^[0-9]+$' THEN a.no::bigint END NULLS LAST,
+        a.id
+    )::text, 3, '0'
+  ) AS next_no
+FROM printer_assets a
+LEFT JOIN moved m ON m.id = a.id;
+
+-- 流す前に対応表を出す。**この出力を残しておくこと**（現物のラベルの貼り替えに要る）
+\echo '=== 旧 No. → 新 No. ==='
+SELECT COALESCE(old_no, '(空欄)') AS "旧",
+       next_no                    AS "新",
+       department                 AS "部署",
+       ip_address                 AS "IP"
+FROM new_no
+ORDER BY next_no;
+
+UPDATE printer_assets a
+SET no = n.next_no,
+    updated_at = CURRENT_TIMESTAMP
+FROM new_no n
+WHERE a.id = n.id
+  -- 変わらない行は触らない。2 度目に流しても更新日が動かない
+  AND a.no IS DISTINCT FROM n.next_no;
+
+COMMIT;
+
+-- 空欄 0・重複 0・001 から連番になっていること
+\echo '=== 結果 ==='
+SELECT count(*) FILTER (WHERE no IS NULL OR btrim(no) = '') AS "空欄",
+       count(*) - count(DISTINCT no)                        AS "重複",
+       min(no)                                              AS "最小",
+       max(no)                                              AS "最大",
+       count(*)                                             AS "台数"
+FROM printer_assets;

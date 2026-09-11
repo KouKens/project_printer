@@ -80,15 +80,118 @@ describe('TonerEntriesService', () => {
     });
   });
 
-  describe('remove', () => {
-    /** $transaction の中身をそのまま走らせる差し替え */
-    function txPrisma(tx: object) {
-      return {
-        $transaction: (run: (t: object) => unknown) => run(tx),
-        ...tx,
-      };
+  /** $transaction の中身をそのまま走らせる差し替え */
+  function txPrisma(tx: object) {
+    return {
+      $transaction: (run: (t: object) => unknown) => run(tx),
+      ...tx,
+    };
+  }
+
+  /**
+   * 在庫を減らす操作で upsert を使ってはいけない。
+   *
+   * Prisma の upsert は `INSERT ... ON CONFLICT DO UPDATE` になり、
+   * PostgreSQL は**挿入しようとした行にも CHECK 制約を当てる**。
+   * 行があって update に進む場合でも create 側の値が先に検査されるため、
+   * 持ち出し（`quantity: -N`）と廃棄（`received: 0` に対する `disposed: N`）は
+   * 在庫が足りていても必ず制約違反で 500 になっていた。
+   */
+  describe('在庫を減らす操作', () => {
+    /** 在庫 5 本・搬入累計 5 本・廃棄累計 0 本の品番 */
+    function stocked(update: jest.Mock, upsert: jest.Mock) {
+      return txPrisma({
+        toner: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'T1',
+            name: 'トナー黒',
+            stocks: [{ quantity: 5, received: 5, disposed: 0 }],
+          }),
+        },
+        tonerStock: { update, upsert },
+        tonerEntry: { create: jest.fn() },
+      });
     }
 
+    it('持ち出しは upsert ではなく update で減らす', async () => {
+      const update = jest
+        .fn()
+        .mockResolvedValue({ quantity: 3, received: 5, disposed: 0 });
+      const upsert = jest.fn();
+      const service = await make(stocked(update, upsert));
+
+      const result = await service.create({
+        action: 'ISSUE',
+        userId: 'u1',
+        companyId: 1,
+        tonerId: 'T1',
+        quantity: 2,
+      });
+
+      expect(upsert).not.toHaveBeenCalled();
+      expect(dataArg(update)).toEqual({ quantity: { increment: -2 } });
+      expect(result.stock).toBe(3);
+    });
+
+    it('廃棄は upsert ではなく update で廃棄累計を増やす', async () => {
+      const update = jest
+        .fn()
+        .mockResolvedValue({ quantity: 5, received: 5, disposed: 1 });
+      const upsert = jest.fn();
+      const service = await make(stocked(update, upsert));
+
+      const result = await service.create({
+        action: 'DISPOSE',
+        userId: 'u1',
+        companyId: 1,
+        tonerId: 'T1',
+        quantity: 1,
+      });
+
+      expect(upsert).not.toHaveBeenCalled();
+      expect(dataArg(update)).toEqual({ disposed: { increment: 1 } });
+      expect(result.disposed).toBe(1);
+    });
+
+    /**
+     * 搬入は行が無いところから始まるので upsert のまま。
+     * create 側の値（quantity・received が同じ正の数、disposed 0）は
+     * どの CHECK にも引っかからない
+     */
+    it('搬入は行が無くても作れるよう upsert のまま', async () => {
+      const upsert = jest
+        .fn()
+        .mockResolvedValue({ quantity: 2, received: 2, disposed: 0 });
+      const service = await make(
+        txPrisma({
+          toner: {
+            findUnique: jest
+              .fn()
+              .mockResolvedValue({ id: 'T1', name: 'トナー黒', stocks: [] }),
+          },
+          tonerStock: { update: jest.fn(), upsert },
+          tonerEntry: { create: jest.fn() },
+        }),
+      );
+
+      await service.create({
+        action: 'RECEIVE',
+        userId: 'u1',
+        companyId: 1,
+        tonerId: 'T1',
+        quantity: 2,
+      });
+
+      const args = callArg<{
+        create: { quantity: number; received: number; disposed: number };
+      }>(upsert);
+      expect(args.create.quantity).toBe(2);
+      expect(args.create.received).toBe(2);
+      expect(args.create.disposed).toBe(0);
+    });
+  });
+
+  describe('remove', () => {
     const disposeEntry = {
       id: 5,
       tonerId: 'T1',

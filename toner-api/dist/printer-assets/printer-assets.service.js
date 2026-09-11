@@ -34,6 +34,19 @@ function modelKey(maker, model) {
         .replace(/[\s\-_・]/g, '');
     return `${fold(maker)}\0${fold(model)}`;
 }
+const padNo = (value) => String(value).padStart(3, '0');
+function nextAssetNo(existing) {
+    let max = 0;
+    for (const value of existing) {
+        const text = (0, text_1.toText)(value);
+        if (text === null)
+            continue;
+        const no = Number(text);
+        if (Number.isInteger(no) && no > max)
+            max = no;
+    }
+    return padNo(max + 1);
+}
 const COLOR_ORDER = ['black', 'cyan', 'magenta', 'yellow'];
 const NAME_COLOR = [
     [/black|ブラック|黒/i, 'black'],
@@ -85,11 +98,25 @@ let PrinterAssetsService = class PrinterAssetsService {
         this.printers = printers;
     }
     async create(dto) {
+        const inherited = await this.inheritToners(dto.maker, dto.model);
+        const data = this.toData(dto, 'create');
         const saved = await this.prisma.printerAsset.create({
-            data: this.toData(dto, 'create'),
+            data: { ...data, no: data.no ?? (await this.nextNo()) },
             include: { maintVendor: true, company: true },
         });
-        return this.toResponse(saved, await this.vendorsByMaker());
+        if (inherited.toners.length > 0) {
+            await this.prisma.tonerPrinter.createMany({
+                data: inherited.toners.map((toner) => ({
+                    tonerId: toner.id,
+                    printerAssetId: saved.id,
+                })),
+                skipDuplicates: true,
+            });
+        }
+        return {
+            ...this.toResponse(saved, await this.vendorsByMaker()),
+            inheritedToners: inherited,
+        };
     }
     async findAll(includeDisabled = false, companyId) {
         const assets = await this.prisma.printerAsset.findMany({
@@ -472,6 +499,46 @@ let PrinterAssetsService = class PrinterAssetsService {
             removed: { toners: asset._count.toners },
         };
     }
+    async inheritToners(maker, model) {
+        const empty = { model: null, toners: [], fromAssets: 0 };
+        if (!(0, text_1.toText)(model))
+            return empty;
+        const key = modelKey((0, text_1.toText)(maker), (0, text_1.toText)(model));
+        const candidates = await this.prisma.printerAsset.findMany({
+            where: { toners: { some: {} } },
+            orderBy: { id: 'asc' },
+            select: {
+                maker: true,
+                model: true,
+                disabledAt: true,
+                toners: {
+                    select: {
+                        toner: { select: { id: true, name: true, disabledAt: true } },
+                    },
+                },
+            },
+        });
+        const same = candidates.filter((asset) => modelKey(asset.maker, asset.model) === key);
+        if (same.length === 0)
+            return empty;
+        const active = same.filter((asset) => asset.disabledAt === null);
+        const sources = active.length > 0 ? active : same;
+        const toners = new Map();
+        for (const asset of sources) {
+            for (const { toner } of asset.toners) {
+                if (toner.disabledAt !== null)
+                    continue;
+                if (!toners.has(toner.id)) {
+                    toners.set(toner.id, { id: toner.id, name: toner.name });
+                }
+            }
+        }
+        return {
+            model: [sources[0].maker, sources[0].model].filter(Boolean).join(' ') || null,
+            toners: [...toners.values()].sort((a, b) => a.id.localeCompare(b.id, 'ja', { numeric: true })),
+            fromAssets: sources.length,
+        };
+    }
     async fillSerial(id, current, fromPrinter) {
         const serialNumber = (0, text_1.toText)(fromPrinter);
         if ((0, text_1.toText)(current) || !serialNumber)
@@ -545,6 +612,12 @@ let PrinterAssetsService = class PrinterAssetsService {
             note: text(dto.note),
             countLayout: (0, write_mode_1.field)(mode, dto.countLayout, write_mode_1.asIs, 'TOTAL'),
         };
+    }
+    async nextNo() {
+        const rows = await this.prisma.printerAsset.findMany({
+            select: { no: true },
+        });
+        return nextAssetNo(rows.map((row) => row.no));
     }
     async vendorsByMaker() {
         const vendors = await this.prisma.maintVendor.findMany({

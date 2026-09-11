@@ -1,0 +1,171 @@
+/*
+ * 編集の小窓。**色は開いた画面の変数（--accent など）を受け継ぐ。**
+ * <dialog> は DOM の上では画面の中に置くので、画面のルートで決めた変数がそのまま効く
+ * （最前面に出るのは描き方だけで、継承は DOM の親子で決まる）。
+ * 拠点登録のように変数を一部しか持たない画面もあるので、既定値を必ず添える
+ */
+.md {
+  box-sizing: border-box;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  color: var(--ink, #16202b);
+  background: var(--panel, #ffffff);
+  border: 1px solid var(--line, #dbe2ea);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgb(22 32 43 / 0.28);
+}
+
+/* 開いているときだけ組む。閉じた <dialog> に display を当てると画面に出てしまう */
+.md[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.md::backdrop {
+  background: rgb(22 32 43 / 0.45);
+}
+
+.md :focus-visible {
+  outline: 2px solid var(--accent, #1f6f8b);
+  outline-offset: 1px;
+}
+
+/* --- 見出し --- */
+.md-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line, #dbe2ea);
+}
+
+/* 画面側の h2 の指定（.mv h2 / .cp h2）に負けないよう、2 段で当てる */
+.md .md-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: var(--ink, #16202b);
+}
+
+.md .md-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--muted, #64748b);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.md .md-close:hover:not(:disabled) {
+  color: var(--ink, #16202b);
+  background: #eef2f5;
+}
+.md .md-close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- 本文。欄が多い画面は中だけ動かし、見出しとボタンは常に見せておく --- */
+.md-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 18px;
+}
+
+/* 小窓の中の区切り（トナーの価格の改定など）。見出しは画面の h2 より小さく */
+.md .md-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line, #dbe2ea);
+}
+.md .md-section h3 {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  letter-spacing: 0.03em;
+}
+.md .md-section-hint {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted, #64748b);
+}
+
+/* --- 知らせ。本文がスクロールしても隠れないよう、本文の外に置く --- */
+.md-msgs {
+  display: grid;
+  gap: 8px;
+  padding: 0 18px 14px;
+}
+.md .md-msg {
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 13px;
+  border-left: 3px solid;
+  border-radius: 4px;
+}
+.md .md-msg-error {
+  color: var(--danger, #b23a3a);
+  background: #fdf1f1;
+  border-color: var(--danger, #b23a3a);
+}
+.md .md-msg-ok {
+  color: #1d6b48;
+  background: #eef8f2;
+  border-color: #1d6b48;
+}
+
+/* --- ボタン --- */
+.md-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  background: #f7f9fb;
+  border-top: 1px solid var(--line, #dbe2ea);
+  border-radius: 0 0 8px 8px;
+}
+
+/* 左端に寄せる添え書き（何を編集しているか） */
+.md-foot-note {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--muted, #64748b);
+}
+
+.md .md-foot button {
+  padding: 9px 22px;
+  font: inherit;
+  font-size: 14px;
+  color: #ffffff;
+  background: var(--accent, #1f6f8b);
+  border: 1px solid var(--accent, #1f6f8b);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.md .md-foot button.md-sub {
+  color: var(--accent, #1f6f8b);
+  background: var(--panel, #ffffff);
+  border-color: var(--line, #dbe2ea);
+}
+.md .md-foot button:disabled {
+  color: #ffffff;
+  background: #a7b3bd;
+  border-color: #a7b3bd;
+  cursor: not-allowed;
+}
+.md .md-foot button.md-sub:disabled {
+  color: #a7b3bd;
+  background: var(--panel, #ffffff);
+  border-color: var(--line, #dbe2ea);
+}

@@ -91,5 +91,6 @@ export declare class TonerEntriesService {
     }>;
     private requireToner;
     private bumpStock;
+    private stepStock;
     private toResult;
 }

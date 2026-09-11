@@ -15,6 +15,19 @@ const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
 exports.GUEST_USER = 'ゲスト';
 exports.HISTORY_LIMIT = 1000;
+function increments(delta) {
+    return {
+        ...(delta.quantity === undefined
+            ? {}
+            : { quantity: { increment: delta.quantity } }),
+        ...(delta.received === undefined
+            ? {}
+            : { received: { increment: delta.received } }),
+        ...(delta.disposed === undefined
+            ? {}
+            : { disposed: { increment: delta.disposed } }),
+    };
+}
 let TonerEntriesService = class TonerEntriesService {
     prisma;
     constructor(prisma) {
@@ -110,7 +123,7 @@ let TonerEntriesService = class TonerEntriesService {
         if (current < count) {
             throw new common_1.UnprocessableEntityException(`在庫が足りません。${dto.tonerId} の在庫は ${current} 本です`);
         }
-        const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+        const stock = await this.stepStock(tx, dto.tonerId, dto.companyId, {
             quantity: -count,
         });
         await tx.tonerEntry.create({
@@ -136,7 +149,7 @@ let TonerEntriesService = class TonerEntriesService {
                 ? `${dto.tonerId} は廃棄できる本数がありません（搬入 ${received} 本／廃棄済み ${disposed} 本）`
                 : `廃棄できるのは ${allowance} 本までです（搬入 ${received} 本／廃棄済み ${disposed} 本）`);
         }
-        const stock = await this.bumpStock(tx, dto.tonerId, dto.companyId, {
+        const stock = await this.stepStock(tx, dto.tonerId, dto.companyId, {
             disposed: count,
         });
         await tx.tonerEntry.create({
@@ -373,17 +386,13 @@ let TonerEntriesService = class TonerEntriesService {
                 received: delta.received ?? 0,
                 disposed: delta.disposed ?? 0,
             },
-            update: {
-                ...(delta.quantity === undefined
-                    ? {}
-                    : { quantity: { increment: delta.quantity } }),
-                ...(delta.received === undefined
-                    ? {}
-                    : { received: { increment: delta.received } }),
-                ...(delta.disposed === undefined
-                    ? {}
-                    : { disposed: { increment: delta.disposed } }),
-            },
+            update: increments(delta),
+        });
+    }
+    stepStock(tx, tonerId, companyId, delta) {
+        return tx.tonerStock.update({
+            where: { tonerId_companyId: { tonerId, companyId } },
+            data: increments(delta),
         });
     }
     toResult(id, name, action, quantity, stock) {

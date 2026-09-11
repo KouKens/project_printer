@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import CsvButton from '../components/CsvButton'
+import Modal from '../components/Modal'
+import type { CsvValue } from '../lib/csv'
 import { request } from '../lib/request'
 import { useCompany, type Company } from '../lib/company'
 import './CompanyScreen.css'
@@ -23,11 +26,91 @@ type Form = {
 
 const EMPTY: Form = { name: '', sortOrder: '', note: '' }
 
+/** 送る形。並び順の空欄は 0（同値なら名前順で並ぶ） */
+const toPayload = (form: Form) => ({
+  name: form.name.trim(),
+  sortOrder: form.sortOrder.trim() === '' ? 0 : Number(form.sortOrder),
+  note: form.note.trim() === '' ? null : form.note.trim(),
+})
+
+/** 入力欄。新規登録の欄と、編集の小窓で同じものを使う */
+function CompanyFields({
+  form,
+  onChange,
+}: {
+  form: Form
+  onChange: (key: keyof Form, value: string) => void
+}) {
+  return (
+    <div className="cp-fields">
+      <label>
+        <span>拠点名</span>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => onChange('name', e.target.value)}
+          placeholder="シマリス小郡"
+        />
+      </label>
+
+      <label>
+        <span>並び順</span>
+        <input
+          type="number"
+          value={form.sortOrder}
+          onChange={(e) => onChange('sortOrder', e.target.value)}
+          placeholder="空欄なら 0"
+          title="小さいほど上に出ます。同じ値なら名前順です"
+        />
+      </label>
+
+      <label>
+        <span>覚え書き</span>
+        <input
+          type="text"
+          value={form.note}
+          onChange={(e) => onChange('note', e.target.value)}
+          placeholder="略称や管理上のメモ"
+        />
+      </label>
+    </div>
+  )
+}
+
+/**
+ * CSV に出す列。**無効にした拠点も同じ列で出す。**
+ * 画面の別枠は列を減らしてあるが、ファイルにすると 2 つを並べて見ることが多いので
+ * 揃えておき、無効かどうかは最後の列で示す
+ */
+const CSV_COLUMNS: { label: string; value: (row: Company) => CsvValue }[] = [
+  { label: '拠点名', value: (row) => row.name },
+  { label: '並び順', value: (row) => row.sortOrder },
+  { label: '機器', value: (row) => row.counts.assets },
+  { label: '在庫の記録', value: (row) => row.counts.stocks },
+  { label: '受付の履歴', value: (row) => row.counts.entries },
+  { label: '注文', value: (row) => row.counts.orders },
+  { label: '覚え書き', value: (row) => row.note },
+  {
+    label: '無効にした日時',
+    value: (row) =>
+      row.disabledAt ? new Date(row.disabledAt).toLocaleString('ja-JP') : null,
+  },
+]
+
+const csvHeader = CSV_COLUMNS.map((col) => col.label)
+const csvRows = (rows: Company[]) =>
+  rows.map((row) => CSV_COLUMNS.map((col) => col.value(row)))
+
 export default function CompanyScreen() {
   const { reload } = useCompany()
   const [rows, setRows] = useState<Company[]>([])
+  /** 新規登録の欄。**新規専用。** 既存の拠点を直すのは下の小窓 */
   const [form, setForm] = useState<Form>(EMPTY)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  /** 編集の小窓。null なら閉じている。新規の欄とは別に下書きを持つ */
+  const [editing, setEditing] = useState<{ id: number; name: string; form: Form } | null>(
+    null,
+  )
+  const [editError, setEditError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -46,21 +129,18 @@ export default function CompanyScreen() {
     void load()
   }, [])
 
-  const set = (key: keyof Form) => (value: string) =>
+  const set = (key: keyof Form, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
-  /** 送る形。並び順の空欄は 0（同値なら名前順で並ぶ） */
-  const payload = () => ({
-    name: form.name.trim(),
-    sortOrder: form.sortOrder.trim() === '' ? 0 : Number(form.sortOrder),
-    note: form.note.trim() === '' ? null : form.note.trim(),
-  })
+  const setDraft = (key: keyof Form, value: string) =>
+    setEditing((prev) => prev && { ...prev, form: { ...prev.form, [key]: value } })
 
-  /** 登録・更新のあとはセレクタも取り直す。名前を直したら見出しも変わるため */
+  /**
+   * 登録・更新のあとはセレクタも取り直す。名前を直したら見出しも変わるため。
+   * **新規の欄はここでは空にしない**（無効にした・戻したで、書きかけの登録を消さない）
+   */
   const after = async (message: string) => {
     setNotice(message)
-    setForm(EMPTY)
-    setEditingId(null)
     await load()
     await reload()
   }
@@ -78,32 +158,53 @@ export default function CompanyScreen() {
     }
   }
 
-  const save = () =>
+  /** 新規登録。上の欄は新規専用なので、登録したら空に戻す（続けて押しても二重にならない） */
+  const create = () =>
     run(async () => {
-      if (editingId === null) {
-        const saved = await request<Company>('/companies', {
-          method: 'POST',
-          body: JSON.stringify(payload()),
-        })
-        await after(`${saved.name} を登録しました`)
-      } else {
-        const saved = await request<Company>(`/companies/${editingId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload()),
-        })
-        await after(`${saved.name} を更新しました`)
-      }
+      const saved = await request<Company>('/companies', {
+        method: 'POST',
+        body: JSON.stringify(toPayload(form)),
+      })
+      setForm(EMPTY)
+      await after(`${saved.name} を登録しました`)
     })
 
+  /** 一覧の「編集」。小窓を開くだけで、上の新規の欄には触らない */
   const edit = (row: Company) => {
-    setForm({
+    setEditing({
+      id: row.id,
       name: row.name,
-      sortOrder: String(row.sortOrder),
-      note: row.note ?? '',
+      form: {
+        name: row.name,
+        sortOrder: String(row.sortOrder),
+        note: row.note ?? '',
+      },
     })
-    setEditingId(row.id)
-    setError(null)
+    setEditError(null)
     setNotice(null)
+  }
+
+  /**
+   * 小窓の保存。**失敗したら小窓を開いたまま、中に文面を出す**
+   * （閉じると直した値が消え、後ろの知らせ欄は覆われて見えない）
+   */
+  const update = async () => {
+    if (editing === null) return
+    setBusy(true)
+    setEditError(null)
+    try {
+      const saved = await request<Company>(`/companies/${editing.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(toPayload(editing.form)),
+      })
+      setEditing(null)
+      setError(null)
+      await after(`${saved.name} を更新しました`)
+    } catch (err) {
+      setEditError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const setDisabled = (row: Company, disable: boolean) =>
@@ -156,7 +257,7 @@ export default function CompanyScreen() {
   return (
     <div className="cp">
       <section className="cp-form">
-        <h2>{editingId === null ? '拠点を登録' : '拠点を編集'}</h2>
+        <h2>拠点を登録</h2>
         <p className="cp-hint">
           <strong>在庫と受け払いを分ける単位です。</strong>
           持ち出し・廃棄・注文・搬入・棚卸と、トナー個数状況・トナー入出状況が
@@ -167,53 +268,20 @@ export default function CompanyScreen() {
           <strong>ログインは無いので、セレクタを切り替えれば誰でも他の拠点を見られます。</strong>
         </p>
 
-        <label>
-          <span>拠点名</span>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => set('name')(e.target.value)}
-            placeholder="シマリス小郡"
-          />
-        </label>
-
-        <label>
-          <span>並び順</span>
-          <input
-            type="number"
-            value={form.sortOrder}
-            onChange={(e) => set('sortOrder')(e.target.value)}
-            placeholder="空欄なら 0"
-            title="小さいほど上に出ます。同じ値なら名前順です"
-          />
-        </label>
-
-        <label>
-          <span>覚え書き</span>
-          <input
-            type="text"
-            value={form.note}
-            onChange={(e) => set('note')(e.target.value)}
-            placeholder="略称や管理上のメモ"
-          />
-        </label>
+        <CompanyFields form={form} onChange={set} />
 
         <div className="cp-actions">
-          <button onClick={() => void save()} disabled={busy || form.name.trim() === ''}>
-            {editingId === null ? '登録' : '更新'}
+          <button onClick={() => void create()} disabled={busy || form.name.trim() === ''}>
+            登録
           </button>
           <button
             className="cp-sub"
             type="button"
-            onClick={() => {
-              setForm(EMPTY)
-              setEditingId(null)
-            }}
+            onClick={() => setForm(EMPTY)}
             disabled={busy}
           >
             クリア
           </button>
-          {editingId !== null && <span className="cp-editing">編集中</span>}
         </div>
       </section>
 
@@ -221,7 +289,15 @@ export default function CompanyScreen() {
       {notice && <p className="cp-msg cp-msg-ok">{notice}</p>}
 
       <section className="cp-list">
-        <h2>登録した拠点（{active.length} 拠点）</h2>
+        <h2>
+          登録した拠点（{active.length} 拠点）
+          <CsvButton
+            name="拠点登録"
+            header={csvHeader}
+            rows={() => csvRows(active)}
+            count={active.length}
+          />
+        </h2>
         <div className="cp-table-wrap">
           <table className="cp-table">
             <thead>
@@ -268,7 +344,15 @@ export default function CompanyScreen() {
 
       {disabled.length > 0 && (
         <section className="cp-list cp-disabled">
-          <h2>無効にした拠点（{disabled.length} 拠点）</h2>
+          <h2>
+            無効にした拠点（{disabled.length} 拠点）
+            <CsvButton
+              name="拠点登録_無効"
+              header={csvHeader}
+              rows={() => csvRows(disabled)}
+              count={disabled.length}
+            />
+          </h2>
           <p className="cp-hint">
             セレクタから外れています。<strong>記録は消えていません。</strong>
             登録し間違えた拠点は「削除」で完全に消せますが、
@@ -320,6 +404,37 @@ export default function CompanyScreen() {
             </table>
           </div>
         </section>
+      )}
+
+      {editing && (
+        <Modal
+          title={`${editing.name} を編集`}
+          onClose={() => setEditing(null)}
+          busy={busy}
+          error={editError}
+          width={560}
+          footer={
+            <>
+              <button
+                className="md-sub"
+                type="button"
+                onClick={() => setEditing(null)}
+                disabled={busy}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={() => void update()}
+                disabled={busy || editing.form.name.trim() === ''}
+              >
+                {busy ? '保存中…' : '更新'}
+              </button>
+            </>
+          }
+        >
+          <CompanyFields form={editing.form} onChange={setDraft} />
+        </Modal>
       )}
     </div>
   )

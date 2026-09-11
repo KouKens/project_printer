@@ -142,18 +142,12 @@
   border-radius: 4px;
   cursor: pointer;
 }
-.mv-actions button.mv-plain {
-  color: var(--accent);
-  background: transparent;
-  border-color: var(--line);
-}
 .mv-actions button:disabled {
   color: #ffffff;
   background: #a7b3bd;
   border-color: #a7b3bd;
   cursor: not-allowed;
 }
-.mv-actions button.mv-plain:disabled { color: #a7b3bd; background: transparent; }
 
 /* --- メッセージ --- */
 .mv-msg {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TonerCatalogRow } from '../api';
+import CsvButton from '../components/CsvButton';
 import TonerPickerRow from '../components/TonerPickerRow';
 import { todayIso } from '../lib/date';
 import { num, orNull } from '../lib/format';
@@ -62,6 +63,38 @@ function previousMonth(issuedOn: string): { from: string; to: string } {
 /** 金額。単価が未入力の行は 0 円ではないのでハイフンにする */
 const yen = (value: number | null) =>
   value === null ? <span className="dt-muted">—</span> : <>{num.format(value)}</>;
+
+/**
+ * CSV は 2 通り出す。**通ごとと明細ごと。**
+ *
+ * 通ごとは請求額の推移を追うためのもので、明細ごとは品番の単価を見るためのもの。
+ * 1 つにまとめると、通ごとの合計が明細の行数ぶん繰り返されて足し算を間違える
+ */
+const INVOICE_CSV_HEADER = [
+  '対象期間（開始）',
+  '対象期間（終了）',
+  '請求日',
+  '請求書番号',
+  '明細',
+  '本数',
+  '合計（税別）',
+  '単価未入力',
+  '突合せ',
+  '備考',
+];
+
+const LINE_CSV_HEADER = [
+  '対象期間（開始）',
+  '対象期間（終了）',
+  '請求日',
+  '請求書番号',
+  'トナーID',
+  '名称',
+  '色',
+  '本数',
+  '単価',
+  '金額',
+];
 
 const emptyLine = (): Line => ({
   tonerId: '',
@@ -576,6 +609,48 @@ export default function InvoiceScreen() {
         <h2>
           登録済みの請求書
           <span className="iv-count">{invoices.length} 通</span>
+          <CsvButton
+            name="請求書入力"
+            header={INVOICE_CSV_HEADER}
+            rows={() =>
+              invoices.map((invoice) => [
+                invoice.periodFrom,
+                invoice.periodTo,
+                invoice.issuedOn,
+                invoice.invoiceNo,
+                invoice.lines.length,
+                invoice.totalQuantity,
+                invoice.totalAmount,
+                invoice.unpricedLines,
+                invoice.checkedAt ? '確認済み' : '未確認',
+                invoice.note,
+              ])
+            }
+            count={invoices.length}
+          />
+          <CsvButton
+            name="請求書入力_明細"
+            label="明細を CSV で保存"
+            header={LINE_CSV_HEADER}
+            rows={() =>
+              invoices.flatMap((invoice) =>
+                invoice.lines.map((line) => [
+                  invoice.periodFrom,
+                  invoice.periodTo,
+                  invoice.issuedOn,
+                  invoice.invoiceNo,
+                  line.tonerId,
+                  line.name,
+                  line.color,
+                  line.quantity,
+                  // 単価未入力の行は 0 円ではないので空欄にする
+                  line.unitPrice,
+                  line.amount,
+                ]),
+              )
+            }
+            count={invoices.reduce((sum, invoice) => sum + invoice.lines.length, 0)}
+          />
         </h2>
 
         {invoices.length === 0 ? (

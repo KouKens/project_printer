@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
+import type { CsvValue } from '../lib/csv';
 import { num } from '../lib/format';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -410,6 +412,83 @@ function AssetRows({ row }: { row: Row }) {
   );
 }
 
+/** CSV の 1 セルに台を並べるときの呼び名。区切りに使う「 / 」は入れない */
+const csvAssetLabel = (asset: ModelAsset) =>
+  [asset.no ? `No.${asset.no}` : null, asset.department, asset.ipAddress]
+    .filter(Boolean)
+    .join(' ') || `ID ${asset.id}`;
+
+/**
+ * その機種のトナーを使っている台。**同じ台が何度も出ないようまとめる。**
+ * カラー機は 4 色＋回収ボトルが同じ台に付くので、品番ごとに並べると 5 回出てくる
+ */
+function usedByPrinters(row: Row): TonerPrinter[] {
+  const seen = new Map<number, TonerPrinter>();
+  for (const toner of row.toners) {
+    for (const printer of toner.printers) {
+      if (!seen.has(printer.id)) seen.set(printer.id, printer);
+    }
+  }
+  return [...seen.values()];
+}
+
+/**
+ * CSV に出す列。**画面の COLUMNS とは別に持つ。**
+ * 表では札や点で示しているもの（色・トナー・使っている台）を文字にして出す。
+ * 「この機種の台」は、画面では行を開かないと見えない内訳
+ */
+const CSV_COLUMNS: { label: string; value: (row: Row) => CsvValue }[] = [
+  { label: 'メーカー', value: (row) => row.maker },
+  { label: '型番', value: (row) => row.model },
+  // 2 つ以上あれば台帳の書き方が揺れている。畳んだ元を残しておく
+  { label: '台帳の表記', value: (row) => row.spellings.join(' / ') },
+  {
+    label: '色',
+    value: (row) => row.colors.map((color) => INK[color]?.label ?? color).join('・'),
+  },
+  {
+    label: 'カラー/モノクロ',
+    value: (row) => {
+      const kind = colorKind(row);
+      return kind === null ? '不明' : kind === 'color' ? 'カラー' : 'モノクロ';
+    },
+  },
+  { label: '台数', value: (row) => row.assetCount },
+  { label: 'トナー登録済', value: (row) => row.linkedCount },
+  { label: 'トナー種類', value: (row) => row.toners.length },
+  { label: '最少在庫', value: minStock },
+  {
+    label: '台ごとに登録が違う',
+    value: (row) => (row.mixed ? '不揃い' : ''),
+  },
+  {
+    label: 'この機種で使うトナー',
+    value: (row) =>
+      row.toners
+        .map(
+          (toner) =>
+            `${toner.id}${toner.name ? `（${toner.name}）` : ''} 在庫 ${toner.stock}`,
+        )
+        .join(' / '),
+  },
+  {
+    label: 'この機種の台',
+    value: (row) => row.assets.map(csvAssetLabel).join(' / '),
+  },
+  {
+    label: 'このトナーを使うプリンター',
+    value: (row) =>
+      usedByPrinters(row)
+        .map(
+          (printer) =>
+            [shortLabel(printer), printer.ipAddress].filter(Boolean).join(' ') +
+            // 同じトナーを使う別機種の台。品番を切らすとこの台も止まる
+            (printer.sameModel ? '' : '（他機種）'),
+        )
+        .join(' / '),
+  },
+];
+
 export default function ModelTonerScreen() {
   // 機種も在庫も、右上で選んでいる拠点の分だけを数える
   const { companyId } = useCompany();
@@ -603,6 +682,14 @@ export default function ModelTonerScreen() {
         <button onClick={() => void load()} type="button">
           一覧を更新
         </button>
+
+        <CsvButton
+          name="トナー個数状況"
+          header={CSV_COLUMNS.map((col) => col.label)}
+          rows={() => shown.map((row) => CSV_COLUMNS.map((col) => col.value(row)))}
+          count={shown.length}
+          title="いま出ている機種を CSV に保存します。行を開かないと見えない「この機種の台」も列に入ります"
+        />
       </div>
 
       {error && <p className="dt-msg dt-msg-error">{error}</p>}

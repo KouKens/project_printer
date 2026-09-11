@@ -45,6 +45,33 @@ function modelKey(maker: string | null, model: string | null): string {
   return `${fold(maker)}\0${fold(model)}`;
 }
 
+/**
+ * 管理番号の書き方。**3 桁ゼロ詰め。**
+ * 台帳の既存の番号が 002・041・092 と 3 桁で揃っているので、それに合わせる。
+ * 1000 を超えたらそのまま 4 桁に伸びる
+ */
+const padNo = (value: number) => String(value).padStart(3, '0');
+
+/**
+ * 次の管理番号。**台帳全体の最大 + 1。**
+ *
+ * **無効にした台の番号も見る。** 修理履歴やトナーの紐づけがその番号の台を
+ * 指しているので、使い回すとどちらの台の記録か分からなくなる。
+ *
+ * 数として読めない番号（検証用に入った 'zzz-tmp' のようなもの）は
+ * 最大の計算に入れない。入れると NaN で番号が出せなくなる
+ */
+function nextAssetNo(existing: (string | null | undefined)[]): string {
+  let max = 0;
+  for (const value of existing) {
+    const text = toText(value);
+    if (text === null) continue;
+    const no = Number(text);
+    if (Number.isInteger(no) && no > max) max = no;
+  }
+  return padNo(max + 1);
+}
+
 /** 色の並び。機種によって返る順がばらつくので、返すときはこの順に揃える */
 const COLOR_ORDER = ['black', 'cyan', 'magenta', 'yellow'];
 
@@ -157,6 +184,19 @@ type TonerPrinter = {
   sameModel: boolean;
 };
 
+/**
+ * 新しい台に、同じ機種の台からトナーの紐づけを引き継いだ結果。
+ * 引き継ぎ元が無かったときは toners が空になる（機種が決まらなかったときも同じ）
+ */
+export type InheritedToners = {
+  /** 引き継ぎ元の機種。台帳に入っている書き方をそのまま出す。無ければ null */
+  model: string | null;
+  /** 引き継いだトナー。品番順 */
+  toners: { id: string; name: string | null }[];
+  /** 引き継ぎ元になった台数 */
+  fromAssets: number;
+};
+
 /** 機種別の一覧に出すトナー 1 件 */
 type ModelToner = {
   id: string;
@@ -251,12 +291,46 @@ export class PrinterAssetsService {
     private readonly printers: PrintersService,
   ) {}
 
+  /**
+   * 台帳に 1 台足す。
+   *
+   * **同じ機種が既に登録されていれば、その台のトナーの紐づけを引き継ぐ。**
+   * 紐づけは台ごとに持っているので、機種が同じでも新しい台には何も付いておらず、
+   * トナー個数状況で登録済みを見ながらトナー登録で 1 台ずつ選び直すことになっていた。
+   * 同じ機種が使う消耗品は同じなので、登録の時点で写しておく。
+   *
+   * 引き継ぎ元は**作る前に読む**（自分自身が候補に混ざらないようにするため）。
+   * 違っていればトナー登録で直せる。何を写したかは戻り値で画面に知らせる。
+   *
+   * **管理番号（No.）が空欄なら自動で振る。**台帳全体の最大 + 1。
+   * 画面が番号を送ってきたときはそちらを尊重する（ブロックの途中に入れたい、
+   * 現物のシールに合わせたい、といった事情はこちらでは分からない）。
+   * **更新（PATCH）では振らない** ——消した番号が保存のたび戻ってしまうため
+   */
   async create(dto: CreatePrinterAssetDto) {
+    const inherited = await this.inheritToners(dto.maker, dto.model);
+
+    const data = this.toData(dto, 'create');
     const saved = await this.prisma.printerAsset.create({
-      data: this.toData(dto, 'create'),
+      data: { ...data, no: data.no ?? (await this.nextNo()) },
       include: { maintVendor: true, company: true },
     });
-    return this.toResponse(saved, await this.vendorsByMaker());
+
+    if (inherited.toners.length > 0) {
+      await this.prisma.tonerPrinter.createMany({
+        data: inherited.toners.map((toner) => ({
+          tonerId: toner.id,
+          printerAssetId: saved.id,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return {
+      ...this.toResponse(saved, await this.vendorsByMaker()),
+      /** 同じ機種から写したトナー。空なら引き継ぎ元が無かった */
+      inheritedToners: inherited,
+    };
   }
 
   /**
@@ -817,6 +891,77 @@ export class PrinterAssetsService {
   // ── 内部ヘルパー ──────────────────────
 
   /**
+   * 同じ機種の台が使っているトナーを集める。新規登録の引き継ぎ元。
+   *
+   * **機種のまとめ方は `modelKey`** ——トナー個数状況（`findByModel`）と同じ
+   * 畳み方で、'Ricoh P501' と 'RICOH P 501' は同じ機種になる。画面で 1 行に
+   * 見えている機種と引き継ぎの単位を揃えないと、まとまって見えるのに
+   * 引き継がれない、という食い違いになる。
+   *
+   * **型番が空のときは何もしない。** メーカーだけで畳むと、型番未入力の台が
+   * まとめて 1 つの機種になり、無関係なトナーを写すことになる。
+   *
+   * 拠点では絞らない。品番マスタは全拠点共通で、同じ機種なら使う消耗品も同じ。
+   * 在庫だけが拠点ごとなので、他の拠点の同型機から写しても数は混ざらない。
+   *
+   * **有効な台を優先し、1 台も無いときだけ無効の台から写す。** 機器を入れ替えて
+   * 旧台を無効にした直後は、同じ機種が無効の側にしか残っていないため。
+   * 無効にした品番は写さない（使うのをやめた消耗品なので）
+   */
+  private async inheritToners(
+    maker: string | null | undefined,
+    model: string | null | undefined,
+  ): Promise<InheritedToners> {
+    const empty: InheritedToners = { model: null, toners: [], fromAssets: 0 };
+    if (!toText(model)) return empty;
+
+    const key = modelKey(toText(maker), toText(model));
+
+    const candidates = await this.prisma.printerAsset.findMany({
+      // 紐づけを 1 件も持たない台は引き継ぎ元にならない
+      where: { toners: { some: {} } },
+      orderBy: { id: 'asc' },
+      select: {
+        maker: true,
+        model: true,
+        disabledAt: true,
+        toners: {
+          select: {
+            toner: { select: { id: true, name: true, disabledAt: true } },
+          },
+        },
+      },
+    });
+
+    const same = candidates.filter(
+      (asset) => modelKey(asset.maker, asset.model) === key,
+    );
+    if (same.length === 0) return empty;
+
+    const active = same.filter((asset) => asset.disabledAt === null);
+    const sources = active.length > 0 ? active : same;
+
+    const toners = new Map<string, { id: string; name: string | null }>();
+    for (const asset of sources) {
+      for (const { toner } of asset.toners) {
+        if (toner.disabledAt !== null) continue;
+        if (!toners.has(toner.id)) {
+          toners.set(toner.id, { id: toner.id, name: toner.name });
+        }
+      }
+    }
+
+    return {
+      model:
+        [sources[0].maker, sources[0].model].filter(Boolean).join(' ') || null,
+      toners: [...toners.values()].sort((a, b) =>
+        a.id.localeCompare(b.id, 'ja', { numeric: true }),
+      ),
+      fromAssets: sources.length,
+    };
+  }
+
+  /**
    * 実機から読めたシリアルを台帳へ書き戻す。書いたかどうかを返す。
    *
    * **台帳のシリアルが空のときだけ書く。** 入っている値は実機と食い違っても
@@ -957,6 +1102,20 @@ export class PrinterAssetsService {
       // 入力欄が無い列。既定は集計表の 1 行ぶん（TOTAL）
       countLayout: field(mode, dto.countLayout, asIs, 'TOTAL' as const),
     };
+  }
+
+  /**
+   * 次の管理番号を台帳全体から出す。**無効にした台も数に入れる。**
+   *
+   * 番号の重複は DB では止めていない（台帳の実データに重複が無いだけで、
+   * 一意の制約は置いていない）。同時に 2 件登録すると同じ番号になり得るが、
+   * 登録するのは 1 人なので、ここでは読んで + 1 するだけにしてある
+   */
+  private async nextNo(): Promise<string> {
+    const rows = await this.prisma.printerAsset.findMany({
+      select: { no: true },
+    });
+    return nextAssetNo(rows.map((row) => row.no));
   }
 
   /** メーカー名 → 既定の業者。表記ゆれを畳んだ鍵で引く */

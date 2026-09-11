@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import CsvButton from '../components/CsvButton';
+import Modal from '../components/Modal';
 import { MANUAL_MAINT, maintStatus } from '../lib/maint';
 
+import type { CsvValue } from '../lib/csv';
 import { foldKey } from '../lib/fold';
 import { num, orNull } from '../lib/format';
 import { suggestions } from '../lib/suggest';
@@ -32,7 +35,14 @@ type Asset = {
    */
   companyId: string;
   department: string;
-  no: string;
+  /**
+   * **`no`（管理番号）はここに持たない。**
+   *
+   * 台帳の鍵として使うので、人が打ち替えるものではない。新規登録のときに
+   * API が振り（`nextAssetNo`）、画面には一覧の列と登録の知らせで出すだけにする。
+   * この型に無ければ `toPayload` も送らないので、**更新（PATCH）でも触らない**
+   * （送られてこなかった列に API は手を付けない）
+   */
   ipAddress: string;
   maker: string;
   model: string;
@@ -100,10 +110,24 @@ type SavedAsset = {
   updatedAt: string;
 };
 
+/**
+ * 新規登録の戻り。**同じ機種の台からトナーの紐づけを引き継いだ結果が添えてある。**
+ * `SavedAsset` には足さない（一覧の列と並べ替えの鍵が `keyof SavedAsset` から
+ * 作られているので、表に出ない項目を混ぜない）
+ */
+type CreatedAsset = SavedAsset & {
+  inheritedToners: {
+    /** 引き継ぎ元の機種。台帳の書き方そのまま。見つからなければ null */
+    model: string | null;
+    toners: { id: string; name: string | null }[];
+    /** 引き継ぎ元になった台数 */
+    fromAssets: number;
+  };
+};
+
 const EMPTY: Asset = {
   companyId: '',
   department: '',
-  no: '',
   ipAddress: '',
   maker: '',
   model: '',
@@ -174,6 +198,67 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 ];
 
 /**
+ * CSV に出す列。**画面の COLUMNS とは別に持つ。**
+ * 表では 1 つの欄にまとめている保守企業を、名前・出どころ・電話番号に開く
+ */
+const CSV_COLUMNS: { label: string; value: (row: SavedAsset) => CsvValue }[] = [
+  { label: '拠点', value: (row) => row.company?.name ?? null },
+  { label: '部署', value: (row) => row.department },
+  { label: 'No.', value: (row) => row.no },
+  { label: 'IP アドレス', value: (row) => row.ipAddress },
+  { label: 'メーカー', value: (row) => row.maker },
+  { label: '型番', value: (row) => row.model },
+  { label: 'シリアル', value: (row) => row.serialNumber },
+  { label: '購入日', value: (row) => row.purchasedOn },
+  { label: '購入金額', value: (row) => row.purchasePrice },
+  { label: '契約 No.', value: (row) => row.contractNo },
+  { label: '保守企業', value: (row) => row.effectiveVendor?.name ?? null },
+  {
+    // 台帳で名指ししたのか、メーカーの既定で決まったのか。CSV では印が出せない
+    label: '保守企業の指定',
+    value: (row) =>
+      row.effectiveVendor === null
+        ? null
+        : row.effectiveVendor.source === 'asset'
+          ? 'この機器を指定'
+          : 'メーカーの既定',
+  },
+  {
+    label: '電話番号',
+    value: (row) => row.effectiveVendor?.phones.join(' / ') ?? null,
+  },
+  {
+    label: '保守',
+    value: (row) => maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract),
+  },
+  { label: '保守開始', value: (row) => row.maintStartOn },
+  { label: '保守終了', value: (row) => row.maintEndOn },
+  { label: '保守取引', value: (row) => row.maintDealOn },
+  { label: '保守金額', value: (row) => row.maintFee },
+  { label: '備考', value: (row) => row.note },
+  {
+    label: '更新日',
+    value: (row) => new Date(row.updatedAt).toLocaleString('ja-JP'),
+  },
+];
+
+/** 無効にした機器の CSV。画面の別枠と同じ列 */
+const DISABLED_CSV_COLUMNS: { label: string; value: (row: SavedAsset) => CsvValue }[] = [
+  { label: '拠点', value: (row) => row.company?.name ?? null },
+  { label: '部署', value: (row) => row.department },
+  { label: 'No.', value: (row) => row.no },
+  { label: 'IP アドレス', value: (row) => row.ipAddress },
+  { label: 'メーカー', value: (row) => row.maker },
+  { label: '型番', value: (row) => row.model },
+  { label: 'シリアル', value: (row) => row.serialNumber },
+  {
+    label: '無効にした日時',
+    value: (row) =>
+      row.disabledAt ? new Date(row.disabledAt).toLocaleString('ja-JP') : null,
+  },
+];
+
+/**
  * 保存で送る形。**`Asset` の全項目を並べる。**
  *
  * キーを `keyof Asset` から作ってあるので、`Asset` に項目を足して
@@ -188,7 +273,6 @@ function toPayload(asset: Asset): AssetPayload {
     // 拠点は必須。空のまま送ると API が 400 で断る
     companyId: asset.companyId === '' ? null : Number(asset.companyId),
     department: orNull(asset.department),
-    no: orNull(asset.no),
     ipAddress: orNull(asset.ipAddress),
     maker: orNull(asset.maker),
     model: orNull(asset.model),
@@ -209,11 +293,37 @@ function toPayload(asset: Asset): AssetPayload {
   };
 }
 
+/**
+ * 新規登録でトナーを引き継げたかどうかの一言。登録しましたの後ろに足す。
+ *
+ * **引き継げなかったときも黙らない。** 何も出ないと引き継がれたと読めてしまい、
+ * トナーの付いていない台がそのまま残る。同じ型番が無いのか、型番が未入力で
+ * 機種が決まらなかったのかで文面を分ける
+ */
+function inheritedNote(
+  inherited: CreatedAsset['inheritedToners'],
+  model: string | null,
+): string {
+  const { toners } = inherited;
+
+  if (toners.length === 0) {
+    return model
+      ? ' / 同じ型番の登録が無いので、トナーは紐づけていません（トナー登録で設定してください）'
+      : ' / 型番が未入力なので、トナーは紐づけていません';
+  }
+
+  const heads = toners.slice(0, 3).map((toner) => toner.id).join('・');
+  const rest = toners.length > 3 ? ` ほか ${toners.length - 3} 件` : '';
+  return (
+    ` / 同じ機種（${inherited.model}）の ${inherited.fromAssets} 台から` +
+    ` ${heads}${rest}を引き継ぎました`
+  );
+}
+
 function toForm(saved: SavedAsset): Asset {
   return {
     companyId: String(saved.companyId),
     department: saved.department ?? '',
-    no: saved.no ?? '',
     ipAddress: saved.ipAddress ?? '',
     maker: saved.maker ?? '',
     model: saved.model ?? '',
@@ -244,10 +354,304 @@ function compare(input: string, actual: string | null): 'same' | 'diff' | null {
   return a === b ? 'same' : 'diff';
 }
 
+/** 入力欄の候補。登録済みの台帳から作る（`AssetScreen` の `hints`） */
+type Hints = {
+  departments: string[];
+  makers: string[];
+  models: string[];
+  contractNos: string[];
+};
+
+/**
+ * 台帳の入力欄。新規登録の欄と、編集の小窓で同じものを使う。
+ * 親の `.as-fields`（3 列の格子）にそのまま並ぶよう、囲みを持たずに返す。
+ *
+ * **管理番号（No.）の欄は置かない**（`Asset` の説明を参照）
+ */
+function AssetFields({
+  asset,
+  onChange,
+  companies,
+  vendors,
+  hints,
+  onIpEnter,
+}: {
+  asset: Asset;
+  onChange: (key: keyof Asset, value: string) => void;
+  companies: { id: number; name: string }[];
+  vendors: Vendor[];
+  hints: Hints;
+  /** IP の欄で Enter を押したとき。新規の欄だけ実機に問い合わせる */
+  onIpEnter?: () => void;
+}) {
+  // 新規の欄と小窓が同時に並ぶので、datalist の id を欄ごとに分ける
+  const listId = useId();
+
+  /**
+   * 入力中のメーカーに対する既定の業者。選択欄の見出しに出す。
+   *
+   * **API 側の `makerKey` と同じ `foldKey` で畳む。**畳み方が違うと、
+   * この見出しには業者が出ないのに保存すると業者が付く（またはその逆）という
+   * 食い違いになる
+   */
+  const defaultVendor =
+    vendors.find((vendor) =>
+      vendor.makers.some((maker) => foldKey(maker) === foldKey(asset.maker)),
+    ) ?? null;
+
+  return (
+    <>
+      {/*
+        * 入力欄の候補は datalist で出す。**選ぶだけでなく自由入力もできる。**
+        * 一覧に無い部署・メーカーもそのまま打てるので、表記を揃えたいが
+        * 決め打ちにはできない欄に向く。候補は登録済みの台帳から作る
+        */}
+      <label>
+        <span>部署</span>
+        <input
+          value={asset.department}
+          onChange={(e) => onChange('department', e.target.value)}
+          list={`${listId}-departments`}
+        />
+        <datalist id={`${listId}-departments`}>
+          {hints.departments.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
+      </label>
+
+      {/*
+        * 拠点は必須。トナーの在庫と受け払いをこの単位で数えるため。
+        * 新規のときは画面右上で選んでいる拠点を初期値にする
+        */}
+      <label>
+        <span>拠点</span>
+        <select
+          value={asset.companyId}
+          onChange={(e) => onChange('companyId', e.target.value)}
+          title="この機器を持っている拠点です。トナーの在庫と受け払いがこの単位で分かれます"
+        >
+          <option value="">選んでください</option>
+          {companies.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        <span>IP アドレス</span>
+        <input
+          value={asset.ipAddress}
+          onChange={(e) => onChange('ipAddress', e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onIpEnter?.();
+          }}
+          placeholder="172.31.13.211"
+          inputMode="decimal"
+        />
+      </label>
+
+      {/*
+        * メーカーは保守業者のメーカー既定と突き合わせる鍵でもある
+        * （`makerKey` が小文字化して比べる）。候補から選べば表記が揃い、
+        * 「業者が引けない」を防げる
+        */}
+      <label>
+        <span>メーカー</span>
+        <input
+          value={asset.maker}
+          onChange={(e) => onChange('maker', e.target.value)}
+          placeholder="Ricoh"
+          list={`${listId}-makers`}
+        />
+        <datalist id={`${listId}-makers`}>
+          {hints.makers.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
+      </label>
+
+      <label>
+        <span>型番</span>
+        <input
+          value={asset.model}
+          onChange={(e) => onChange('model', e.target.value)}
+          placeholder="P501"
+          list={`${listId}-models`}
+        />
+        <datalist id={`${listId}-models`}>
+          {hints.models.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
+      </label>
+
+      <label>
+        <span>シリアル</span>
+        <input
+          value={asset.serialNumber}
+          onChange={(e) => onChange('serialNumber', e.target.value)}
+          placeholder="48PM-122682"
+        />
+      </label>
+
+      <label>
+        <span>購入日</span>
+        <input
+          type="date"
+          value={asset.purchasedOn}
+          onChange={(e) => onChange('purchasedOn', e.target.value)}
+        />
+      </label>
+
+      <label>
+        <span>購入金額（円）</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          inputMode="numeric"
+          value={asset.purchasePrice}
+          onChange={(e) => onChange('purchasePrice', e.target.value)}
+          placeholder="0"
+        />
+      </label>
+
+      <label>
+        <span>契約 No.</span>
+        <input
+          value={asset.contractNo}
+          onChange={(e) => onChange('contractNo', e.target.value)}
+          list={`${listId}-contract-nos`}
+        />
+        <datalist id={`${listId}-contract-nos`}>
+          {hints.contractNos.map((value) => (
+            <option key={value} value={value} />
+          ))}
+        </datalist>
+      </label>
+
+      <label>
+        <span>保守企業</span>
+        <select
+          value={asset.maintVendorId}
+          onChange={(e) => onChange('maintVendorId', e.target.value)}
+        >
+          {/*
+            空欄は「メーカーの既定に従う」の意味。
+            業者を選ぶと、その機器だけ既定を上書きする
+          */}
+          <option value="">
+            {defaultVendor
+              ? `メーカーの既定に従う（${asset.maker.trim()} → ${defaultVendor.name}）`
+              : 'メーカーの既定に従う（既定なし）'}
+          </option>
+          {vendors.map((vendor) => (
+            <option key={vendor.id} value={vendor.id}>
+              {vendor.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {/*
+        保守終了日があれば日付から判定する。無いときだけ手で選べるようにする。
+        日付を入れたあとも手入力の値は消さずに持っておき、日付を消せばまた効く
+      */}
+      {asset.maintEndOn.trim() === '' ? (
+        <label>
+          <span>保守（保守終了日が無いので手動）</span>
+          <select
+            value={asset.maintContract}
+            onChange={(e) => onChange('maintContract', e.target.value)}
+          >
+            <option value="">—（未設定）</option>
+            {MANUAL_MAINT.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <div className="as-derived">
+          <span>保守（保守終了日から自動判定）</span>
+          <p>
+            {maintStatus(
+              orNull(asset.maintEndOn),
+              orNull(asset.maintStartOn),
+              orNull(asset.maintContract),
+            ) ?? '—'}
+          </p>
+        </div>
+      )}
+
+      <label>
+        <span>保守開始日</span>
+        <input
+          type="date"
+          value={asset.maintStartOn}
+          onChange={(e) => onChange('maintStartOn', e.target.value)}
+        />
+      </label>
+
+      <label>
+        <span>保守終了日</span>
+        <input
+          type="date"
+          value={asset.maintEndOn}
+          onChange={(e) => onChange('maintEndOn', e.target.value)}
+        />
+      </label>
+
+      <label>
+        <span>保守取引日</span>
+        <input
+          type="date"
+          value={asset.maintDealOn}
+          onChange={(e) => onChange('maintDealOn', e.target.value)}
+        />
+      </label>
+
+      <label>
+        <span>保守金額（円）</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          inputMode="numeric"
+          value={asset.maintFee}
+          onChange={(e) => onChange('maintFee', e.target.value)}
+          placeholder="0"
+        />
+      </label>
+
+      <label className="as-wide">
+        <span>備考</span>
+        <input
+          value={asset.note}
+          onChange={(e) => onChange('note', e.target.value)}
+          placeholder="リース / USB接続 など"
+        />
+      </label>
+    </>
+  );
+}
+
 export default function AssetScreen() {
   const { companies, companyId: selectedCompanyId } = useCompany();
+  /** 新規登録の欄。**新規専用。** 登録済みの台を直すのは下の小窓 */
   const [asset, setAsset] = useState<Asset>(EMPTY);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  /**
+   * 編集の小窓。null なら閉じている。新規の欄とは別に下書きを持つので、
+   * 書きかけの新規登録や実機の取得結果を消さずに、別の台を直せる
+   */
+  const [editing, setEditing] = useState<{ id: number; label: string; form: Asset } | null>(
+    null,
+  );
+  const [editError, setEditError] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedAsset[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -357,8 +761,11 @@ export default function AssetScreen() {
     return counts;
   }, [active]);
 
-  const set = (key: keyof Asset) => (value: string) =>
+  const set = (key: keyof Asset, value: string) =>
     setAsset((prev) => ({ ...prev, [key]: value }));
+
+  const setDraft = (key: keyof Asset, value: string) =>
+    setEditing((prev) => prev && { ...prev, form: { ...prev.form, [key]: value } });
 
   /** 実機に問い合わせて表示するだけ。DB には保存しない */
   const fetchLive = async () => {
@@ -383,30 +790,55 @@ export default function AssetScreen() {
     }
   };
 
-  /** 手入力の台帳を保存する */
-  const save = async () => {
+  /**
+   * 新規登録。**上の欄は新規専用**なので、登録したら空に戻す。
+   * 残しておくと続けて押したときに同じ台がもう 1 台、別の No. で登録されてしまう
+   */
+  const create = async () => {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const body = JSON.stringify(toPayload(asset));
-      const result =
-        editingId === null
-          ? await request<SavedAsset>('/printer-assets', { method: 'POST', body })
-          : await request<SavedAsset>(`/printer-assets/${editingId}`, {
-              method: 'PATCH',
-              body,
-            });
+      const result = await request<CreatedAsset>('/printer-assets', {
+        method: 'POST',
+        body: JSON.stringify(toPayload(asset)),
+      });
 
+      // 振られた No. はここに出る。画面に入力欄が無いので、知らせが唯一の合図
+      const label = `${result.department ?? '部署未設定'} No.${result.no ?? '—'}`;
       setNotice(
-        `${result.department ?? '部署未設定'} No.${result.no ?? '—'} を${
-          editingId === null ? '登録' : '更新'
-        }しました`,
+        `${label} を登録しました${inheritedNote(result.inheritedToners, result.model)}`,
       );
-      setEditingId(result.id);
+      setAsset(blank());
+      setProbe(null);
       await load();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * 小窓の保存。**失敗したら小窓を開いたまま、中に文面を出す**
+   * （閉じると直した値が消え、後ろの知らせ欄は覆われて見えない）。
+   * `countLayout` は画面に欄が無いが、`toForm` で読んだ値をそのまま送り返す
+   */
+  const update = async () => {
+    if (editing === null) return;
+    setBusy(true);
+    setEditError(null);
+    try {
+      const result = await request<SavedAsset>(`/printer-assets/${editing.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(toPayload(editing.form)),
+      });
+      setNotice(`${result.department ?? '部署未設定'} No.${result.no ?? '—'} を更新しました`);
+      setError(null);
+      setEditing(null);
+      await load();
+    } catch (err) {
+      setEditError((err as Error).message);
     } finally {
       setBusy(false);
     }
@@ -463,10 +895,14 @@ export default function AssetScreen() {
     }
   };
 
+  /** 一覧の「編集」。小窓を開くだけで、上の新規の欄と実機の取得結果には触らない */
   const edit = (row: SavedAsset) => {
-    setAsset(toForm(row));
-    setEditingId(row.id);
-    setProbe(null);
+    setEditing({
+      id: row.id,
+      label: `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`,
+      form: toForm(row),
+    });
+    setEditError(null);
     setError(null);
     setNotice(null);
   };
@@ -503,11 +939,6 @@ export default function AssetScreen() {
         { method: 'POST' },
       );
       setNotice(`${label} を${disable ? '無効にしました' : '元に戻しました'}`);
-      // 無効にした台を編集中だったなら、入力欄も空に戻す
-      if (disable && editingId === row.id) {
-        setAsset(EMPTY);
-        setEditingId(null);
-      }
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -543,10 +974,6 @@ export default function AssetScreen() {
     try {
       await request(`/printer-assets/${row.id}`, { method: 'DELETE' });
       setNotice(`${label} を削除しました`);
-      if (editingId === row.id) {
-        setAsset(EMPTY);
-        setEditingId(null);
-      }
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -566,34 +993,22 @@ export default function AssetScreen() {
 
   /*
    * 拠点の一覧が届く前に画面が立ち上がるので、届いてから初期値を入れる。
-   * 入力の途中や編集中は触らない（選び直したものを勝手に戻さないため）
+   * 入力の途中は触らない（選び直したものを勝手に戻さないため）。
+   * 編集は小窓が自分の下書きを持つので、ここは新規の欄だけを見ればよい
    */
   useEffect(() => {
-    if (editingId !== null || selectedCompanyId === null) return;
+    if (selectedCompanyId === null) return;
     setAsset((prev) =>
       prev.companyId === '' ? { ...prev, companyId: String(selectedCompanyId) } : prev,
     );
-  }, [selectedCompanyId, editingId]);
+  }, [selectedCompanyId]);
 
   const clear = () => {
     setAsset(blank());
-    setEditingId(null);
     setProbe(null);
     setError(null);
     setNotice(null);
   };
-
-  /**
-   * 入力中のメーカーに対する既定の業者。選択欄の見出しに出す。
-   *
-   * **API 側の `makerKey` と同じ `foldKey` で畳む。**畳み方が違うと、
-   * この見出しには業者が出ないのに保存すると業者が付く（またはその逆）という
-   * 食い違いになる
-   */
-  const defaultVendor =
-    vendors.find((vendor) =>
-      vendor.makers.some((maker) => foldKey(maker) === foldKey(asset.maker)),
-    ) ?? null;
 
   const serialMatch = probe ? compare(asset.serialNumber, probe.serialNumber) : null;
   const makerMatch =
@@ -644,251 +1059,22 @@ export default function AssetScreen() {
         <h1>端末情報</h1>
         <p>
           台帳の項目を入力して保存します。IP アドレスから実機の今の状態を取得できますが、
-          そちらは表示のみで保存しません。
+          そちらは表示のみで保存しません。この欄は新規登録用です。
+          登録済みの機器は一覧の「編集」から直します。
         </p>
       </header>
 
-      <section className="as-form">
-        {/*
-          * 入力欄の候補は datalist で出す。**選ぶだけでなく自由入力もできる。**
-          * 一覧に無い部署・メーカーもそのまま打てるので、表記を揃えたいが
-          * 決め打ちにはできない欄に向く。候補は登録済みの台帳から作る
-          */}
-        <label>
-          <span>部署</span>
-          <input
-            value={asset.department}
-            onChange={(e) => set('department')(e.target.value)}
-            list="as-departments"
-          />
-          <datalist id="as-departments">
-            {hints.departments.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
-        </label>
-
-        {/*
-          * 拠点は必須。トナーの在庫と受け払いをこの単位で数えるため。
-          * 新規のときは画面右上で選んでいる拠点を初期値にする
-          */}
-        <label>
-          <span>拠点</span>
-          <select
-            value={asset.companyId}
-            onChange={(e) => set('companyId')(e.target.value)}
-            title="この機器を持っている拠点です。トナーの在庫と受け払いがこの単位で分かれます"
-          >
-            <option value="">選んでください</option>
-            {companies.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span>No.</span>
-          <input value={asset.no} onChange={(e) => set('no')(e.target.value)} />
-        </label>
-
-        <label>
-          <span>IP アドレス</span>
-          <input
-            value={asset.ipAddress}
-            onChange={(e) => set('ipAddress')(e.target.value)}
-            onKeyDown={(e) =>
-              e.key === 'Enter' && !busy && asset.ipAddress.trim() && void fetchLive()
-            }
-            placeholder="172.31.13.211"
-            inputMode="decimal"
-          />
-        </label>
-
-        {/*
-          * メーカーは保守業者のメーカー既定と突き合わせる鍵でもある
-          * （`makerKey` が小文字化して比べる）。候補から選べば表記が揃い、
-          * 「業者が引けない」を防げる
-          */}
-        <label>
-          <span>メーカー</span>
-          <input
-            value={asset.maker}
-            onChange={(e) => set('maker')(e.target.value)}
-            placeholder="Ricoh"
-            list="as-makers"
-          />
-          <datalist id="as-makers">
-            {hints.makers.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
-        </label>
-
-        <label>
-          <span>型番</span>
-          <input
-            value={asset.model}
-            onChange={(e) => set('model')(e.target.value)}
-            placeholder="P501"
-            list="as-models"
-          />
-          <datalist id="as-models">
-            {hints.models.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
-        </label>
-
-        <label>
-          <span>シリアル</span>
-          <input
-            value={asset.serialNumber}
-            onChange={(e) => set('serialNumber')(e.target.value)}
-            placeholder="48PM-122682"
-          />
-        </label>
-
-        <label>
-          <span>購入日</span>
-          <input
-            type="date"
-            value={asset.purchasedOn}
-            onChange={(e) => set('purchasedOn')(e.target.value)}
-          />
-        </label>
-
-        <label>
-          <span>購入金額（円）</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            inputMode="numeric"
-            value={asset.purchasePrice}
-            onChange={(e) => set('purchasePrice')(e.target.value)}
-            placeholder="0"
-          />
-        </label>
-
-        <label>
-          <span>契約 No.</span>
-          <input
-            value={asset.contractNo}
-            onChange={(e) => set('contractNo')(e.target.value)}
-            list="as-contract-nos"
-          />
-          <datalist id="as-contract-nos">
-            {hints.contractNos.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
-        </label>
-
-        <label>
-          <span>保守企業</span>
-          <select
-            value={asset.maintVendorId}
-            onChange={(e) => set('maintVendorId')(e.target.value)}
-          >
-            {/*
-              空欄は「メーカーの既定に従う」の意味。
-              業者を選ぶと、その機器だけ既定を上書きする
-            */}
-            <option value="">
-              {defaultVendor
-                ? `メーカーの既定に従う（${asset.maker.trim()} → ${defaultVendor.name}）`
-                : 'メーカーの既定に従う（既定なし）'}
-            </option>
-            {vendors.map((vendor) => (
-              <option key={vendor.id} value={vendor.id}>
-                {vendor.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/*
-          保守終了日があれば日付から判定する。無いときだけ手で選べるようにする。
-          日付を入れたあとも手入力の値は消さずに持っておき、日付を消せばまた効く
-        */}
-        {asset.maintEndOn.trim() === '' ? (
-          <label>
-            <span>保守（保守終了日が無いので手動）</span>
-            <select
-              value={asset.maintContract}
-              onChange={(e) => set('maintContract')(e.target.value)}
-            >
-              <option value="">—（未設定）</option>
-              {MANUAL_MAINT.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
-          <div className="as-derived">
-            <span>保守（保守終了日から自動判定）</span>
-            <p>
-              {maintStatus(
-                orNull(asset.maintEndOn),
-                orNull(asset.maintStartOn),
-                orNull(asset.maintContract),
-              ) ?? '—'}
-            </p>
-          </div>
-        )}
-
-        <label>
-          <span>保守開始日</span>
-          <input
-            type="date"
-            value={asset.maintStartOn}
-            onChange={(e) => set('maintStartOn')(e.target.value)}
-          />
-        </label>
-
-        <label>
-          <span>保守終了日</span>
-          <input
-            type="date"
-            value={asset.maintEndOn}
-            onChange={(e) => set('maintEndOn')(e.target.value)}
-          />
-        </label>
-
-        <label>
-          <span>保守取引日</span>
-          <input
-            type="date"
-            value={asset.maintDealOn}
-            onChange={(e) => set('maintDealOn')(e.target.value)}
-          />
-        </label>
-
-        <label>
-          <span>保守金額（円）</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            inputMode="numeric"
-            value={asset.maintFee}
-            onChange={(e) => set('maintFee')(e.target.value)}
-            placeholder="0"
-          />
-        </label>
-
-        <label className="as-wide">
-          <span>備考</span>
-          <input
-            value={asset.note}
-            onChange={(e) => set('note')(e.target.value)}
-            placeholder="リース / USB接続 など"
-          />
-        </label>
+      <section className="as-form as-fields">
+        <AssetFields
+          asset={asset}
+          onChange={set}
+          companies={companies}
+          vendors={vendors}
+          hints={hints}
+          onIpEnter={() => {
+            if (!busy && asset.ipAddress.trim()) void fetchLive();
+          }}
+        />
 
         <label>
           <span>コミュニティ名（取得用・保存しません）</span>
@@ -896,8 +1082,8 @@ export default function AssetScreen() {
         </label>
 
         <div className="as-actions">
-          <button onClick={() => void save()} disabled={busy}>
-            {editingId === null ? '台帳に保存' : '台帳を更新'}
+          <button onClick={() => void create()} disabled={busy}>
+            台帳に保存
           </button>
           <button
             className="as-sub"
@@ -910,7 +1096,6 @@ export default function AssetScreen() {
           <button className="as-sub" onClick={clear} disabled={busy} type="button">
             クリア
           </button>
-          {editingId !== null && <span className="as-editing">ID {editingId} を編集中</span>}
         </div>
       </section>
 
@@ -982,7 +1167,16 @@ export default function AssetScreen() {
       )}
 
       <section className="as-list">
-        <h2>登録した端末（{saved.length} 台）</h2>
+        <h2>
+          {/* 数えるのは下に並べる有効な台だけ。無効の台は別枠で数える */}
+          登録した端末（{active.length} 台）
+          <CsvButton
+            name="プリンター登録"
+            header={CSV_COLUMNS.map((col) => col.label)}
+            rows={() => sorted.map((row) => CSV_COLUMNS.map((col) => col.value(row)))}
+            count={sorted.length}
+          />
+        </h2>
 
         <p className="as-legend">
           <span className="as-legend-item">
@@ -1046,7 +1240,7 @@ export default function AssetScreen() {
                     className={
                       [
                         // 編集中の強調は残したいので、期限切れの色と重ねる
-                        row.id === editingId ? 'as-row-on' : '',
+                        row.id === editing?.id ? 'as-row-on' : '',
                         status === '不整合'
                           ? 'as-row-bad'
                           : status === '×'
@@ -1110,7 +1304,17 @@ export default function AssetScreen() {
 
       {disabled.length > 0 && (
         <section className="as-list as-disabled">
-          <h2>無効にした機器（{disabled.length} 台）</h2>
+          <h2>
+            無効にした機器（{disabled.length} 台）
+            <CsvButton
+              name="プリンター登録_無効"
+              header={DISABLED_CSV_COLUMNS.map((col) => col.label)}
+              rows={() =>
+                disabled.map((row) => DISABLED_CSV_COLUMNS.map((col) => col.value(row)))
+              }
+              count={disabled.length}
+            />
+          </h2>
           <p className="as-hint">
             使わなくなった機器です。<strong>記録は消えていません。</strong>
             プリンター状況・修理履歴・トナー登録・保守登録の一覧と選択肢からは外れています。
@@ -1176,6 +1380,44 @@ export default function AssetScreen() {
             </table>
           </div>
         </section>
+      )}
+
+      {editing && (
+        <Modal
+          title={`${editing.label} を編集`}
+          onClose={() => setEditing(null)}
+          busy={busy}
+          error={editError}
+          width={960}
+          footer={
+            <>
+              <span className="md-foot-note">
+                実機の情報を取り直すときは、一覧の「更新」を押してください
+              </span>
+              <button
+                className="md-sub"
+                type="button"
+                onClick={() => setEditing(null)}
+                disabled={busy}
+              >
+                キャンセル
+              </button>
+              <button type="button" onClick={() => void update()} disabled={busy}>
+                {busy ? '保存中…' : '台帳を更新'}
+              </button>
+            </>
+          }
+        >
+          <div className="as-fields">
+            <AssetFields
+              asset={editing.form}
+              onChange={setDraft}
+              companies={companies}
+              vendors={vendors}
+              hints={hints}
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );

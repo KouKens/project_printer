@@ -51,6 +51,16 @@ function placeOf(row: TonerCatalogRow): string {
     : heads;
 }
 
+/**
+ * どうやって選ばれたか。
+ *
+ * 呼び出し側で扱いを分けるために添える。`click` は候補を押した操作そのもので、
+ * `auto`（読み取り・一意に絞れた）や `enter`（Enter で先頭を確定）は
+ * 入力の途中で勝手に決まったもの。押した時だけ次へ進めたい画面があるため
+ * （注文のまとめ処理では、押した時点で明細に積む）
+ */
+export type PickOrigin = 'click' | 'auto' | 'enter';
+
 type Props = {
   /** 行の連番。01 などの見出しに出す */
   no: string;
@@ -62,7 +72,7 @@ type Props = {
   onSearch: (value: string) => void;
   /** 選ばれている品番。空なら未選択 */
   value: string;
-  onPick: (row: TonerCatalogRow) => void;
+  onPick: (row: TonerCatalogRow, origin: PickOrigin) => void;
   error?: string;
   disabled?: boolean;
   active: boolean;
@@ -121,14 +131,14 @@ export default function TonerPickerRow({
       (row) => row.id.toLowerCase() === trimmed.toLowerCase(),
     );
     if (exact) {
-      onPick(exact);
+      onPick(exact, 'auto');
       releaseFocus();
       return;
     }
 
     const hits = matchToners(catalog, text);
     if (hits.length === 1) {
-      onPick(hits[0]);
+      onPick(hits[0], 'auto');
       releaseFocus();
     }
   };
@@ -137,7 +147,7 @@ export default function TonerPickerRow({
     if (event.key !== 'Enter') return;
     // 候補が残っていれば先頭を選んでから次の欄へ送る
     if (candidates.length > 0 && candidates[0].id !== value) {
-      onPick(candidates[0]);
+      onPick(candidates[0], 'enter');
     }
     onEnter(event);
   };
@@ -222,7 +232,7 @@ export default function TonerPickerRow({
                       value === item.id ? ' finder__item--on' : ''
                     }`}
                     disabled={disabled}
-                    onClick={() => onPick(item)}
+                    onClick={() => onPick(item, 'click')}
                     type="button"
                   >
                     <span className="finder__id">{item.id}</span>
