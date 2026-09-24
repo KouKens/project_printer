@@ -391,6 +391,25 @@
   color: var(--cyan-deep);
 }
 
+/*
+ * 2 つの欄を 1 行に並べる（注文・搬入の 本数｜搬入日）。
+ * 見出し・入力・説明の 3 段を subgrid で左右に揃える。片方にだけ「任意」の札が
+ * 付いたり、日付の欄が数値の欄より少し高かったりして、下線の高さがずれるため
+ */
+.row__pair {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
+  min-width: 0;
+}
+
+.row__pair > .row__body {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+}
+
 /* --- まとめて受け付ける。明細は区分ごとで、タブを移ると捨てる --- */
 .batch__toggle {
   display: flex;
@@ -928,6 +947,15 @@
 
   .row__input {
     font-size: 22px;
+  }
+
+  /* 本数｜搬入日 は並べると日付が収まらないので縦に積む */
+  .row__pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .row__pair > .row__body + .row__body {
+    margin-top: 18px;
   }
 
   .slip__actions {

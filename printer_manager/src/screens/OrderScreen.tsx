@@ -65,6 +65,24 @@ type FieldDef = {
   staffId?: boolean
   /** トナーを選ぶ行。入力欄ではなく専用の部品を描く */
   picker?: boolean
+  /** 前の欄と同じ行の右に並べる（本数｜搬入日）。番号は前の欄と同じにする */
+  sameRow?: boolean
+}
+
+type Cell = { field: FieldDef; index: number }
+
+/**
+ * 画面の行ごとに欄をまとめる。sameRow の欄は前の行に足す。
+ * Enter の送り先やエラー時の移動は fields の並びのまま（左 → 右 → 次の行）
+ */
+function rowsOf(fields: FieldDef[]): Cell[][] {
+  const rows: Cell[][] = []
+  fields.forEach((field, index) => {
+    const last = rows[rows.length - 1]
+    if (field.sameRow && last) last.push({ field, index })
+    else rows.push([{ field, index }])
+  })
+  return rows
 }
 
 /** まとめ処理の明細 1 行 */
@@ -77,6 +95,10 @@ function todayValue(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
 
+/**
+ * 本数と日付はトナーより上に 1 行で置く。トナーの候補一覧が伸びても
+ * 押し下げられず、先に決めておいてから読み取れる
+ */
 function fieldsFor(mode: OrderMode): FieldDef[] {
   if (mode === 'RECEIVE') {
     return [
@@ -90,26 +112,27 @@ function fieldsFor(mode: OrderMode): FieldDef[] {
         staffId: true,
       },
       {
-        key: 'tonerId',
-        no: '02',
-        label: 'トナー',
-        hint: '',
-        type: 'text',
-        picker: true,
-      },
-      {
         key: 'quantity',
-        no: '03',
+        no: '02',
         label: '本数',
-        hint: '納品された本数を入力します。既定は 1 本です',
+        hint: '納品された本数です。既定は 1 本です',
         type: 'number',
       },
       {
         key: 'receivedOn',
-        no: '04',
+        no: '02',
         label: '搬入日',
         hint: '納品された日です。今日の日付が入っています',
         type: 'date',
+        sameRow: true,
+      },
+      {
+        key: 'tonerId',
+        no: '03',
+        label: 'トナー',
+        hint: '',
+        type: 'text',
+        picker: true,
       },
     ]
   }
@@ -132,27 +155,28 @@ function fieldsFor(mode: OrderMode): FieldDef[] {
       staffId: true,
     },
     {
-      key: 'tonerId',
-      no: '03',
-      label: 'トナー',
-      hint: '',
-      type: 'text',
-      picker: true,
-    },
-    {
       key: 'quantity',
-      no: '04',
+      no: '03',
       label: '本数',
-      hint: '注文した本数を入力します',
+      hint: '注文した本数です',
       type: 'number',
     },
     {
       key: 'deliveryOn',
-      no: '05',
+      no: '03',
       label: '次回搬入日',
       hint: '納品予定の日です。入れておくと搬入の実績と本数を突き合わせられます',
       type: 'date',
       optional: true,
+      sameRow: true,
+    },
+    {
+      key: 'tonerId',
+      no: '04',
+      label: 'トナー',
+      hint: '',
+      type: 'text',
+      picker: true,
     },
   ]
 }
@@ -200,6 +224,12 @@ export default function OrderScreen() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const rowRefs = useRef<(HTMLDivElement | null)[]>([])
+  /**
+   * トナーの欄で、この Enter が候補の先頭を選んだか。
+   * 部品は選んだ直後に同じ打鍵で onEnter を呼ぶが、選んだ品番が values に入るのは
+   * 次の描画なので、ここで処理すると前の品番のまま送ってしまう
+   */
+  const pickedByEnter = useRef(false)
   const [rail, setRail] = useState({ top: 0, height: 0 })
 
   useLayoutEffect(() => {
@@ -306,6 +336,8 @@ export default function OrderScreen() {
   }, [appendLine, catalog, values])
 
   const pickToner = (row: TonerCatalogRow, origin: PickOrigin) => {
+    pickedByEnter.current = origin === 'enter'
+
     // まとめ処理では候補を押した時点で明細へ積む。「明細に追加」を押さずに
     // 次の品番を探せる。本数はその時の入力欄の値（既定 1 本）を使い、
     // 足したあと 1 本に戻す。
@@ -546,10 +578,19 @@ export default function OrderScreen() {
     if (event.key !== 'Enter') return
     event.preventDefault()
 
-    // まとめ処理では本数まで入れたら明細へ。日付や注文日時はまとめ全体で 1 つなので、
+    // トナーは最後の欄なので、Enter はそのまま処理になる。候補の先頭を選んだ
+    // 打鍵では止め、選ばれた品番を見てからもう一度 Enter で処理する
+    // （確かめないまま在庫が動かないように）
+    if (pickedByEnter.current) {
+      pickedByEnter.current = false
+      return
+    }
+
+    // まとめ処理では本数からトナーへ飛ぶ。日付や注文日時はまとめ全体で 1 つなので、
     // 1 件ごとに触らせない
     if (batch && fields[index]?.key === 'quantity') {
-      addLine()
+      setActiveIndex(tonerIndex)
+      focusField(tonerIndex)
       return
     }
 
@@ -650,60 +691,59 @@ export default function OrderScreen() {
             style={{ top: rail.top, height: rail.height }}
           />
 
-          {fields.map((field, index) => {
-            const value = values[field.key]
-            const error = errors[field.key]
-            const filled = value.trim().length > 0
-            const numeric = field.type === 'number'
+          {rowsOf(fields).map((cells) => {
+            const [{ field: head, index: headIndex }] = cells
 
-            if (field.picker) {
+            if (head.picker) {
               return (
                 <TonerPickerRow
-                  active={activeIndex === index}
+                  active={activeIndex === headIndex}
                   catalog={catalog}
                   disabled={submitting}
-                  error={error}
+                  error={errors[head.key]}
                   idPrefix="od"
                   inputRef={(el) => {
-                    inputRefs.current[index] = el
+                    inputRefs.current[headIndex] = el
                   }}
-                  key={field.key}
-                  no={field.no}
-                  onEnter={(e) => handleKeyDown(e, index)}
-                  onFocus={() => setActiveIndex(index)}
+                  key={head.key}
+                  no={head.no}
+                  onEnter={(e) => handleKeyDown(e, headIndex)}
+                  onFocus={() => setActiveIndex(headIndex)}
                   onPick={pickToner}
                   onSearch={handleSearch}
                   rowRef={(el) => {
-                    rowRefs.current[index] = el
+                    rowRefs.current[headIndex] = el
                   }}
                   search={search}
-                  value={value}
+                  value={values[head.key]}
                 />
               )
             }
 
-            return (
-              <div
-                className={[
-                  'row',
-                  activeIndex === index ? 'row--active' : '',
-                  filled ? 'row--filled' : '',
-                  error ? 'row--error' : '',
-                  numeric ? 'row--numeric' : '',
-                  field.type === 'datetime-local' ? 'row--datetime' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                key={field.key}
-                ref={(el) => {
-                  rowRefs.current[index] = el
-                }}
-              >
-                <span aria-hidden="true" className="row__no">
-                  {filled ? '✓' : field.no}
-                </span>
+            const isFilled = ({ field }: Cell) => values[field.key].trim().length > 0
+            // 並べた行は、任意の欄が空でも他が埋まっていれば済みにする
+            const filled =
+              cells.some(isFilled) &&
+              cells.every((cell) => isFilled(cell) || cell.field.optional)
 
-                <div className="row__body">
+            // 番号・背景・レールは行で持つ。数値・日時の幅と誤りの下線は欄ごとなので
+            // 欄の箱に付ける（CSS はどちらも中の .row__input を見るだけ）
+            const bodies = cells.map(({ field, index }) => {
+              const error = errors[field.key]
+              const numeric = field.type === 'number'
+
+              return (
+                <div
+                  className={[
+                    'row__body',
+                    error ? 'row--error' : '',
+                    numeric ? 'row--numeric' : '',
+                    field.type === 'datetime-local' ? 'row--datetime' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  key={field.key}
+                >
                   <label className="row__label" htmlFor={`od-${field.key}`}>
                     {field.label}
                     {field.optional ? <span className="row__tag">任意</span> : null}
@@ -736,7 +776,7 @@ export default function OrderScreen() {
                     }}
                     spellCheck={false}
                     type={field.type}
-                    value={value}
+                    value={values[field.key]}
                   />
 
                   {error ? (
@@ -749,6 +789,35 @@ export default function OrderScreen() {
                     </p>
                   )}
                 </div>
+              )
+            })
+
+            return (
+              <div
+                className={[
+                  'row',
+                  cells.some((c) => c.index === activeIndex) ? 'row--active' : '',
+                  filled ? 'row--filled' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                key={head.key}
+                ref={(el) => {
+                  // レールはどちらの欄にいても同じ行に止まる
+                  cells.forEach((cell) => {
+                    rowRefs.current[cell.index] = el
+                  })
+                }}
+              >
+                <span aria-hidden="true" className="row__no">
+                  {filled ? '✓' : head.no}
+                </span>
+
+                {cells.length === 1 ? (
+                  bodies
+                ) : (
+                  <div className="row__pair">{bodies}</div>
+                )}
               </div>
             )
           })}
@@ -774,8 +843,8 @@ export default function OrderScreen() {
 
             {lines.length === 0 ? (
               <p className="batch__empty">
-                トナーを探して候補を押すとその場で積まれます。読み取ったときは
-                本数を入れて Enter、または「明細に追加」で積みます。
+                トナーを探して候補を押すと、上の欄の本数でその場で積まれます。
+                読み取ったときは Enter、または「明細に追加」で積みます。
               </p>
             ) : (
               <ul className="batch__list">
