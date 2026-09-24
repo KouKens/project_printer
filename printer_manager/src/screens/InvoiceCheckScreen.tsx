@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import { num } from '../lib/format';
 import { request } from '../lib/request';
+import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import './DataTable.css';
@@ -148,6 +151,8 @@ export default function InvoiceCheckScreen() {
   const [selected, setSelected] = useState<number | null>(null);
   const [check, setCheck] = useState<Check | null>(null);
   const [onlyIssues, setOnlyIssues] = useState(false);
+  /** 探す文字。取ってある明細をこの場で絞るだけで、API は叩かない */
+  const [query, setQuery] = useState('');
   /*
    * 既定は状態の降順。合わない行（本数違い → 金額違い → 搬入なし → 請求なし）が
    * 先に並び、一致は末尾になる。見たいのは合わない行なので、そこから読ませる
@@ -208,11 +213,23 @@ export default function InvoiceCheckScreen() {
     }
   };
 
+  /**
+   * 「合わない行だけ」を当てたあとの明細。**「探す」の分母はここ。**
+   * 請求書ぜんぶの行数のまま出すと、チェックを入れてから探したときに、
+   * チェックが落とした行まで探した結果に見える
+   */
+  const base = useMemo(
+    () =>
+      check === null
+        ? []
+        : check.rows.filter((row) => !onlyIssues || row.status !== 'match'),
+    [check, onlyIssues],
+  );
+
   const shown = useMemo(() => {
     if (!check) return [];
-    const rows = onlyIssues
-      ? check.rows.filter((row) => row.status !== 'match')
-      : check.rows;
+    const words = searchWords(query);
+    const rows = base.filter((row) => hits([row.tonerId, row.name, row.color], words));
     const column = COLUMNS.find((c) => c.key === sort.key);
     return sortRows(
       rows,
@@ -222,7 +239,7 @@ export default function InvoiceCheckScreen() {
       // 同じ値のときは品番の並びで安定させる
       (row) => row.tonerId.charCodeAt(0),
     );
-  }, [check, onlyIssues, sort]);
+  }, [check, base, sort, query]);
 
   const head = (key: Key, label: string, numeric?: boolean) => (
     <th
@@ -286,6 +303,16 @@ export default function InvoiceCheckScreen() {
           />
           <span>合わない行だけ</span>
         </label>
+
+        {/* 表の下の「合計」は請求書ぜんぶの合計。ここで絞っても動かない */}
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="品番・トナー名・色"
+          count={shown.length}
+          total={base.length}
+          unit="品番"
+        />
 
         <button
           type="button"
@@ -379,7 +406,7 @@ export default function InvoiceCheckScreen() {
             </p>
           )}
 
-          <div className="dt-wrap">
+          <TableBox className="dt-wrap" memoryKey="invoiceCheck">
             <table>
               <thead>
                 <tr>
@@ -460,7 +487,7 @@ export default function InvoiceCheckScreen() {
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </TableBox>
 
           {current?.checkedAt && (
             <p className="dt-hint">

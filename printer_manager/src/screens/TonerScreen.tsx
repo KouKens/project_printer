@@ -2,9 +2,12 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import CsvButton from '../components/CsvButton';
 import Modal from '../components/Modal';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import type { CsvValue } from '../lib/csv';
 import { todayIso } from '../lib/date';
 import { num, orNull } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { suggestions } from '../lib/suggest';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -510,6 +513,10 @@ export default function TonerScreen() {
     key: 'id',
     dir: 'asc',
   });
+  /** 一覧を絞る文字。**取ってある品番をこの場で絞るだけで、API は叩かない** */
+  const [query, setQuery] = useState('');
+  /** 無効にした品番の別枠を絞る文字。上の一覧とは別に持つ（表が別なので） */
+  const [disabledQuery, setDisabledQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -560,6 +567,28 @@ export default function TonerScreen() {
     [toners],
   );
 
+  /** 別枠に出す無効の品番。並びはそのままで、探す欄のぶんだけ絞る */
+  const shownDisabled = useMemo(() => {
+    const words = searchWords(disabledQuery);
+    return disabled.filter((toner) =>
+      hits(
+        [
+          toner.id,
+          toner.name,
+          toner.color,
+          ...toner.printers.flatMap((printer) => [
+            printer.department,
+            printer.no,
+            printer.ipAddress,
+            printer.maker,
+            printer.model,
+          ]),
+        ],
+        words,
+      ),
+    );
+  }, [disabled, disabledQuery]);
+
   /**
    * トナー名の候補。**無効にした品番のぶんも混ぜる。**
    * 「トナーカートリッジ 054H（MF644Cdw）」のような定型が多く、
@@ -583,16 +612,36 @@ export default function TonerScreen() {
 
   /** 見出しを押した列で並べ替えた一覧 */
   const shown = useMemo(() => {
+    const words = searchWords(query);
+    // 対応プリンターでも引けるようにする（「予約外来のトナー」を探せるように）
+    const found = active.filter((toner) =>
+      hits(
+        [
+          toner.id,
+          toner.name,
+          toner.color,
+          ...toner.printers.flatMap((printer) => [
+            printer.department,
+            printer.no,
+            printer.ipAddress,
+            printer.maker,
+            printer.model,
+          ]),
+        ],
+        words,
+      ),
+    );
+
     const column = COLUMNS.find((col) => col.key === sort.key);
     return sortRows(
-      active,
+      found,
       (toner) => pick(toner, sort.key),
       column?.kind ?? 'text',
       sort.dir,
       // 値が並んだときは API が返した順（トナー名 → 品番）で安定させる
       (toner) => active.indexOf(toner),
     );
-  }, [active, sort]);
+  }, [active, sort, query]);
 
   /** マスタ登録。対応機器と初回価格も一緒に送る */
   const create = async () => {
@@ -934,10 +983,24 @@ export default function TonerScreen() {
           </span>
         </p>
 
+        <div className="sbx-row">
+          <SearchBox
+            value={query}
+            onChange={setQuery}
+            placeholder="品番・トナー名・色・対応プリンター"
+            count={shown.length}
+            total={active.length}
+          />
+        </div>
+
         {toners.length === 0 ? (
           <p className="tn-empty">まだ登録がありません。上の欄を入力して登録してください。</p>
+        ) : shown.length === 0 && query.trim() !== '' ? (
+          <p className="tn-empty">
+            「{query}」に当てはまる品番がありません（登録は {active.length} 件）。
+          </p>
         ) : (
-          <div className="tn-table-wrap">
+          <TableBox className="tn-table-wrap" memoryKey="toners.list">
             <table className="tn-table">
               <thead>
                 <tr>
@@ -1051,7 +1114,7 @@ export default function TonerScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
 
@@ -1063,11 +1126,11 @@ export default function TonerScreen() {
               name="トナー登録_無効"
               header={DISABLED_CSV_COLUMNS.map((col) => col.label)}
               rows={() =>
-                disabled.map((toner) =>
+                shownDisabled.map((toner) =>
                   DISABLED_CSV_COLUMNS.map((col) => col.value(toner)),
                 )
               }
-              count={disabled.length}
+              count={shownDisabled.length}
             />
           </h2>
           <p className="tn-hint">
@@ -1081,7 +1144,23 @@ export default function TonerScreen() {
             （そのまま無効にしておけば記録が残ります）。
           </p>
 
-          <div className="tn-table-wrap">
+          <div className="sbx-row">
+            <SearchBox
+              value={disabledQuery}
+              onChange={setDisabledQuery}
+              label="探す（無効にした品番）"
+              placeholder="品番・トナー名・色・対応プリンター"
+              count={shownDisabled.length}
+              total={disabled.length}
+            />
+          </div>
+
+          {shownDisabled.length === 0 ? (
+            <p className="tn-empty">
+              「{disabledQuery}」に当てはまる品番がありません（無効は {disabled.length} 件）。
+            </p>
+          ) : (
+          <TableBox className="tn-table-wrap" memoryKey="toners.disabled">
             <table className="tn-table">
               <thead>
                 <tr>
@@ -1095,7 +1174,7 @@ export default function TonerScreen() {
                 </tr>
               </thead>
               <tbody>
-                {disabled.map((toner) => (
+                {shownDisabled.map((toner) => (
                   <tr key={toner.id}>
                     <td className="tn-mono">{toner.id}</td>
                     <td>{toner.name ?? '—'}</td>
@@ -1136,7 +1215,8 @@ export default function TonerScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
+          )}
         </section>
       )}
 

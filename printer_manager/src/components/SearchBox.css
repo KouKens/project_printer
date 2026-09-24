@@ -1,0 +1,63 @@
+/*
+ * 「探す」欄。SearchBox.tsx から使う。
+ * 画面ごとの操作列（.dt-tools / .st-tools など）に並べるので、
+ * 高さと色はそれらの select・input に合わせてある
+ */
+
+.sbx {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted, #64748b);
+}
+
+.sbx-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+/* いま何件に絞れているか。数字なので等幅で、欄の名前より控えめに */
+.sbx-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, #1f6f8b);
+}
+/* 0 件は見落とすと「記録が無い」と読めてしまうので、色を変えて気付かせる */
+.sbx-count-none { color: var(--danger, #b23a3a); }
+
+.sbx-input {
+  /* 部署名や型番がひと目で読める幅。狭い窓では操作列ごと折り返す */
+  min-width: 24ch;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink, #16202b);
+  background: #fbfcfd;
+  border: 1px solid var(--line, #dbe2ea);
+  border-radius: 4px;
+}
+.sbx-input:focus-visible {
+  outline: 2px solid var(--accent, #1f6f8b);
+  outline-offset: 1px;
+}
+
+/* 消す × は既定だと薄くて小さい。押せると分かる大きさにする */
+.sbx-input::-webkit-search-cancel-button {
+  cursor: pointer;
+  opacity: 0.55;
+}
+.sbx-input::-webkit-search-cancel-button:hover { opacity: 1; }
+
+/*
+ * 操作列を持たない場所（表ごとの節）に単独で置くときの受け皿。
+ * 節の見出しの下に 1 つだけ並べる
+ */
+.sbx-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}

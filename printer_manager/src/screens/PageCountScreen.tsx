@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import { isSheetUnit } from '../lib/counter';
 import { saveCsv } from '../lib/csv';
 import { isoDaysAgo, todayIso } from '../lib/date';
 import { num } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -590,6 +593,8 @@ export default function PageCountScreen() {
   const [from, setFrom] = useState(() => isoDaysAgo(29));
   const [to, setTo] = useState(() => todayIso());
   const [printerId, setPrinterId] = useState<number | 'all'>('all');
+  /** 探す文字。**取ってある記録をこの場で絞るだけで、API は叩かない** */
+  const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: 'date',
     dir: 'desc',
@@ -686,13 +691,29 @@ export default function PageCountScreen() {
     return first;
   }, [counts]);
 
+  /**
+   * プリンターのセレクタだけを当てた記録。**「探す」の分母はここ。**
+   * 期間の全件のまま出すと、1 台に絞ってから探したときに、
+   * セレクタが落とした記録まで探した結果に見える
+   */
+  const base = useMemo(
+    () => (printerId === 'all' ? counts : counts.filter((row) => row.printerId === printerId)),
+    [counts, printerId],
+  );
+
+  /*
+   * 日ごとの記録。**探す欄はここに当てる。**
+   * 機器ごとの合計も上の合計もこの行から作るので、絞ると 3 つとも同じ範囲になる
+   */
   const rows = useMemo(() => {
-    const filtered =
-      printerId === 'all' ? counts : counts.filter((row) => row.printerId === printerId);
+    const words = searchWords(query);
+    const filtered = base.filter((row) =>
+      hits([row.department, row.no, row.ipAddress, row.model, row.date], words),
+    );
     const column = COLUMNS.find((c) => c.key === sort.key);
 
     return sortRows(filtered, (row) => row[sort.key], column?.kind ?? 'text', sort.dir, (row) => row.id);
-  }, [counts, printerId, sort]);
+  }, [base, sort, query]);
 
   /** 機器ごとの合計。日ごとの表と同じ絞り込み（期間・プリンター）で足す */
   const printerTotals = useMemo(() => {
@@ -906,6 +927,15 @@ export default function PageCountScreen() {
           </select>
         </label>
 
+        {/* 2 つの表と上の合計に同じ絞り込みが効く。当てているのは日ごとの記録 */}
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="部署・No.・IP・型番・日付"
+          count={rows.length}
+          total={base.length}
+        />
+
         <button onClick={() => void captureNow()} disabled={busy} type="button">
           {busy ? '取得中…' : '今すぐ取得'}
         </button>
@@ -1027,7 +1057,7 @@ export default function PageCountScreen() {
             内訳を返さない機種は「—」です。
           </p>
 
-          <div className="dt-wrap dt-wrap-short">
+          <TableBox className="dt-wrap dt-wrap-short" memoryKey="pageCounts.byPrinter">
             <table className="dt-table">
               <thead>
                 <tr>
@@ -1104,7 +1134,7 @@ export default function PageCountScreen() {
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </TableBox>
         </section>
       )}
 
@@ -1121,7 +1151,7 @@ export default function PageCountScreen() {
             その下の内訳です。内訳を返さない機種は「—」です（0 枚ではありません）。
           </p>
 
-          <div className="dt-wrap">
+          <TableBox className="dt-wrap" memoryKey="pageCounts.daily">
             <table className="dt-table">
               <thead>
                 <tr className="dt-group-row">
@@ -1186,7 +1216,7 @@ export default function PageCountScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         </section>
       )}
     </div>

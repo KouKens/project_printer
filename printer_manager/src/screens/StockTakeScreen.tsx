@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
+import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -127,19 +130,27 @@ export default function StockTakeScreen() {
     [entered, diffOf],
   );
 
+  /**
+   * 「表示」のセレクタだけを当てた行。**「探す」の分母はここ。**
+   * 全品番のまま出すと、「差のある品番だけ」に絞ってから探したときに、
+   * セレクタが落とした品番まで探した結果に見える
+   */
+  const base = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (mode === 'entered') return entered.has(row.id);
+        if (mode === 'diff') {
+          const diff = diffOf(row);
+          return diff !== null && diff !== 0;
+        }
+        return true;
+      }),
+    [rows, mode, entered, diffOf],
+  );
+
   const shown = useMemo(() => {
-    const needle = filter.trim().toLowerCase();
-    const filtered = rows.filter((row) => {
-      if (needle && !`${row.id} ${row.name ?? ''} ${row.color ?? ''}`.toLowerCase().includes(needle)) {
-        return false;
-      }
-      if (mode === 'entered') return entered.has(row.id);
-      if (mode === 'diff') {
-        const diff = diffOf(row);
-        return diff !== null && diff !== 0;
-      }
-      return true;
-    });
+    const words = searchWords(filter);
+    const filtered = base.filter((row) => hits([row.id, row.name, row.color], words));
 
     const column = COLUMNS.find((col) => col.key === sort.key);
     return sortRows(
@@ -150,7 +161,7 @@ export default function StockTakeScreen() {
       // 値が並んだときは API が返した順（品番順）で安定させる
       (row) => rows.indexOf(row),
     );
-  }, [rows, filter, mode, entered, diffOf, sort, pick]);
+  }, [rows, base, filter, sort, pick]);
 
   /**
    * CSV に出す行。**表示中の行だけ**（絞り込みと並べ替えを通したもの）。
@@ -258,14 +269,14 @@ export default function StockTakeScreen() {
           />
         </label>
 
-        <label>
-          <span>絞り込み</span>
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="品番・トナー名・色"
-          />
-        </label>
+        <SearchBox
+          value={filter}
+          onChange={setFilter}
+          placeholder="品番・トナー名・色"
+          count={shown.length}
+          total={base.length}
+          unit="品番"
+        />
 
         <label>
           <span>表示</span>
@@ -343,7 +354,7 @@ export default function StockTakeScreen() {
       {shown.length === 0 ? (
         <p className="st-empty">表示できる行がありません。</p>
       ) : (
-        <div className="st-table-wrap">
+        <TableBox className="st-table-wrap" memoryKey="stockTake">
           <table className="st-table">
             <thead>
               <tr>
@@ -409,7 +420,7 @@ export default function StockTakeScreen() {
               })}
             </tbody>
           </table>
-        </div>
+        </TableBox>
       )}
     </div>
   );

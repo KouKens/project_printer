@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import { isMeterUnit } from '../lib/counter';
 import { isoDaysAgo, todayIso } from '../lib/date';
 import { num } from '../lib/format';
 import { request } from '../lib/request';
+import { hits, searchWords } from '../lib/search';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import './DataTable.css';
@@ -164,6 +167,8 @@ export default function LabelMeterScreen() {
   const [from, setFrom] = useState(() => isoDaysAgo(29));
   const [to, setTo] = useState(() => todayIso());
   const [printerId, setPrinterId] = useState<number | 'all'>('all');
+  /** 探す文字。取ってある記録をこの場で絞るだけで、API は叩かない */
+  const [query, setQuery] = useState('');
   const [totalSort, setTotalSort] = useState<{ key: TotalKey; dir: SortDir }>({
     key: 'meters',
     dir: 'desc',
@@ -207,13 +212,21 @@ export default function LabelMeterScreen() {
       .map(([id, item]) => [id, item.label] as [number, string]);
   }, [counts]);
 
-  const shown = useMemo(
-    () =>
-      printerId === 'all'
-        ? counts
-        : counts.filter((row) => row.printerId === printerId),
+  /**
+   * プリンターのセレクタだけを当てた記録。**「探す」の分母はここ。**
+   * 期間の全件のまま出すと、1 台に絞ってから探したときに「8 / 72 件」と出て、
+   * セレクタが落とした 64 件まで探した結果に見える
+   */
+  const base = useMemo(
+    () => (printerId === 'all' ? counts : counts.filter((row) => row.printerId === printerId)),
     [counts, printerId],
   );
+
+  /** 2 つの表と上の合計は、どれもここから作る。探す欄もここに当てる */
+  const shown = useMemo(() => {
+    const words = searchWords(query);
+    return base.filter((row) => hits([labelOf(row), row.ipAddress, row.date], words));
+  }, [base, query]);
 
   const totals = useMemo(() => {
     const column = TOTAL_COLUMNS.find((c) => c.key === totalSort.key);
@@ -345,6 +358,15 @@ export default function LabelMeterScreen() {
             ))}
           </select>
         </label>
+
+        {/* 2 つの表と上の合計に同じ絞り込みが効く */}
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="設置場所・No.・IP・日付"
+          count={shown.length}
+          total={base.length}
+        />
       </div>
 
       <dl className="dt-summary">
@@ -394,7 +416,7 @@ export default function LabelMeterScreen() {
                 count={totals.length}
               />
             </h2>
-            <div className="dt-wrap">
+            <TableBox className="dt-wrap" memoryKey="labelMeter.totals">
               <table>
                 <thead>
                   <tr>
@@ -427,7 +449,7 @@ export default function LabelMeterScreen() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
+            </TableBox>
           </section>
 
           <section className="dt-section">
@@ -450,7 +472,7 @@ export default function LabelMeterScreen() {
                 count={daily.length}
               />
             </h2>
-            <div className="dt-wrap">
+            <TableBox className="dt-wrap" memoryKey="labelMeter.daily">
               <table>
                 <thead>
                   <tr>
@@ -479,7 +501,7 @@ export default function LabelMeterScreen() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableBox>
           </section>
         </>
       )}

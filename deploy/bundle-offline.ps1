@@ -101,14 +101,24 @@ Copy-Item (Join-Path $web 'dist') (Join-Path $app 'web') -Recurse
 Copy-Item (Join-Path $api 'prisma.config.ts') $app
 
 # 手順書も入れる。本番機にはリポジトリが無いので、USB だけで作業を完結させる。
-# 更新のときに実際に打つのは UPDATE-COMMANDS.md のほう
-Copy-Item (Join-Path $PSScriptRoot 'OFFLINE-WINDOWS.md') $OutDir
-Copy-Item (Join-Path $PSScriptRoot 'UPDATE-COMMANDS.md') $OutDir
-Copy-Item (Join-Path $PSScriptRoot 'check-prod.ps1') $OutDir
+# 更新のときに実際に打つのは UPDATE-COMMANDS.md のほう。
+# **UPGRADE-CHECKLIST.md も入れる。** UPDATE-COMMANDS.md の冒頭が
+# 「背景と判断が要る部分はあちら」と案内しているので、無いと本番で辿れない
+Copy-Item (Join-Path $PSScriptRoot 'OFFLINE-WINDOWS.md')   $OutDir
+Copy-Item (Join-Path $PSScriptRoot 'UPDATE-COMMANDS.md')   $OutDir
+Copy-Item (Join-Path $PSScriptRoot 'UPGRADE-CHECKLIST.md') $OutDir
+Copy-Item (Join-Path $PSScriptRoot 'check-prod.ps1')       $OutDir
 
-# 拠点の振り分け SQL。移行（add_company）は「既定の会社」1 つに寄せるだけなので、
-# 本院と各事業所へ分けるにはこれを 1 度流す（UPDATE-COMMANDS.md の 5-2）
-Copy-Item (Join-Path $PSScriptRoot 'assign-sites.sql') $OutDir
+<#
+  一度きりの SQL。どちらも本番の状態を見てから流すもので、
+  **忘れると手順が途中で空振りする**（本番機にリポジトリは無い）。
+
+  - assign-sites.sql      拠点の振り分け。移行（add_company）は「既定の会社」1 つに
+                          寄せるだけなので、本院と各事業所へ分けるのはこれ（§5-2）
+  - renumber-asset-no.sql 管理番号（No.）を 001 から詰め直す（§5-3）
+#>
+Copy-Item (Join-Path $PSScriptRoot 'assign-sites.sql')      $OutDir
+Copy-Item (Join-Path $PSScriptRoot 'renumber-asset-no.sql') $OutDir
 
 # node_modules は数が多く Copy-Item だと遅いので robocopy で運ぶ
 Step 'node_modules をコピー（数分かかる）'
@@ -229,7 +239,16 @@ $mustHave = @(
   (Join-Path $app 'prisma\schema.prisma'),
   # 接続先はここから読む。無いと migrate deploy が動かない
   (Join-Path $app 'prisma.config.ts'),
-  (Join-Path $dstModules 'prisma\build\index.js')
+  (Join-Path $dstModules 'prisma\build\index.js'),
+
+  # 手順書と一度きりの SQL。本番機にリポジトリは無いので、
+  # ここに無いものは現地で開けない・流せない
+  (Join-Path $OutDir 'UPDATE-COMMANDS.md'),
+  (Join-Path $OutDir 'UPGRADE-CHECKLIST.md'),
+  (Join-Path $OutDir 'OFFLINE-WINDOWS.md'),
+  (Join-Path $OutDir 'check-prod.ps1'),
+  (Join-Path $OutDir 'assign-sites.sql'),
+  (Join-Path $OutDir 'renumber-asset-no.sql')
 )
 $lost = $mustHave | Where-Object { -not (Test-Path $_) }
 if ($lost) { throw "配布物が不完全です。足りない:`n  $($lost -join "`n  ")" }

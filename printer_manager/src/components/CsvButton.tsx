@@ -34,7 +34,14 @@ export default function CsvButton({
   label = 'CSV で保存',
   title,
 }: Props) {
-  /** 押したことが分かる状態。ダウンロードは画面が変わらないので合図が要る */
+  /**
+   * 押したことが分かる状態。ダウンロードは画面が変わらないので合図が要る。
+   *
+   * **「保存しました」とは出さない。** 保存できたかどうかはこちらからは分からず
+   * （ブラウザが保存先を聞く設定なら、押した時点ではまだ何も落ちていない）、
+   * 言い切ると失敗しているのに成功したと読める。実際、本番の Edge で
+   * ダウンロードが止まっていたときに「保存しました」だけが出ていた
+   */
   const [saved, setSaved] = useState(false);
 
   const save = () => {
@@ -56,7 +63,7 @@ export default function CsvButton({
           : `いま出ている ${count} 行を CSV（Excel で開けます）に保存します`)
       }
     >
-      {saved ? '保存しました' : label}
+      {saved ? 'ダウンロードを開始しました' : label}
     </button>
   );
 }

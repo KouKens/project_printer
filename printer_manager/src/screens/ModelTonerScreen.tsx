@@ -1,7 +1,10 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import type { CsvValue } from '../lib/csv';
 import { num } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -551,38 +554,47 @@ export default function ModelTonerScreen() {
     [rows],
   );
 
+  /**
+   * 絞り込みセレクタだけを当てた機種。**「探す」の分母はここ。**
+   * 全機種のまま出すと、セレクタで絞ってから探したときに、
+   * セレクタが落とした機種まで探した結果に見える
+   */
+  const base = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (filter === 'linked' && row.toners.length === 0) return false;
+        if (filter === 'none' && row.toners.length > 0) return false;
+        if (filter === 'mixed' && !row.mixed) return false;
+        return true;
+      }),
+    [rows, filter],
+  );
+
   const shown = useMemo(() => {
-    const text = needle.trim().toLowerCase();
+    const words = searchWords(needle);
 
-    const filtered = rows.filter((row) => {
-      if (filter === 'linked' && row.toners.length === 0) return false;
-      if (filter === 'none' && row.toners.length > 0) return false;
-      if (filter === 'mixed' && !row.mixed) return false;
-      if (!text) return true;
-
+    const filtered = base.filter((row) =>
       // 機種名でも、そのトナーの品番・名前でも引けるようにする
-      const haystack = [
-        row.maker,
-        row.model,
-        ...row.spellings,
-        ...row.toners.flatMap((toner) => [toner.id, toner.name, toner.color]),
-        ...row.assets.flatMap((asset) => [asset.department, asset.no, asset.ipAddress]),
-        // そのトナーを使う別機種の台も引けるようにする（この機種の台には含まれない）
-        ...row.toners.flatMap((toner) =>
-          toner.printers.flatMap((printer) => [
-            printer.name,
-            printer.department,
-            printer.no,
-            printer.ipAddress,
-          ]),
-        ),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      return text.split(/\s+/).every((word) => haystack.includes(word));
-    });
+      hits(
+        [
+          row.maker,
+          row.model,
+          ...row.spellings,
+          ...row.toners.flatMap((toner) => [toner.id, toner.name, toner.color]),
+          ...row.assets.flatMap((asset) => [asset.department, asset.no, asset.ipAddress]),
+          // そのトナーを使う別機種の台も引けるようにする（この機種の台には含まれない）
+          ...row.toners.flatMap((toner) =>
+            toner.printers.flatMap((printer) => [
+              printer.name,
+              printer.department,
+              printer.no,
+              printer.ipAddress,
+            ]),
+          ),
+        ],
+        words,
+      ),
+    );
 
     const column = COLUMNS.find((col) => col.key === sort.key);
     return sortRows(
@@ -593,7 +605,7 @@ export default function ModelTonerScreen() {
       // 鍵は文字列なので、並びを安定させるために出てきた順を使う
       (row) => rows.indexOf(row),
     );
-  }, [rows, sort, filter, needle]);
+  }, [rows, base, sort, needle]);
 
   const cellOf = (row: Row, key: SortKey) => {
     switch (key) {
@@ -669,15 +681,14 @@ export default function ModelTonerScreen() {
           </select>
         </label>
 
-        <label>
-          <span>探す</span>
-          <input
-            type="text"
-            value={needle}
-            onChange={(e) => setNeedle(e.target.value)}
-            placeholder="メーカー・型番・トナーID・部署・IP"
-          />
-        </label>
+        <SearchBox
+          value={needle}
+          onChange={setNeedle}
+          placeholder="メーカー・型番・トナーID・部署・IP"
+          count={shown.length}
+          total={base.length}
+          unit="機種"
+        />
 
         <button onClick={() => void load()} type="button">
           一覧を更新
@@ -736,7 +747,7 @@ export default function ModelTonerScreen() {
       {shown.length === 0 ? (
         <p className="dt-empty">表示できる機種がありません。</p>
       ) : (
-        <div className="dt-wrap">
+        <TableBox className="dt-wrap" memoryKey="modelToners">
           <table className="dt-table">
             <thead>
               <tr>
@@ -819,7 +830,7 @@ export default function ModelTonerScreen() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableBox>
       )}
 
       <p className="dt-hint">

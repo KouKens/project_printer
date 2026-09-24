@@ -94,7 +94,7 @@ Try-Run 'free disk space on C:' {
 
 # ------------------------------------------------------- 2. migration status
 Section '2. migration status  <-- THE IMPORTANT ONE'
-Record 'dev machine has 41 migrations. Note the count and any unapplied names.'
+Record 'the bundle has 42 migrations. Note the count and any unapplied names.'
 
 $prismaCli = Join-Path $AppDir 'node_modules\prisma\build\index.js'
 

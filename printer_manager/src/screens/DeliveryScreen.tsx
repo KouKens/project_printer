@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import type { DeliveryCheckRow, EntryRow, OrderRow } from '../api';
 import {
   deleteEntry,
@@ -9,6 +11,7 @@ import {
   fetchOrders,
 } from '../api';
 import { num } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import './DataTable.css';
@@ -167,6 +170,13 @@ export default function DeliveryScreen() {
   const [onlyIssues, setOnlyIssues] = useState(false);
   /** 明細を開いている行 */
   const [open, setOpen] = useState<string | null>(null);
+  /*
+   * 表ごとの「探す」。**表が 3 つあるので文字も 3 つ持つ。**
+   * どれも取ってある行をこの場で絞るだけで、API は叩かない
+   */
+  const [checkQuery, setCheckQuery] = useState('');
+  const [entryQuery, setEntryQuery] = useState('');
+  const [orderQuery, setOrderQuery] = useState('');
   const [checkSort, setCheckSort] = useState<{ key: CheckKey; dir: SortDir }>({
     key: 'date',
     dir: 'desc',
@@ -273,15 +283,28 @@ export default function DeliveryScreen() {
     [checks, entries, orders],
   );
 
+  /**
+   * 「数の合わない行だけ」を当てたあとの行。**「探す」の分母はここ。**
+   * この期間の全件のまま出すと、チェックを入れてから探したときに、
+   * チェックが落とした行まで探した結果に見える
+   */
+  const baseChecks = useMemo(
+    () =>
+      checks.filter(
+        (row) =>
+          !onlyIssues ||
+          row.status === 'short' ||
+          row.status === 'over' ||
+          row.status === 'no-order',
+      ),
+    [checks, onlyIssues],
+  );
+
   const shownChecks = useMemo(() => {
-    const filtered = onlyIssues
-      ? checks.filter(
-          (row) =>
-            row.status === 'short' ||
-            row.status === 'over' ||
-            row.status === 'no-order',
-        )
-      : checks;
+    const words = searchWords(checkQuery);
+    const filtered = baseChecks.filter((row) =>
+      hits([row.tonerId, row.name, row.color, row.date], words),
+    );
 
     const column = CHECK_COLUMNS.find((c) => c.key === checkSort.key);
     return sortRows(
@@ -291,18 +314,45 @@ export default function DeliveryScreen() {
       checkSort.dir,
       (row) => checks.indexOf(row),
     );
-  }, [checks, checkSort, onlyIssues]);
+  }, [checks, baseChecks, checkSort, checkQuery]);
 
   const shownEntries = useMemo(() => {
+    const words = searchWords(entryQuery);
+    const found = entries.filter((row) =>
+      hits(
+        [
+          row.tonerId,
+          row.name,
+          row.color,
+          row.userId,
+          ACTION_LABEL[row.action] ?? row.action,
+          row.receivedOn,
+          row.createdAt.slice(0, 10),
+        ],
+        words,
+      ),
+    );
+
     const column = ENTRY_COLUMNS.find((c) => c.key === entrySort.key);
     return sortRows(
-      entries,
+      found,
       (row) => (entrySort.key === 'action' ? ACTION_LABEL[row.action] : row[entrySort.key]),
       column?.kind ?? 'text',
       entrySort.dir,
       (row) => row.id,
     );
-  }, [entries, entrySort]);
+  }, [entries, entrySort, entryQuery]);
+
+  /** 注文の一覧。並べ替えは持たないので、絞るだけ（API が返した順のまま） */
+  const shownOrders = useMemo(() => {
+    const words = searchWords(orderQuery);
+    return orders.filter((row) =>
+      hits(
+        [row.tonerId, row.name, row.userId, row.status, row.deliveryOn, row.orderedAt.slice(0, 10)],
+        words,
+      ),
+    );
+  }, [orders, orderQuery]);
 
   return (
     <div className="dt dl">
@@ -430,14 +480,27 @@ export default function DeliveryScreen() {
           />
         </h2>
 
+        <div className="sbx-row">
+          <SearchBox
+            value={checkQuery}
+            onChange={setCheckQuery}
+            label="探す（突き合わせ）"
+            placeholder="品番・トナー名・色・日付"
+            count={shownChecks.length}
+            total={baseChecks.length}
+          />
+        </div>
+
         {shownChecks.length === 0 ? (
           <p className="dt-empty">
-            {onlyIssues
-              ? 'この期間に数の合わない行はありません。'
-              : 'この期間に注文も搬入もありません。'}
+            {checkQuery.trim() !== ''
+              ? `「${checkQuery}」に当てはまる行がありません（この期間は ${checks.length} 件）。`
+              : onlyIssues
+                ? 'この期間に数の合わない行はありません。'
+                : 'この期間に注文も搬入もありません。'}
           </p>
         ) : (
-          <div className="dt-wrap dt-wrap-short">
+          <TableBox className="dt-wrap dt-wrap-short" memoryKey="delivery.check">
             <table className="dt-table">
               <thead>
                 <tr>
@@ -561,7 +624,7 @@ export default function DeliveryScreen() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
 
@@ -597,10 +660,25 @@ export default function DeliveryScreen() {
           それ以外はハイフンになります。
         </p>
 
+        <div className="sbx-row">
+          <SearchBox
+            value={entryQuery}
+            onChange={setEntryQuery}
+            label="探す（受付の履歴）"
+            placeholder="品番・トナー名・区分・ユーザーID・日付"
+            count={shownEntries.length}
+            total={entries.length}
+          />
+        </div>
+
         {shownEntries.length === 0 ? (
-          <p className="dt-empty">この期間の記録がありません。</p>
+          <p className="dt-empty">
+            {entryQuery.trim() !== ''
+              ? `「${entryQuery}」に当てはまる記録がありません（この期間は ${entries.length} 件）。`
+              : 'この期間の記録がありません。'}
+          </p>
         ) : (
-          <div className="dt-wrap dt-wrap-short">
+          <TableBox className="dt-wrap dt-wrap-short" memoryKey="delivery.entries">
             <table className="dt-table">
               <thead>
                 <tr>
@@ -669,7 +747,7 @@ export default function DeliveryScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
 
@@ -680,7 +758,7 @@ export default function DeliveryScreen() {
             name="トナー入出状況_注文"
             header={ORDER_CSV_HEADER}
             rows={() =>
-              orders.map((order) => [
+              shownOrders.map((order) => [
                 csvStamp(order.orderedAt),
                 order.deliveryOn,
                 order.tonerId,
@@ -690,14 +768,29 @@ export default function DeliveryScreen() {
                 order.userId,
               ])
             }
-            count={orders.length}
+            count={shownOrders.length}
           />
         </h2>
 
+        <div className="sbx-row">
+          <SearchBox
+            value={orderQuery}
+            onChange={setOrderQuery}
+            label="探す（注文）"
+            placeholder="品番・トナー名・状態・ユーザーID・日付"
+            count={shownOrders.length}
+            total={orders.length}
+          />
+        </div>
+
         {orders.length === 0 ? (
           <p className="dt-empty">注文の記録がありません。</p>
+        ) : shownOrders.length === 0 ? (
+          <p className="dt-empty">
+            「{orderQuery}」に当てはまる注文がありません（直近 {orders.length} 件）。
+          </p>
         ) : (
-          <div className="dt-wrap dt-wrap-short">
+          <TableBox className="dt-wrap dt-wrap-short" memoryKey="delivery.orders">
             <table className="dt-table">
               <thead>
                 <tr>
@@ -711,7 +804,7 @@ export default function DeliveryScreen() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {shownOrders.map((order) => (
                   <tr key={order.id}>
                     <td>{stamp.format(new Date(order.orderedAt))}</td>
                     <td>
@@ -736,7 +829,7 @@ export default function DeliveryScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
     </div>

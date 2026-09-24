@@ -50,19 +50,34 @@ export function csvFileName(name: string): string {
   return `${name}_${todayIso().replace(/-/g, '')}.csv`;
 }
 
+/**
+ * 押すたびに作る Blob の URL。**画面を離れるときにまとめて捨てる。**
+ *
+ * **時間で捨ててはいけない。** ブラウザが「保存場所を毎回確認する」設定だと、
+ * ダイアログで保存先が決まるまで読み出しが始まらない。先に URL を捨てると
+ * 元が消え、**ダウンロードが「進行中」のまま永久に終わらない**
+ * （本番の Edge で実際に起きた。閉じようとすると「まだダウンロード中です」と出る）。
+ * CSV は数十 KB なので、画面を開いている間持っていても問題にならない
+ */
+const blobUrls = new Set<string>();
+
+window.addEventListener('pagehide', () => {
+  for (const url of blobUrls) URL.revokeObjectURL(url);
+  blobUrls.clear();
+});
+
 /** 組み立て済みの CSV を保存する */
 export function downloadCsv(fileName: string, text: string): void {
   const url = URL.createObjectURL(
     new Blob([BOM, text], { type: 'text/csv;charset=utf-8' }),
   );
+  blobUrls.add(url);
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  // すぐ捨てると保存が始まらないことがあるので、少し置いてから解放する
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**

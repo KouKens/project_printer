@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import type { CsvValue } from '../lib/csv';
 import { num } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -289,6 +292,9 @@ export default function CostScreen() {
     key: 'totalCostPerPage',
     dir: 'desc',
   });
+  /** 表ごとの「探す」。取ってある行をこの場で絞るだけで、API は叩かない */
+  const [query, setQuery] = useState('');
+  const [tonerQuery, setTonerQuery] = useState('');
   const [tonerSort, setTonerSort] = useState<{ key: keyof TonerRow; dir: SortDir }>({
     key: 'expectedCost',
     dir: 'desc',
@@ -325,34 +331,46 @@ export default function CostScreen() {
 
   const shown = useMemo(() => {
     if (!data) return [];
+    const words = searchWords(query);
+    const found = data.printers.filter((row) =>
+      hits([row.company, row.no, row.department, row.maker, row.model], words),
+    );
+
     const column = PRINTER_COLUMNS.find((col) => col.key === sort.key);
     return sortRows(
-      data.printers,
+      found,
       (row) => pickPrinter(row, sort.key),
       column?.kind ?? 'text',
       sort.dir,
       (row) => data.printers.indexOf(row),
     );
-  }, [data, sort]);
+  }, [data, sort, query]);
 
   const shownToners = useMemo(() => {
     if (!data) return [];
+    const words = searchWords(tonerQuery);
+    const found = data.toners.filter((row) => hits([row.id, row.name, row.color], words));
+
     return sortRows(
-      data.toners,
+      found,
       (row) => row[tonerSort.key],
       typeof data.toners[0]?.[tonerSort.key] === 'string' ? 'text' : 'number',
       tonerSort.dir,
       (row) => data.toners.indexOf(row),
     );
-  }, [data, tonerSort]);
+  }, [data, tonerSort, tonerQuery]);
 
-  /** 合計。差の棒の目盛りにも使う */
+  /**
+   * 合計。差の棒の目盛りにも使う。
+   * **足すのはいま出ている台だけ。** 探す欄で絞ったのに合計が全台のままだと、
+   * 表の下の「合計」が並んでいる行の和に見えて食い違う
+   */
   const totals = useMemo(() => {
     if (!data) return null;
     const sum = (pick: (row: CostRow) => number | null) =>
-      data.printers.reduce((total, row) => total + (pick(row) ?? 0), 0);
+      shown.reduce((total, row) => total + (pick(row) ?? 0), 0);
 
-    const diffs = data.printers
+    const diffs = shown
       .map(diffOf)
       .filter((value): value is number => value !== null);
 
@@ -363,14 +381,14 @@ export default function CostScreen() {
       maint: sum((row) => row.catalog.maint),
       repair: sum((row) => row.catalog.repairCost),
       total: sum((row) => row.catalog.total),
-      actual: data.printers.some((row) => row.actual !== null)
+      actual: shown.some((row) => row.actual !== null)
         ? sum((row) => row.actual?.tonerCost ?? null)
         : null,
       diff: diffs.length > 0 ? diffs.reduce((a, b) => a + b, 0) : null,
       /** 棒の目盛り。いちばん大きい差に合わせる */
       scale: diffs.length > 0 ? Math.max(...diffs.map(Math.abs)) : 0,
     };
-  }, [data]);
+  }, [data, shown]);
 
   const cellOf = (row: CostRow, key: PrinterKey) => {
     switch (key) {
@@ -650,9 +668,30 @@ export default function CostScreen() {
               {data.coverage.withPurchasePrice} 台、保守金額があるのは{' '}
               {data.coverage.withMaint} 台です。欠けている項目は 0 として足さず、
               合計を控えめに出します。
+              {query.trim() !== '' && (
+                <>
+                  {' '}
+                  <strong>
+                    いまは探す欄で絞っているので、上の合計と表の下の合計は
+                    出ている {shown.length} 台ぶんです。
+                  </strong>
+                </>
+              )}
             </p>
 
-            <div className="dt-wrap">
+            <div className="sbx-row">
+              <SearchBox
+                value={query}
+                onChange={setQuery}
+                label="探す（台ごと）"
+                placeholder="拠点・部署・No.・メーカー・型番"
+                count={shown.length}
+                total={data.printers.length}
+                unit="台"
+              />
+            </div>
+
+            <TableBox className="dt-wrap" memoryKey="cost.printers">
               <table className="dt-table cs-table">
                 <thead>
                   <tr className="dt-group-row">
@@ -718,7 +757,7 @@ export default function CostScreen() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
+            </TableBox>
           </div>
 
           <div className="dt-section">
@@ -740,7 +779,19 @@ export default function CostScreen() {
               「想定」は期間内の枚数をカタログの印刷可能枚数で割った本数、「持出」は実際に棚から出した本数です。
             </p>
 
-            <div className="dt-wrap dt-wrap-short">
+            <div className="sbx-row">
+              <SearchBox
+                value={tonerQuery}
+                onChange={setTonerQuery}
+                label="探す（品番ごと）"
+                placeholder="品番・トナー名・色"
+                count={shownToners.length}
+                total={data.toners.length}
+                unit="品番"
+              />
+            </div>
+
+            <TableBox className="dt-wrap dt-wrap-short" memoryKey="cost.toners">
               <table className="dt-table cs-table">
                 <thead>
                   <tr className="dt-group-row">
@@ -834,7 +885,7 @@ export default function CostScreen() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableBox>
           </div>
         </>
       )}

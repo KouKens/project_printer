@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import {
   MAINT_SOON_DAYS,
   maintDaysLeft,
@@ -9,6 +11,7 @@ import {
 import type { CsvValue } from '../lib/csv';
 import { foldKey } from '../lib/fold';
 import { num } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
@@ -821,6 +824,8 @@ export default function PrinterListScreen() {
   const [filter, setFilter] = useState<'all' | 'due' | 'maint' | 'live' | 'blank'>(
     'all',
   );
+  /** 探す文字。**取ってある行をこの場で絞るだけで、API は叩かない** */
+  const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -861,19 +866,57 @@ export default function PrinterListScreen() {
     };
   }, [load]);
 
+  /**
+   * 絞り込みセレクタだけを当てた台。**「探す」の分母はここ。**
+   * 全 78 台のまま出すと、セレクタで 10 台に絞ってから探したときに
+   * 「9 / 78 台」と出て、セレクタが落とした 68 台まで探した結果に見える
+   */
+  const base = useMemo(
+    () =>
+      rows.filter((row) => {
+        if (filter === 'due') {
+          return (
+            row.printer !== null && partState(row.printer.readings, row.printer.alerts) !== null
+          );
+        }
+        if (filter === 'maint') {
+          const days = maintDaysLeft(row.maintEndOn);
+          return days !== null && days <= MAINT_SOON_DAYS;
+        }
+        if (filter === 'live') return row.printer !== null && row.printer.reachable;
+        if (filter === 'blank') return row.printer === null;
+        return true;
+      }),
+    [rows, filter],
+  );
+
   const shown = useMemo(() => {
-    const filtered = rows.filter((row) => {
-      if (filter === 'due') {
-        return row.printer !== null && partState(row.printer.readings, row.printer.alerts) !== null;
-      }
-      if (filter === 'maint') {
-        const days = maintDaysLeft(row.maintEndOn);
-        return days !== null && days <= MAINT_SOON_DAYS;
-      }
-      if (filter === 'live') return row.printer !== null && row.printer.reachable;
-      if (filter === 'blank') return row.printer === null;
-      return true;
-    });
+    const words = searchWords(query);
+
+    /*
+     * 探すのは台帳と実機の「その台を指す値」。残量や枚数は数字が並ぶだけで
+     * 探しても当たらないので入れない。シリアルとホスト名は列に出ていないが、
+     * 現物のラベルから引けるよう探し先には入れる
+     */
+    const filtered = base.filter((row) =>
+      hits(
+        [
+          row.company?.name,
+          row.department,
+          row.no,
+          row.ipAddress,
+          row.maker,
+          row.model,
+          row.serialNumber,
+          row.printer?.hostName,
+          row.printer?.model,
+          row.printer?.serialNumber,
+          row.printer?.ipAddress,
+          row.effectiveVendor?.name,
+        ],
+        words,
+      ),
+    );
 
     const column = COLUMNS.find((c) => c.key === sort.key);
     return sortRows(
@@ -883,7 +926,7 @@ export default function PrinterListScreen() {
       sort.dir,
       (row) => row.id,
     );
-  }, [rows, sort, filter]);
+  }, [base, sort, query]);
 
   const counts = useMemo(
     () => ({
@@ -1325,6 +1368,15 @@ export default function PrinterListScreen() {
           </select>
         </label>
 
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="部署・No.・IP・メーカー・型番・シリアル"
+          count={shown.length}
+          total={base.length}
+          unit="台"
+        />
+
         <button onClick={() => void fetchFromLedger()} disabled={busy} type="button">
           {busy ? '取得中…' : `台帳の IP で取得（${counts.withIp} 件）`}
         </button>
@@ -1390,7 +1442,7 @@ export default function PrinterListScreen() {
       {shown.length === 0 ? (
         <p className="dt-empty">表示できる機器がありません。</p>
       ) : (
-        <div className="dt-wrap">
+        <TableBox className="dt-wrap" memoryKey="printers">
           <table className="dt-table">
             <thead>
               <tr className="dt-group-row">
@@ -1512,7 +1564,7 @@ export default function PrinterListScreen() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableBox>
       )}
     </div>
   );

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import { num } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import type { CsvValue } from '../lib/csv';
@@ -251,6 +254,8 @@ export default function RepairScreen() {
     key: 'occurredOn',
     dir: 'desc',
   });
+  /** 履歴を絞る文字。**取ってある履歴をこの場で絞るだけで、API は叩かない** */
+  const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -424,9 +429,30 @@ export default function RepairScreen() {
   };
 
   const shown = useMemo(() => {
+    const words = searchWords(query);
+    // 何が起きたかで探せるよう、症状（detail）と分類も探し先に入れる
+    const found = repairs.filter((row) =>
+      hits(
+        [
+          row.company,
+          row.department,
+          row.no,
+          row.maker,
+          row.model,
+          row.category,
+          row.detail,
+          row.assignee,
+          row.status,
+          row.occurredOn,
+          row.restoredOn,
+        ],
+        words,
+      ),
+    );
+
     const column = COLUMNS.find((c) => c.key === sort.key);
-    return sortRows(repairs, (row) => pick(row, sort.key), column?.kind ?? 'text', sort.dir, (row) => row.id);
-  }, [repairs, sort]);
+    return sortRows(found, (row) => pick(row, sort.key), column?.kind ?? 'text', sort.dir, (row) => row.id);
+  }, [repairs, sort, query]);
 
   const counts = useMemo(
     () => ({
@@ -645,10 +671,24 @@ export default function RepairScreen() {
         </h2>
         <p className="rp-hint">見出しを押すと並べ替わります。既定は発生日の新しい順です。</p>
 
-        {shown.length === 0 ? (
+        <div className="sbx-row">
+          <SearchBox
+            value={query}
+            onChange={setQuery}
+            placeholder="部署・No.・型番・分類・症状・担当"
+            count={shown.length}
+            total={counts.total}
+          />
+        </div>
+
+        {shown.length === 0 && query.trim() !== '' ? (
+          <p className="rp-empty">
+            「{query}」に当てはまる履歴がありません（全 {counts.total} 件）。
+          </p>
+        ) : shown.length === 0 ? (
           <p className="rp-empty">まだ履歴がありません。上の欄を入力して登録してください。</p>
         ) : (
-          <div className="rp-table-wrap">
+          <TableBox className="rp-table-wrap" memoryKey="repairs">
             <table className="rp-table">
               <thead>
                 <tr>
@@ -734,7 +774,7 @@ export default function RepairScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
     </div>

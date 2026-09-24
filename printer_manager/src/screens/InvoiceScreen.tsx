@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TonerCatalogRow } from '../api';
 import CsvButton from '../components/CsvButton';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import TonerPickerRow from '../components/TonerPickerRow';
 import { todayIso } from '../lib/date';
 import { num, orNull } from '../lib/format';
 import { request } from '../lib/request';
+import { hits, searchWords } from '../lib/search';
 import './DataTable.css';
 import './InvoiceScreen.css';
 
@@ -107,6 +110,8 @@ const emptyLine = (): Line => ({
 export default function InvoiceScreen() {
   const [catalog, setCatalog] = useState<TonerCatalogRow[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  /** 登録済みの請求書を絞る文字。取ってある分をこの場で絞るだけで、API は叩かない */
+  const [query, setQuery] = useState('');
 
   const [issuedOn, setIssuedOn] = useState(todayIso);
   const [periodFrom, setPeriodFrom] = useState(() => previousMonth(todayIso()).from);
@@ -321,6 +326,28 @@ export default function InvoiceScreen() {
     }
   };
 
+  /**
+   * 登録済みの請求書。**明細の品番でも引ける**
+   * （「この品番が載っている請求書はどれか」を探せるように）
+   */
+  const shownInvoices = useMemo(() => {
+    const words = searchWords(query);
+    return invoices.filter((invoice) =>
+      hits(
+        [
+          invoice.periodFrom,
+          invoice.periodTo,
+          invoice.issuedOn,
+          invoice.invoiceNo,
+          invoice.note,
+          invoice.checkedAt ? '確認済み' : '未確認',
+          ...invoice.lines.flatMap((line) => [line.tonerId, line.name]),
+        ],
+        words,
+      ),
+    );
+  }, [invoices, query]);
+
   /** 入力中の明細の合計。入力欄に残っている行も数える */
   const totals = useMemo(() => {
     const all = draft.tonerId.trim() ? [...lines, draft] : lines;
@@ -505,7 +532,7 @@ export default function InvoiceScreen() {
             まだ明細がありません。上でトナーを選び、本数を入れて「明細に追加」を押します。
           </p>
         ) : (
-          <div className="dt-wrap">
+          <TableBox className="dt-wrap" memoryKey="invoice.lines">
             <table>
               <thead>
                 <tr>
@@ -581,7 +608,7 @@ export default function InvoiceScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
 
         {totals.unpriced > 0 && (
@@ -613,7 +640,7 @@ export default function InvoiceScreen() {
             name="請求書入力"
             header={INVOICE_CSV_HEADER}
             rows={() =>
-              invoices.map((invoice) => [
+              shownInvoices.map((invoice) => [
                 invoice.periodFrom,
                 invoice.periodTo,
                 invoice.issuedOn,
@@ -626,14 +653,14 @@ export default function InvoiceScreen() {
                 invoice.note,
               ])
             }
-            count={invoices.length}
+            count={shownInvoices.length}
           />
           <CsvButton
             name="請求書入力_明細"
             label="明細を CSV で保存"
             header={LINE_CSV_HEADER}
             rows={() =>
-              invoices.flatMap((invoice) =>
+              shownInvoices.flatMap((invoice) =>
                 invoice.lines.map((line) => [
                   invoice.periodFrom,
                   invoice.periodTo,
@@ -649,14 +676,29 @@ export default function InvoiceScreen() {
                 ]),
               )
             }
-            count={invoices.reduce((sum, invoice) => sum + invoice.lines.length, 0)}
+            count={shownInvoices.reduce((sum, invoice) => sum + invoice.lines.length, 0)}
           />
         </h2>
 
+        <div className="sbx-row">
+          <SearchBox
+            value={query}
+            onChange={setQuery}
+            placeholder="請求書番号・期間・請求日・品番・備考"
+            count={shownInvoices.length}
+            total={invoices.length}
+            unit="通"
+          />
+        </div>
+
         {invoices.length === 0 ? (
           <p className="dt-empty">まだ登録がありません。</p>
+        ) : shownInvoices.length === 0 ? (
+          <p className="dt-empty">
+            「{query}」に当てはまる請求書がありません（登録は {invoices.length} 通）。
+          </p>
         ) : (
-          <div className="dt-wrap">
+          <TableBox className="dt-wrap" memoryKey="invoice.list">
             <table>
               <thead>
                 <tr>
@@ -671,7 +713,7 @@ export default function InvoiceScreen() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
+                {shownInvoices.map((invoice) => (
                   <tr key={invoice.id}>
                     <td>
                       {invoice.periodFrom} 〜 {invoice.periodTo}
@@ -710,7 +752,7 @@ export default function InvoiceScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
     </div>

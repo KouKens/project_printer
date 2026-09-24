@@ -23,13 +23,28 @@
 | 適用済み migration | **40 本・up to date**（`prisma\` は運べている） |
 | データ | 台帳 80 / 在庫 140 / 品番 140 / 受付 44 / 注文 13 / 修理 4 / 枚数 758 |
 
-## 前提（開発端末側で確認済み・2026-09-05）
+## 前提（開発端末側で確認済み・2026-09-14）
 
-- `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate diff` で差分なし）
-- 開発側の migration は **41 本**
-- **今回入るのは `20260903020000_add_company` の 1 本だけ**（本番 40 → 41）。
-  `toner_stocks` の主キーを「品番 × 拠点」に張り替えるので、バックアップは必須。
+- `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate status` が
+  `42 migrations found` ＋ `Database schema is up to date!`）
+- 開発側の migration は **42 本**。型チェックは API `tsc --noEmit` /
+  フロント `tsc -b` ともに通っている
+- **入る本数は本番の現在地で変わる。**A-2 の N を見てから決める
+
+  | 本番の N | 入る migration |
+  | --- | --- |
+  | 41（9-05 の更新を実施済み） | `20260907000000_toner_stock_non_negative` の 1 本 |
+  | 40（未実施） | 上に `20260903020000_add_company` が加わり 2 本 |
+
+- `20260907000000_toner_stock_non_negative` は `toner_stocks` に CHECK を 4 つ足す。
+  **既存の行が引っかかると `ALTER TABLE` が落ち、そこで `migrate deploy` が止まる。**
+  A で先に件数を見ておく（[UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) の §1）
+- `20260903020000_add_company` が入る場合は `toner_stocks` の主キーを
+  「品番 × 拠点」に張り替えるので、バックアップは必須。
   適用後に `assign-sites.sql` を流す（§5-2）
+- **`renumber-asset-no.sql` は今回が初回**（管理番号の自動採番が入ったため）。
+  DB の形は変えないが、**現物のラベルとの対応が変わる**ので、
+  流すと出る旧 → 新の対応表を必ず残す（§5-3）
 - 破壊的な migration は **2 本**
   - `20260820050000_maint_vendors` → `printer_assets` の `maint_phones` / `maint_vendor` を DROP
   - `20260902010000_page_count_function_color_matrix` → `page_count_daily` の
@@ -83,7 +98,7 @@ node node_modules\prisma\build\index.js migrate status
 
 控えること。
 
-- [ ] `N migrations found` の **N** = ______ 本（開発側は 41 本）
+- [ ] `N migrations found` の **N** = ______ 本（配布物は 42 本。**40 か 41 のはず**）
 - [ ] 未適用として並んだ migration 名（または `up to date`）
 
 `node` の場所が違う・上が動かない場合はこちらでも分かる。
@@ -138,9 +153,12 @@ Get-ChildItem 'C:\Printer Manager\app'   # dist / web / node_modules / prisma / 
 
 未コミットの変更が多いので、配布物を作る前に整理する。
 
+**フロントは `tsc --noEmit` を使わない。**`printer_manager/tsconfig.json` は
+`"files": []` の参照専用なので、**何も検査せず 0 で返る**。`tsc -b` を使う。
+
 ```powershell
 cd toner-api ; npx tsc --noEmit ; npm run build
-cd ..\printer_manager ; npx tsc --noEmit ; npm run build
+cd ..\printer_manager ; npx tsc -b ; npm run build
 ```
 
 - [ ] 型チェックが通る
@@ -158,19 +176,26 @@ powershell -ExecutionPolicy Bypass -File deploy\bundle-offline.ps1
 
 - [ ] `deploy\out\app\` に `dist` / `web` / `node_modules` / `prisma` / `package.json`
       / `prisma.config.ts` が揃っている
-- [ ] `deploy\out\` に `assign-sites.sql` がある（拠点の振り分け。移行が入る回だけ使う）
+- [ ] `deploy\out\` に SQL が 2 本（`assign-sites.sql` / `renumber-asset-no.sql`）と
+      手順書 3 つ（`UPDATE-COMMANDS.md` / `UPGRADE-CHECKLIST.md` / `OFFLINE-WINDOWS.md`）
+      ＋ `check-prod.ps1` がある。**本番機にリポジトリは無いので、ここに無いものは
+      現地で開けない・流せない**（スクリプトの最終確認でも見ている）
 - [ ] `deploy\out\data\` が **無い**（= データを含んでいない）
+- [ ] `deploy\out\app\prisma\migrations` が **42 本**
 - [ ] USB へコピーした
 
 ---
 
 ## C. 本番へ適用する前の最終確認
 
-- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（41）の差＝今回入る変更の数を把握した
+- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（42）の差＝今回入る変更の数を把握した
 - [ ] A-3 の分岐を判断した（退避の要否）
 - [ ] `20260903020000_add_company` が今回入るなら、適用後に `assign-sites.sql` を
       流すことを手順に入れた（[UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) の 5-2）。
       **流さないと全機器・全在庫が「既定の会社」1 つに入ったままになる**
+- [ ] `renumber-asset-no.sql`（§5-3）を流すか決めた。**現物のラベルとの対応が変わる**
+      ので、貼り替えができる日に流す。流すなら出る対応表を残すことを手順に入れた。
+      表に無い部署名の台が無いか、`place` の 22 台を先に見ておく
 - [ ] 更新後、1 日分の機能別（プリンター・コピー）は**次の取得から**入ることを伝えた
       （累計の差で出すので、更新した当日は累計だけが埋まる）
 - [ ] 業務時間外か、入力が走らない時間帯を選んだ

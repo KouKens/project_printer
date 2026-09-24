@@ -1,0 +1,48 @@
+/*
+ * 一覧表の箱の下端に置く掴み手。TableBox.tsx から使う。
+ * 色は画面側の変数（--line / --accent）に乗る。持っていない画面のために既定値も書く
+ */
+
+/* 掴み手を下に足すぶん、箱の下の角は丸めない（1 枚の板に見えるように） */
+.tb > .tb-box {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.tb-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 掴めることが分かる幅を持たせる。細くすると狙って合わせないと掴めない */
+  height: 13px;
+  /* 箱の下枠に重ねる。枠の上に置いたカーソルでも掴める */
+  margin-top: -1px;
+  background: #eef2f5;
+  border: 1px solid var(--line, #dbe2ea);
+  border-radius: 0 0 6px 6px;
+  cursor: ns-resize;
+  /* 指で触れたときに、ブラウザのスクロールへ取られないようにする */
+  touch-action: none;
+}
+.tb-grip:hover { background: #e3eaef; }
+.tb-grip:focus-visible {
+  outline: 2px solid var(--accent, #1f6f8b);
+  outline-offset: 1px;
+}
+
+/* 掴む場所の目印。ここだけ濃くして、区切り線と見分けが付くようにする */
+.tb-grip-bar {
+  width: 44px;
+  height: 3px;
+  background: #b0bdc8;
+  border-radius: 2px;
+}
+.tb-grip:hover .tb-grip-bar,
+.tb-grip:focus-visible .tb-grip-bar { background: #7f8f9c; }
+
+/*
+ * 掴んでいるあいだ。カーソルが箱の外へ出ても形を変えず、文字も選ばせない。
+ * 掴み手だけに書くと、勢いよく動かしてカーソルが外へ出たときに矢印へ戻ってしまう
+ */
+body.tb-resizing { cursor: ns-resize; }
+body.tb-resizing * { user-select: none; }

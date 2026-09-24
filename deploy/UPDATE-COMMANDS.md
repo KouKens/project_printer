@@ -10,17 +10,21 @@
 
 ---
 
-## 0. この 4 つを先に置く
+## 0. この 5 つを先に置く
 
 以降のコマンドが全部これを使う。**ウィンドウを閉じたら消えるので、
 開き直したらここからやり直すこと。**
 
 ```powershell
 $APP = 'C:\Printer Manager\app'        # 本番のインストール先。空白が入るので必ず変数で扱う
-$SRC = 'E:\out\app'                    # USB の配布物。ドライブ文字は差し込んで確認する
+$USB = 'E:\out'                        # USB の配布物の根。ドライブ文字は差し込んで確認する
+$SRC = "$USB\app"                      # 差し替えるファイル一式はこの下
 $env:PGPASSWORD  = 'printer のパスワード'
 $env:DATABASE_URL = 'postgresql://printer:同じパスワード@localhost:5432/printer?schema=public'
 ```
+
+**手順書と SQL は `$USB` の直下、差し替えるものは `$SRC`（= `$USB\app`）の下。**
+1 つ下にあると思って `$SRC\assign-sites.sql` と打つと見つからない。
 
 **`$APP` にはフォルダ名の空白が入る**（`Printer Manager`）。以降のコマンドで
 `$APP` を裸で書かず `"$APP\dist"` のように引用符で囲むのはこのため。
@@ -47,7 +51,7 @@ $env:Path += ';C:\Program Files\PostgreSQL\18\bin'   # 上で出た bin に合�
 ## 1. 調べる（変更しない）
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File <USB>\check-prod.ps1
+powershell -ExecutionPolicy Bypass -File "$USB\check-prod.ps1"
 ```
 
 これ 1 本で稼働状況・migration の本数・環境が出る。隣に
@@ -58,12 +62,19 @@ cd $APP
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`N migrations found` の N を控える。**配布物は 41 本。**
+`N migrations found` の N を控える。**配布物は 42 本。**本番の N で今回の中身が決まる。
 
-今回落とす列に値が入っているか（列が無いというエラーなら失うものはゼロ）。
+| 本番の N | 今回入る migration | 後で流す SQL |
+| --- | --- | --- |
+| 41 | `20260907000000_toner_stock_non_negative` の 1 本 | §5-3 |
+| 40 | 上に `20260903020000_add_company` が加わり 2 本 | §5-2 → §5-3 |
+
+**`migrate deploy` が止まるとしたら `toner_stock_non_negative`。**在庫の数に CHECK を
+足すので、既存の行が引っかかると `ALTER TABLE` が落ちる。**先に見ておく**
+（0 件なら止まらない。出たら §5 の対処を読んでから始める）。
 
 ```powershell
-psql -U printer -h localhost -d printer -c "SELECT count(*) FILTER (WHERE total_print IS NOT NULL) AS print, count(*) FILTER (WHERE total_copy IS NOT NULL) AS copy, count(*) AS rows FROM page_count_daily;"
+psql -U printer -h localhost -d printer -c "SELECT count(*) FROM toner_stocks WHERE quantity < 0 OR received < 0 OR disposed < 0 OR disposed > received;"
 ```
 
 ---
@@ -143,7 +154,7 @@ Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" "$APP\" -Force
 (Get-ChildItem "$APP\prisma\migrations" -Directory).Count
 ```
 
-**41 と出ること。**（更新前の本番は 40 本。差の 1 本が `add_company`）
+**42 と出ること**（配布物の本数）。DB 側に何本入るかは §1 の表のとおり。
 
 ---
 
@@ -200,7 +211,7 @@ psql -U printer -h localhost -d printer -c "SELECT id, name FROM companies ORDER
 **「既定の会社」1 行だけなら未振り分け。**9 拠点が並んでいれば済んでいるので飛ばす。
 
 ```powershell
-psql -U printer -h localhost -d printer -f <USB>\assign-sites.sql
+psql -U printer -h localhost -d printer -f "$USB\assign-sites.sql"
 ```
 
 `INSERT 0 9` → `UPDATE`（台帳・在庫・履歴・注文）→ `DELETE 1` → `COMMIT` と並ぶ。
@@ -257,7 +268,7 @@ psql -U printer -h localhost -d printer -c "SELECT count(*) FILTER (WHERE no IS 
 **`lo` が 001 で `hi` が台数と同じなら済んでいる**ので飛ばす。
 
 ```powershell
-psql -U printer -h localhost -d printer -f <USB>\renumber-asset-no.sql
+psql -U printer -h localhost -d printer -f "$USB\renumber-asset-no.sql"
 ```
 
 **最初に旧 → 新の対応表が出る。この出力を必ず残すこと**
@@ -271,7 +282,7 @@ psql -U printer -h localhost -d printer -f <USB>\renumber-asset-no.sql
 **並べ替えの土台は今の番号の順。**印刷状況の「集計表用にコピー」は No. の昇順で
 行を並べるので、土台を変えると貼り付け先の集計表と行がずれる。
 
-**例外がファイル内の `place` に書いた 16 台。**番号を持たない台をそのまま詰めると
+**例外がファイル内の `place` に書いた 22 台。**番号を持たない台をそのまま詰めると
 末尾にまとまってしまうので、**同じ部署の台の直後**へ差し込む。部署名が
 「3階病棟」と「３階病棟」のように揺れていて機械的に結べないため、
 入れ先を 1 台ずつ書き出してある（鍵は部署名 ＋ IP アドレス）。

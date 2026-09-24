@@ -3,17 +3,6 @@
  * この画面だけの飾り（開閉・トナーの札・台の内訳）をここに置く
  */
 
-.mt .dt-tools input[type='text'] {
-  padding: 8px 10px;
-  min-width: 22ch;
-  font: inherit;
-  font-size: 13px;
-  color: var(--ink);
-  background: #fbfcfd;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-}
-
 /* --- 開閉 --- */
 .mt-toggle-head { width: 34px; }
 .mt-toggle { width: 34px; padding-right: 0 !important; }

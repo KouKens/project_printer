@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
 import Modal from '../components/Modal';
+import SearchBox from '../components/SearchBox';
+import TableBox from '../components/TableBox';
 import { MANUAL_MAINT, maintStatus } from '../lib/maint';
 
 import type { CsvValue } from '../lib/csv';
 import { foldKey } from '../lib/fold';
 import { num, orNull } from '../lib/format';
+import { hits, searchWords } from '../lib/search';
 import { suggestions } from '../lib/suggest';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -658,6 +661,10 @@ export default function AssetScreen() {
     key: 'department',
     dir: 'asc',
   });
+  /** 一覧を絞る文字。**取ってある台をこの場で絞るだけで、API は叩かない** */
+  const [query, setQuery] = useState('');
+  /** 無効にした機器の別枠を絞る文字。上の一覧とは別に持つ（表が別なので） */
+  const [disabledQuery, setDisabledQuery] = useState('');
   const [community, setCommunity] = useState('public');
   const [probe, setProbe] = useState<Probe | null>(null);
   const [busy, setBusy] = useState(false);
@@ -694,6 +701,25 @@ export default function AssetScreen() {
         .sort((a, b) => (a.disabledAt! < b.disabledAt! ? 1 : -1)),
     [saved],
   );
+
+  /** 別枠に出す無効の台。並びはそのままで、探す欄のぶんだけ絞る */
+  const shownDisabled = useMemo(() => {
+    const words = searchWords(disabledQuery);
+    return disabled.filter((row) =>
+      hits(
+        [
+          row.company?.name,
+          row.department,
+          row.no,
+          row.ipAddress,
+          row.maker,
+          row.model,
+          row.serialNumber,
+        ],
+        words,
+      ),
+    );
+  }, [disabled, disabledQuery]);
 
   /**
    * 入力欄に出す「過去に入力した値」の候補。
@@ -732,9 +758,29 @@ export default function AssetScreen() {
   );
 
   const sorted = useMemo(() => {
+    const words = searchWords(query);
+    // 探すのは台を指す値だけ。日付や金額は数字が並ぶので入れない
+    const found = active.filter((row) =>
+      hits(
+        [
+          row.company?.name,
+          row.department,
+          row.no,
+          row.ipAddress,
+          row.maker,
+          row.model,
+          row.serialNumber,
+          row.contractNo,
+          row.effectiveVendor?.name,
+          row.note,
+        ],
+        words,
+      ),
+    );
+
     const column = COLUMNS.find((c) => c.key === sort.key);
     return sortRows(
-      active,
+      found,
       (row) =>
         sort.key === 'maintStatus'
           ? maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract)
@@ -747,7 +793,7 @@ export default function AssetScreen() {
       sort.dir,
       (row) => row.id,
     );
-  }, [active, sort]);
+  }, [active, sort, query]);
 
   /** 凡例に出す台数。行の色分けと同じ判定を使う。無効の台は数えない */
   const maintCounts = useMemo(() => {
@@ -1200,10 +1246,25 @@ export default function AssetScreen() {
 
         <p className="as-hint">見出しを押すと並べ替わります。空欄の行は向きによらず末尾に置きます。</p>
 
+        <div className="sbx-row">
+          <SearchBox
+            value={query}
+            onChange={setQuery}
+            placeholder="部署・No.・IP・メーカー・型番・シリアル"
+            count={sorted.length}
+            total={active.length}
+            unit="台"
+          />
+        </div>
+
         {saved.length === 0 ? (
           <p className="as-empty">まだ登録がありません。上の欄を入力して保存してください。</p>
+        ) : sorted.length === 0 && query.trim() !== '' ? (
+          <p className="as-empty">
+            「{query}」に当てはまる機器がありません（登録は {active.length} 台）。
+          </p>
         ) : (
-          <div className="as-table-wrap">
+          <TableBox className="as-table-wrap" memoryKey="assets.list">
             <table className="as-table">
               <thead>
                 <tr>
@@ -1298,7 +1359,7 @@ export default function AssetScreen() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableBox>
         )}
       </section>
 
@@ -1310,9 +1371,11 @@ export default function AssetScreen() {
               name="プリンター登録_無効"
               header={DISABLED_CSV_COLUMNS.map((col) => col.label)}
               rows={() =>
-                disabled.map((row) => DISABLED_CSV_COLUMNS.map((col) => col.value(row)))
+                shownDisabled.map((row) =>
+                  DISABLED_CSV_COLUMNS.map((col) => col.value(row)),
+                )
               }
-              count={disabled.length}
+              count={shownDisabled.length}
             />
           </h2>
           <p className="as-hint">
@@ -1325,7 +1388,24 @@ export default function AssetScreen() {
             （消すと履歴まで道連れになるため。そのまま無効にしておけば履歴が残ります）。
           </p>
 
-          <div className="as-table-wrap">
+          <div className="sbx-row">
+            <SearchBox
+              value={disabledQuery}
+              onChange={setDisabledQuery}
+              label="探す（無効にした機器）"
+              placeholder="部署・No.・IP・メーカー・型番・シリアル"
+              count={shownDisabled.length}
+              total={disabled.length}
+              unit="台"
+            />
+          </div>
+
+          {shownDisabled.length === 0 ? (
+            <p className="as-empty">
+              「{disabledQuery}」に当てはまる機器がありません（無効は {disabled.length} 台）。
+            </p>
+          ) : (
+          <TableBox className="as-table-wrap" memoryKey="assets.disabled">
             <table className="as-table">
               <thead>
                 <tr>
@@ -1341,7 +1421,7 @@ export default function AssetScreen() {
                 </tr>
               </thead>
               <tbody>
-                {disabled.map((row) => (
+                {shownDisabled.map((row) => (
                   <tr key={row.id}>
                     <td>{row.company?.name ?? '—'}</td>
                     <td>{row.department ?? '—'}</td>
@@ -1378,7 +1458,8 @@ export default function AssetScreen() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableBox>
+          )}
         </section>
       )}
 
