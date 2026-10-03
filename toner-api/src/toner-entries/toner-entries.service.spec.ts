@@ -12,6 +12,7 @@ function entry(id: number) {
     tonerId: 'T1',
     companyId: 1,
     toner: { name: 'トナー黒', color: 'BLACK' },
+    company: { name: '本院' },
     action: 'RECEIVE',
     quantity: 1,
     balance: 1,
@@ -77,6 +78,24 @@ describe('TonerEntriesService', () => {
       expect(args.take).toBe(HISTORY_LIMIT + 1);
       expect(args.where.companyId).toBe(2);
       expect(args.where.action).toBe('ISSUE');
+    });
+
+    /**
+     * トナー入出状況は全拠点を並べて拠点を列に出す。画面の拠点一覧は有効なものだけなので、
+     * 無効にした拠点の記録でも名前が出るよう、名前は履歴に添えて返す
+     */
+    it('拠点を省けば全拠点を引き、行に拠点名を添える', async () => {
+      const findMany = jest.fn().mockResolvedValue([entry(1)]);
+      const service = await make({ tonerEntry: { findMany } });
+
+      const result = await service.findHistory({});
+
+      const args = callArg<{ where: { companyId?: number } }>(findMany);
+      expect(args.where).not.toHaveProperty('companyId');
+      expect(result.rows[0]).toMatchObject({
+        companyId: 1,
+        companyName: '本院',
+      });
     });
   });
 

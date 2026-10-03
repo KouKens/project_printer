@@ -1,0 +1,35 @@
+/*
+ * 拠点を選ぶ欄。道具欄の label ＋ select と同じ形（上に名前、下に選択）。
+ * 在庫を動かす先を決める欄なので、選んでいる拠点名は太字にして目に留まるようにする
+ */
+.cpk {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.cpk-select {
+  min-width: 10em;
+  max-width: 220px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.cpk-select:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+
+.cpk-select:disabled {
+  font-weight: 400;
+  color: #a7b3bd;
+  cursor: not-allowed;
+}

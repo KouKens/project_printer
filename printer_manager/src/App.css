@@ -159,38 +159,6 @@
   outline-offset: -3px;
 }
 
-/*
- * 拠点の切り替え。在庫と受け払いを分ける単位なので、
- * どの画面からも見える位置（時計の手前）に置く
- */
-.station__company {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.station__company-label {
-  font-size: 12px;
-  color: var(--ink-3);
-}
-
-.station__company select {
-  padding: 5px 8px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--ink);
-  background: #fbfcfd;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  max-width: 220px;
-}
-
-.station__company select:disabled {
-  color: #a7b3bd;
-  cursor: not-allowed;
-}
-
 .station__clock {
   margin: 0;
   display: flex;
@@ -254,6 +222,15 @@
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+/* 見出しと拠点の選択を 1 段に並べる。狭いときは拠点が下へ回る */
+.slip__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
 }
 
 /* ── 操作の種類 ────────────────────────── */
@@ -457,7 +434,7 @@
 }
 .batch__item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   padding: 6px 10px;
   font-size: 13px;
@@ -481,8 +458,40 @@
 .batch__qty {
   flex: none;
   min-width: 52px;
-  text-align: right;
+  text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* 本数の −／＋。指で押せる大きさにして、取消とは離す */
+.batch__stepper {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.batch__step {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--cyan-deep);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.batch__step:hover:enabled { background: var(--cyan-soft); border-color: var(--cyan); }
+.batch__step:disabled { color: var(--ink-3); background: transparent; cursor: not-allowed; }
+
+/* 在庫（廃棄できる本数）を超えている行。送れば API が断るので、その前に気付けるように */
+.batch__item--over { border-color: var(--alert); background: var(--alert-soft); }
+.batch__over {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--alert);
 }
 .batch__remove {
   flex: none;
@@ -570,12 +579,25 @@
 }
 .finder__name {
   flex: 1;
-  min-width: 0;
+  min-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.finder__place { flex: none; font-size: 12px; color: var(--ink-3); }
+/*
+ * 設置場所は縮める側に回す。12 台で使う品番（P500H）は場所が長く、
+ * 縮めないとトナー名が 0 幅になって候補の箱からもはみ出す。全文は title で出す
+ */
+.finder__place {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink-3);
+}
 .finder__stock {
   flex: none;
   min-width: 56px;
@@ -602,6 +624,21 @@
   border-radius: 3px;
 }
 .finder__picked .finder__id { min-width: 0; font-weight: 700; }
+
+/*
+ * 純正かリサイクル品か。同じ品番名の純正とリサイクル品が候補に並んだとき、
+ * 色ではなく文字で見分けられるようにする（札の形は 2 つで変えない）
+ */
+.finder__kind {
+  flex: none;
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+.finder__kind--recycled { color: #1d6b48; border-color: #b9dcc8; background: #eef8f2; }
 
 .row__tag {
   padding: 2px 6px;
@@ -902,7 +939,8 @@
     padding: 12px 0 8px;
   }
 
-  .station__company {
+  /* 画面のまとまりが次の行へ回るので、時計は題名の右端に寄せる */
+  .station__clock {
     margin-left: auto;
   }
 

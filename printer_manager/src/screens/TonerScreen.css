@@ -51,7 +51,8 @@
 }
 .tn-fields input[type='text'],
 .tn-fields input[type='number'],
-.tn-fields input[type='date'] {
+.tn-fields input[type='date'],
+.tn-fields select {
   padding: 9px 11px;
   font: inherit;
   font-size: 14px;
@@ -79,6 +80,41 @@
   color: var(--ink) !important;
 }
 .tn-check input { width: 16px; height: 16px; }
+
+/* 探す欄の右の「表示」の絞り込み。探す欄（SearchBox）と高さを揃える */
+.tn-shown-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.tn-shown-filter select {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+/* 欄の下の補足。純正品と「他の画面に出す」の意味を添える */
+.tn-field-note { font-size: 11px; color: var(--muted); }
+
+/*
+ * 一覧の「他の画面に出す」。押した時点で保存するので、
+ * 見出しの並べ替えボタンとは別に、セルの真ん中に大きめに置く
+ */
+.tn-show-cell { text-align: center; }
+.tn-show-cell input { width: 16px; height: 16px; cursor: pointer; }
+.tn-show-cell input:disabled { cursor: not-allowed; }
+/* 出さない品番。行ごと薄くして、一覧の中でも区別できるようにする */
+.tn-row-hidden td { color: var(--muted); background: #f7f8fa; }
+
+/* 純正とリサイクル品の組。純正の側は組の数、リサイクル品の側は相手の品番 */
+.tn-pair { font-size: 12px; white-space: nowrap; }
+.tn-pair-retired { margin-left: 4px; font-size: 10.5px; color: var(--danger, #b23a3a); }
 
 /* --- プリンターの複数選択 --- */
 .tn-printers {
@@ -318,6 +354,8 @@
 /* 1 枚あたりのトナー代。カタログ値からの見積りなので、実績の数字と混ぜない */
 .tn-cpp { color: #1d5b8b; font-weight: 600; }
 .tn-mono { font-variant-numeric: tabular-nums; }
+/* 種類がトナー・インク以外（ドラム・廃トナーボトルなど）。トナーの行と見分けやすくする */
+.tn-part { color: #1f4f8b; }
 .tn-muted { color: var(--muted); }
 
 /* 在庫の警告。切らしている＝赤、警告本数以下＝オレンジ */

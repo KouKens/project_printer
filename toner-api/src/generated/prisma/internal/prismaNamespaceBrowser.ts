@@ -54,6 +54,8 @@ export const ModelName = {
   Toner: 'Toner',
   TonerPrinter: 'TonerPrinter',
   TonerPrice: 'TonerPrice',
+  TonerOffer: 'TonerOffer',
+  TonerOfferModel: 'TonerOfferModel',
   TonerStock: 'TonerStock',
   TonerEntry: 'TonerEntry',
   TonerOrder: 'TonerOrder',
@@ -89,10 +91,13 @@ export const TonerScalarFieldEnum = {
   id: 'id',
   name: 'name',
   color: 'color',
+  part: 'part',
   recycled: 'recycled',
   alertThreshold: 'alertThreshold',
   disabledAt: 'disabledAt',
   yieldPages: 'yieldPages',
+  hidden: 'hidden',
+  genuineId: 'genuineId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -119,6 +124,50 @@ export const TonerPriceScalarFieldEnum = {
 } as const
 
 export type TonerPriceScalarFieldEnum = (typeof TonerPriceScalarFieldEnum)[keyof typeof TonerPriceScalarFieldEnum]
+
+
+export const TonerOfferScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  brand: 'brand',
+  kind: 'kind',
+  part: 'part',
+  color: 'color',
+  yieldPages: 'yieldPages',
+  packQuantity: 'packQuantity',
+  seller: 'seller',
+  purchaseType: 'purchaseType',
+  price: 'price',
+  pagePrice: 'pagePrice',
+  monthlyFee: 'monthlyFee',
+  shippingFee: 'shippingFee',
+  minOrder: 'minOrder',
+  leadTime: 'leadTime',
+  warranty: 'warranty',
+  takesBack: 'takesBack',
+  payment: 'payment',
+  quotedOn: 'quotedOn',
+  validUntil: 'validUntil',
+  reference: 'reference',
+  url: 'url',
+  contact: 'contact',
+  note: 'note',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TonerOfferScalarFieldEnum = (typeof TonerOfferScalarFieldEnum)[keyof typeof TonerOfferScalarFieldEnum]
+
+
+export const TonerOfferModelScalarFieldEnum = {
+  id: 'id',
+  offerId: 'offerId',
+  maker: 'maker',
+  model: 'model'
+} as const
+
+export type TonerOfferModelScalarFieldEnum = (typeof TonerOfferModelScalarFieldEnum)[keyof typeof TonerOfferModelScalarFieldEnum]
 
 
 export const TonerStockScalarFieldEnum = {

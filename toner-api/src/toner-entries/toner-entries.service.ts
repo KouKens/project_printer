@@ -383,13 +383,20 @@ export class TonerEntriesService {
    * 在庫の一覧。**拠点ごと。** 棚卸しと受付の候補がここから作られる。
    *
    * 品番マスタは全拠点共通なので、行はどの拠点でも同じ数だけ並ぶ。
-   * その拠点で一度も受け入れていない品番は在庫の行が無く、0 本として出る
+   * その拠点で一度も受け入れていない品番は在庫の行が無く、0 本として出る。
+   *
+   * **他の画面に出さない品番（hidden）は、この拠点に在庫が無ければ外す。**
+   * 価格を比べるためだけに登録した純正などで、数える物が無い。
+   * 在庫が残っていれば出す（隠すと棚卸しで数え漏れる）
    */
   async findStock(companyId: number) {
-    const toners = await this.prisma.toner.findMany({
+    const found = await this.prisma.toner.findMany({
       include: { stocks: { where: { companyId } } },
       orderBy: { id: 'asc' },
     });
+    const toners = found.filter(
+      (t) => !t.hidden || (t.stocks[0]?.quantity ?? 0) > 0,
+    );
 
     return toners.map((t) => {
       // 拠点で絞ってあるので 0 件か 1 件
@@ -527,8 +534,8 @@ export class TonerEntriesService {
    * 搬入日（receivedOn）は搬入の行だけに入る
    */
   /**
-   * 受け払いの履歴。**拠点ごと**（トナー入出状況の画面用）。
-   * `companyId` を渡さなければ全拠点まとめて返す。
+   * 受け払いの履歴（トナー入出状況の画面用。画面は全拠点を並べ、拠点を列に出す）。
+   * `companyId` を渡せばその拠点の分だけ、渡さなければ全拠点まとめて返す。
    *
    * 1 回に返すのは新しいほうから `HISTORY_LIMIT` 件まで。
    * **切れたときは `truncated` を立てて返す。** 黙って打ち切ると
@@ -554,7 +561,11 @@ export class TonerEntriesService {
       orderBy: { createdAt: 'desc' },
       // 上限より 1 件多く引いて、続きがあるかどうかだけ見る
       take: HISTORY_LIMIT + 1,
-      include: { toner: { select: { name: true, color: true } } },
+      include: {
+        toner: { select: { name: true, color: true } },
+        // 画面の拠点一覧は有効なものだけなので、無効にした拠点の名前もここで引く
+        company: { select: { name: true } },
+      },
     });
 
     const truncated = found.length > HISTORY_LIMIT;
@@ -570,6 +581,7 @@ export class TonerEntriesService {
         tonerId: row.tonerId,
         /** どの拠点の受け払いか。全拠点で見るときに列として出す */
         companyId: row.companyId,
+        companyName: row.company.name,
         name: row.toner.name,
         color: row.toner.color,
         action: row.action,

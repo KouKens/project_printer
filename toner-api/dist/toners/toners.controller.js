@@ -29,6 +29,12 @@ let TonersController = class TonersController {
     findAll(includeDisabled) {
         return this.service.findAll(includeDisabled === '1');
     }
+    findHiddenIds() {
+        return this.service.findHiddenIds();
+    }
+    findPriceCompare() {
+        return this.service.findPriceCompare();
+    }
     findOne(id) {
         return this.service.findOne(id);
     }
@@ -71,6 +77,18 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], TonersController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('hidden'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], TonersController.prototype, "findHiddenIds", null);
+__decorate([
+    (0, common_1.Get)('price-compare'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], TonersController.prototype, "findPriceCompare", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

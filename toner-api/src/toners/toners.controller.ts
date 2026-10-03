@@ -24,12 +24,28 @@ export class TonersController {
   }
 
   /**
-   * マスタの一覧。**既定は有効な品番だけ。**
-   * `?includeDisabled=1` を付けたときだけ無効の分も返す（トナー登録の画面用）
+   * マスタの一覧。**既定は有効で、他の画面に出す品番だけ。**
+   * `?includeDisabled=1` を付けたときだけ全部を返す（トナー登録の画面用）
    */
   @Get()
   findAll(@Query('includeDisabled') includeDisabled?: string) {
     return this.service.findAll(includeDisabled === '1');
+  }
+
+  /*
+   * 固定の道は `:id` より前に置く。後ろに置くと品番として読まれる
+   */
+
+  /** 他の画面に出さない品番（無効も含む）。トナー入出状況が記録を絞るのに使う */
+  @Get('hidden')
+  findHiddenIds() {
+    return this.service.findHiddenIds();
+  }
+
+  /** 価格比較の画面用。全品番を、価格の履歴と使える機種を添えて返す */
+  @Get('price-compare')
+  findPriceCompare() {
+    return this.service.findPriceCompare();
   }
 
   @Get(':id')
@@ -37,7 +53,10 @@ export class TonersController {
     return this.service.findOne(id);
   }
 
-  /** 名前・色・リサイクル区分・対応機器の更新。価格はここでは変えない */
+  /**
+   * 名前・色・リサイクル区分・純正品・他の画面に出すか・対応機器の更新。
+   * 価格はここでは変えない
+   */
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateTonerDto) {
     return this.service.update(id, dto);

@@ -9,7 +9,11 @@ export declare class TonersController {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -33,7 +37,11 @@ export declare class TonersController {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -53,11 +61,62 @@ export declare class TonersController {
         createdAt: Date;
         updatedAt: Date;
     }[]>;
+    findHiddenIds(): Promise<string[]>;
+    findPriceCompare(): Promise<{
+        models: {
+            key: string;
+            label: string;
+            assetCount: number;
+        }[];
+        volumeDays: number;
+        assets: {
+            id: number;
+            no: string | null;
+            department: string | null;
+            maker: string | null;
+            model: string | null;
+            companyName: string;
+            modelKey: string;
+            monthlyPages: number | null;
+        }[];
+        toners: {
+            id: string;
+            name: string | null;
+            color: string | null;
+            part: import("../generated/prisma/enums").SupplyPart;
+            recycled: boolean;
+            genuineId: string | null;
+            hidden: boolean;
+            disabledAt: Date | null;
+            yieldPages: number | null;
+            price: number | null;
+            priceFrom: string | null;
+            costPerPage: number | null;
+            prices: {
+                effectiveFrom: string;
+                price: number;
+                note: string | null;
+            }[];
+            printers: {
+                id: number;
+                no: string | null;
+                department: string | null;
+                maker: string | null;
+                model: string | null;
+                companyName: string;
+            }[];
+            modelKeys: string[];
+        }[];
+    }>;
     findOne(id: string): Promise<{
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -81,7 +140,11 @@ export declare class TonersController {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -105,7 +168,11 @@ export declare class TonersController {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -129,7 +196,11 @@ export declare class TonersController {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -155,6 +226,7 @@ export declare class TonersController {
         removed: {
             prices: number;
             printers: number;
+            alternatives: number;
         };
     }>;
     findPrices(id: string): Promise<{
@@ -168,7 +240,11 @@ export declare class TonersController {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;

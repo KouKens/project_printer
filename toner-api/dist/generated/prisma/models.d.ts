@@ -1,6 +1,8 @@
 export type * from './models/Toner.js';
 export type * from './models/TonerPrinter.js';
 export type * from './models/TonerPrice.js';
+export type * from './models/TonerOffer.js';
+export type * from './models/TonerOfferModel.js';
 export type * from './models/TonerStock.js';
 export type * from './models/TonerEntry.js';
 export type * from './models/TonerOrder.js';

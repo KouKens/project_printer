@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.defineExtension = exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.RepairRecordScalarFieldEnum = exports.SupplyReadingScalarFieldEnum = exports.PageCountDailyScalarFieldEnum = exports.MaintVendorScalarFieldEnum = exports.CompanyScalarFieldEnum = exports.PrinterAssetScalarFieldEnum = exports.PrinterAlertScalarFieldEnum = exports.PrinterScalarFieldEnum = exports.TonerInvoiceLineScalarFieldEnum = exports.TonerInvoiceScalarFieldEnum = exports.TonerOrderScalarFieldEnum = exports.TonerEntryScalarFieldEnum = exports.TonerStockScalarFieldEnum = exports.TonerPriceScalarFieldEnum = exports.TonerPrinterScalarFieldEnum = exports.TonerScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.prismaVersion = exports.getExtensionContext = exports.Decimal = exports.Sql = exports.raw = exports.join = exports.empty = exports.sql = exports.PrismaClientValidationError = exports.PrismaClientInitializationError = exports.PrismaClientRustPanicError = exports.PrismaClientUnknownRequestError = exports.PrismaClientKnownRequestError = void 0;
+exports.defineExtension = exports.NullsOrder = exports.QueryMode = exports.SortOrder = exports.RepairRecordScalarFieldEnum = exports.SupplyReadingScalarFieldEnum = exports.PageCountDailyScalarFieldEnum = exports.MaintVendorScalarFieldEnum = exports.CompanyScalarFieldEnum = exports.PrinterAssetScalarFieldEnum = exports.PrinterAlertScalarFieldEnum = exports.PrinterScalarFieldEnum = exports.TonerInvoiceLineScalarFieldEnum = exports.TonerInvoiceScalarFieldEnum = exports.TonerOrderScalarFieldEnum = exports.TonerEntryScalarFieldEnum = exports.TonerStockScalarFieldEnum = exports.TonerOfferModelScalarFieldEnum = exports.TonerOfferScalarFieldEnum = exports.TonerPriceScalarFieldEnum = exports.TonerPrinterScalarFieldEnum = exports.TonerScalarFieldEnum = exports.TransactionIsolationLevel = exports.ModelName = exports.AnyNull = exports.JsonNull = exports.DbNull = exports.NullTypes = exports.prismaVersion = exports.getExtensionContext = exports.Decimal = exports.Sql = exports.raw = exports.join = exports.empty = exports.sql = exports.PrismaClientValidationError = exports.PrismaClientInitializationError = exports.PrismaClientRustPanicError = exports.PrismaClientUnknownRequestError = exports.PrismaClientKnownRequestError = void 0;
 const runtime = __importStar(require("@prisma/client/runtime/client"));
 exports.PrismaClientKnownRequestError = runtime.PrismaClientKnownRequestError;
 exports.PrismaClientUnknownRequestError = runtime.PrismaClientUnknownRequestError;
@@ -63,6 +63,8 @@ exports.ModelName = {
     Toner: 'Toner',
     TonerPrinter: 'TonerPrinter',
     TonerPrice: 'TonerPrice',
+    TonerOffer: 'TonerOffer',
+    TonerOfferModel: 'TonerOfferModel',
     TonerStock: 'TonerStock',
     TonerEntry: 'TonerEntry',
     TonerOrder: 'TonerOrder',
@@ -87,10 +89,13 @@ exports.TonerScalarFieldEnum = {
     id: 'id',
     name: 'name',
     color: 'color',
+    part: 'part',
     recycled: 'recycled',
     alertThreshold: 'alertThreshold',
     disabledAt: 'disabledAt',
     yieldPages: 'yieldPages',
+    hidden: 'hidden',
+    genuineId: 'genuineId',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
@@ -106,6 +111,42 @@ exports.TonerPriceScalarFieldEnum = {
     effectiveFrom: 'effectiveFrom',
     note: 'note',
     createdAt: 'createdAt'
+};
+exports.TonerOfferScalarFieldEnum = {
+    id: 'id',
+    code: 'code',
+    name: 'name',
+    brand: 'brand',
+    kind: 'kind',
+    part: 'part',
+    color: 'color',
+    yieldPages: 'yieldPages',
+    packQuantity: 'packQuantity',
+    seller: 'seller',
+    purchaseType: 'purchaseType',
+    price: 'price',
+    pagePrice: 'pagePrice',
+    monthlyFee: 'monthlyFee',
+    shippingFee: 'shippingFee',
+    minOrder: 'minOrder',
+    leadTime: 'leadTime',
+    warranty: 'warranty',
+    takesBack: 'takesBack',
+    payment: 'payment',
+    quotedOn: 'quotedOn',
+    validUntil: 'validUntil',
+    reference: 'reference',
+    url: 'url',
+    contact: 'contact',
+    note: 'note',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+exports.TonerOfferModelScalarFieldEnum = {
+    id: 'id',
+    offerId: 'offerId',
+    maker: 'maker',
+    model: 'model'
 };
 exports.TonerStockScalarFieldEnum = {
     tonerId: 'tonerId',

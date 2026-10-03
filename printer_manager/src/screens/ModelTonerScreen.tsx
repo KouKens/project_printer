@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import CompanyPicker from '../components/CompanyPicker';
 import CsvButton from '../components/CsvButton';
 import SearchBox from '../components/SearchBox';
 import TableBox from '../components/TableBox';
@@ -493,7 +494,7 @@ const CSV_COLUMNS: { label: string; value: (row: Row) => CsvValue }[] = [
 ];
 
 export default function ModelTonerScreen() {
-  // 機種も在庫も、右上で選んでいる拠点の分だけを数える
+  // 機種も在庫も、道具欄で選んでいる拠点の分だけを数える
   const { companyId } = useCompany();
   const [rows, setRows] = useState<Row[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
@@ -671,6 +672,8 @@ export default function ModelTonerScreen() {
       </header>
 
       <div className="dt-tools">
+        <CompanyPicker />
+
         <label>
           <span>絞り込み</span>
           <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>

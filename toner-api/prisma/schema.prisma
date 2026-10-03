@@ -131,6 +131,10 @@ model Toner {
   /// 色の無い消耗品（メンテナンスボックス・廃トナーボトル）は null
   color String?
 
+  /// 種類（トナー・ドラム・廃トナーボトル…）。ドラムにも色が付くので、色とは別に持つ。
+  /// 入れる前からあった品番は、商品名の言葉で初期値を入れてある（migration の UPDATE）
+  part SupplyPart @default(TONER)
+
   /// リサイクル品・互換品か。純正なら false
   recycled Boolean @default(false)
 
@@ -156,6 +160,26 @@ model Toner {
   /// 公表値が見つからない品番は未設定（null）にして、単価を出さない
   yieldPages Int? @map("yield_pages")
 
+  /// 他の画面に出さない。**価格を比べるためだけに登録した品番**（使っていない純正など）用。
+  ///
+  /// 無効（disabledAt）との違いは、トナー登録と価格比較には残ること。
+  /// 外れるのは受付・注文・請求書の候補、トナー個数状況、トナー入出状況、運用コスト。
+  /// 棚卸しだけは在庫が残っている拠点に限って出す（数え漏れを作らないため）
+  hidden Boolean @default(false)
+
+  /// 比較の基準にする純正品。**リサイクル品だけが持つ。**
+  ///
+  /// 純正 1 つを軸に、リサイクル品の側から 1 本ずつ指す（多対多にしない）。
+  /// 互いに結び合う形だと、A–B と B–C は結んだのに A–C を結び忘れる、という
+  /// 食い違いが起きる。この形なら組は必ず「純正 1 ＋ リサイクル N」で閉じる。
+  /// 指す先は純正（recycled = false）で、その純正自身は何も指さない（サービスで弾く）。
+  /// 純正を消すとここは null に戻る（onDelete: SetNull）
+  genuineId String? @map("genuine_id")
+  genuine   Toner?  @relation("TonerGenuine", fields: [genuineId], references: [id], onDelete: SetNull)
+
+  /// この純正を指しているリサイクル品
+  alternatives Toner[] @relation("TonerGenuine")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -167,6 +191,7 @@ model Toner {
   prices       TonerPrice[]
   invoiceLines TonerInvoiceLine[]
 
+  @@index([genuineId])
   @@map("toners")
 }
 
@@ -215,6 +240,153 @@ model TonerPrice {
   @@unique([tonerId, effectiveFrom])
   @@index([tonerId, effectiveFrom])
   @@map("toner_prices")
+}
+
+/// 消耗品の種類。**比べる相手を揃えるために持つ**（黒のドラムを黒のトナーと比べない）。
+/// トナー登録（Toner）とトナー情報（TonerOffer）の両方が持つ
+enum SupplyPart {
+  /// トナー・インク（既定）
+  TONER
+  DRUM
+  /// 廃トナーボトル・回収容器
+  WASTE
+  /// メンテナンスボックス（インクジェットの廃インク吸収材）
+  MAINTENANCE
+  /// ベルト・定着ユニット・メンテナンスキットなど
+  OTHER
+}
+
+/// 比較用のトナー情報の区分
+enum OfferKind {
+  /// メーカー純正品
+  GENUINE
+  /// リサイクル品（使用済みカートリッジを詰め替えたもの）
+  RECYCLED
+  /// 互換品（他社が新しく作った汎用カートリッジ）
+  COMPATIBLE
+}
+
+/// 買い方。同じ品番でも買い方で値段の付き方が変わるので分けて持つ
+enum PurchaseType {
+  /// 販売店にその都度注文する
+  SPOT
+  /// ネット通販
+  ONLINE
+  /// 保守・キット契約に含まれる（カウンター料金で払う）
+  CONTRACT
+  /// 定額・定期配送
+  SUBSCRIPTION
+  OTHER
+}
+
+/// 価格を比べるためのトナー情報。**販売店 × 買い方ごとに 1 件。**
+///
+/// **トナー価格比較の画面だけが読む。** 受付・注文・在庫・棚卸・請求書・運用コストは
+/// トナー登録（Toner）だけを使い、ここは見ない。今は使っていないトナーや、
+/// 使っているトナーを別の店で買ったときの値段を、選び直しの材料として残す場所。
+///
+/// トナー登録とは品番でつながない（外部キーを持たない）。同じ品番を別の店が
+/// 売っていることを示すだけなので、画面が品番を畳んで突き合わせる
+model TonerOffer {
+  id Int @id @default(autoincrement())
+
+  /// 品番。リサイクル品は純正と別の型番が付いていることが多いので、販売店の表記のまま
+  code String
+
+  name String?
+
+  /// 作っている会社（純正ならメーカー、リサイクル品なら再生業者）。販売店とは別
+  brand String?
+
+  kind OfferKind @default(GENUINE)
+
+  /// 種類。トナー価格比較はこれと色でまとめて、同じ種類どうしで比べる
+  part SupplyPart @default(TONER)
+
+  /// 色。トナー登録と同じ表記（「ブラック」「4色パック」など）に揃えると比較で並ぶ
+  color String?
+
+  /// 1 本で刷れる枚数（販売店・メーカーの公表値）
+  yieldPages Int? @map("yield_pages")
+
+  /// 1 つの値段で何本入っているか（2 本セットなら 2）。1 本あたり = 価格 ÷ 入数
+  packQuantity Int @default(1) @map("pack_quantity")
+
+  /// 買う先（販売店・通販サイト・保守会社）
+  seller String
+
+  purchaseType PurchaseType @default(SPOT) @map("purchase_type")
+
+  /// 税別価格（円）。入数ぶんの値段
+  price Int?
+
+  /// 1 枚あたりの料金（円・税別）。**カウンター料金のように枚数で払うときだけ入れる。**
+  /// 入っていればこちらを 1 枚あたりとして使い、価格 ÷ 枚数 では出さない
+  pagePrice Float? @map("page_price")
+
+  /// 月ごとの基本料金（円・税別）。契約・定額のとき
+  monthlyFee Int? @map("monthly_fee")
+
+  /// 1 回の注文にかかる送料・手数料（円・税別）
+  shippingFee Int? @map("shipping_fee")
+
+  /// これより少ない本数では注文できない
+  minOrder Int? @map("min_order")
+
+  /// 納期（「翌営業日」「3〜5 日」など、店の書き方のまま）
+  leadTime String? @map("lead_time")
+
+  /// 品質保証（リサイクル品で機器が壊れたときの修理保証など）
+  warranty String?
+
+  /// 使用済みカートリッジを引き取ってくれるか。null は未確認
+  takesBack Boolean? @map("takes_back")
+
+  /// 支払い方法（請求書払い・カードなど）
+  payment String?
+
+  /// 価格を確かめた日（見積日・サイトで見た日）。古い値段で比べないため
+  quotedOn DateTime? @map("quoted_on") @db.Date
+
+  /// 見積の有効期限
+  validUntil DateTime? @map("valid_until") @db.Date
+
+  /// 見積番号・カタログのページなど、値段の出どころ
+  reference String?
+
+  /// 商品ページ。http(s) だけ受ける
+  url String?
+
+  /// 担当者・連絡先
+  contact String?
+
+  note String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  models TonerOfferModel[]
+
+  @@index([code])
+  @@map("toner_offers")
+}
+
+/// トナー情報が使える機種。**台帳の 1 台ではなく機種（メーカー + 型番）につなぐ。**
+///
+/// 同じ機種を何台入れても付け直さずに済むように。突き合わせは保存した表記を
+/// `modelKey`（トナー個数状況と同じ畳み方）で畳んで、有効な台帳の機種と比べる。
+/// 台帳の型番を書き直しても、畳んで同じになる表記ゆれならつながったまま
+model TonerOfferModel {
+  id      Int @id @default(autoincrement())
+  offerId Int @map("offer_id")
+
+  maker String?
+  model String
+
+  offer TonerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+  @@map("toner_offer_models")
 }
 
 /// 在庫テーブル（**品番 × 拠点**ごとの現在数と累計）

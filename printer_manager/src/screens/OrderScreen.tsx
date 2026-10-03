@@ -1,6 +1,8 @@
 import type { KeyboardEvent } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { OrderRow, TonerCatalogRow } from '../api'
+import BatchLines from '../components/BatchLines'
+import CompanyPicker from '../components/CompanyPicker'
 import type { PickOrigin } from '../components/TonerPickerRow'
 import TonerPickerRow from '../components/TonerPickerRow'
 import {
@@ -12,6 +14,8 @@ import {
   submitOrder,
   toLocalInputValue,
 } from '../api'
+import type { BatchLine } from '../lib/batch'
+import { addToLines } from '../lib/batch'
 import {
   STAFF_ID_HINT_GUEST,
   filterStaffId,
@@ -84,9 +88,6 @@ function rowsOf(fields: FieldDef[]): Cell[][] {
   })
   return rows
 }
-
-/** まとめ処理の明細 1 行 */
-type Line = { tonerId: string; name: string; quantity: string }
 
 /** 今日を YYYY-MM-DD で。<input type="date"> にそのまま入る形 */
 function todayValue(): string {
@@ -200,7 +201,7 @@ const listFormat = new Intl.DateTimeFormat('ja-JP', {
 })
 
 export default function OrderScreen() {
-  // 注文も搬入も、右上で選んでいる拠点の分だけを扱う
+  // 注文も搬入も、見出しの横で選んでいる拠点の分だけを扱う
   const { companyId } = useCompany()
   const [mode, setMode] = useState<OrderMode>('ORDER')
   const [values, setValues] = useState<FormValues>(emptyValues)
@@ -215,7 +216,7 @@ export default function OrderScreen() {
   const [search, setSearch] = useState('')
   /** まとめて処理するか。読み取りの Enter の行き先が変わる */
   const [batch, setBatch] = useState(false)
-  const [lines, setLines] = useState<Line[]>([])
+  const [lines, setLines] = useState<BatchLine[]>([])
 
   const fields = fieldsFor(mode)
   const modeInfo = MODES.find((m) => m.value === mode)!
@@ -294,7 +295,9 @@ export default function OrderScreen() {
   /**
    * 明細に 1 行足す。本数だけを見る
    * （注文日時・ユーザーID・日付はまとめ全体で 1 つなので、送信時に確かめる）。
+   * 同じ品番がもう積んであれば、その行の本数に足す。
    * 続けて読み取れるよう、トナーの欄に戻す。
+   * 探す欄の文字は消さない（消すかどうかは呼び出し側が決める）。
    *
    * 品番を引数で受けるのは、候補を押したその場から呼ぶため。
    * setValues の反映を待たないと values.tonerId はまだ前の値になる
@@ -310,9 +313,8 @@ export default function OrderScreen() {
         return false
       }
 
-      setLines((prev) => [...prev, { tonerId, name, quantity }])
+      setLines((prev) => addToLines(prev, { tonerId, name, quantity: String(parsed) }))
       setValues((prev) => ({ ...prev, tonerId: '', quantity: '1' }))
-      setSearch('')
       setErrors({})
       setFailure(null)
 
@@ -332,7 +334,11 @@ export default function OrderScreen() {
     }
 
     const name = catalog.find((row) => row.id === tonerId)?.name ?? ''
-    return appendLine(tonerId, name, values.quantity.trim())
+    if (!appendLine(tonerId, name, values.quantity.trim())) return false
+
+    // 欄には選んだ品番（「品番 名称」）が入っているだけなので、次の読み取りに備えて空ける
+    setSearch('')
+    return true
   }, [appendLine, catalog, values])
 
   const pickToner = (row: TonerCatalogRow, origin: PickOrigin) => {
@@ -341,6 +347,8 @@ export default function OrderScreen() {
     // まとめ処理では候補を押した時点で明細へ積む。「明細に追加」を押さずに
     // 次の品番を探せる。本数はその時の入力欄の値（既定 1 本）を使い、
     // 足したあと 1 本に戻す。
+    // 探す欄に打った文字は残す。同じ部署・機種の色違いを、候補を出したまま
+    // 続けて押せるように（欄は全選択で戻るので、次の読み取りや打鍵はそのまま置き換わる）。
     // 読み取り（auto）と Enter は入力欄に入れるだけにしておく。
     // 本数を直してから積む流れが残っているため
     if (batch && origin === 'click') {
@@ -356,6 +364,11 @@ export default function OrderScreen() {
 
   const removeLine = (index: number) =>
     setLines((prev) => prev.filter((_, i) => i !== index))
+
+  const setLineQuantity = (index: number, quantity: number) =>
+    setLines((prev) =>
+      prev.map((line, i) => (i === index ? { ...line, quantity: String(quantity) } : line)),
+    )
 
   const submit = useCallback(async () => {
     if (submitting) return
@@ -410,16 +423,15 @@ export default function OrderScreen() {
       return
     }
 
-    // まとめ処理：明細に、入力途中の行があればそれも足して送る
+    // まとめ処理：明細に、入力途中の行があればそれも足して送る（同じ品番なら本数に足す）
     if (batch) {
-      const items = [...lines]
-      if (trimmed.tonerId) {
-        items.push({
-          tonerId: trimmed.tonerId,
-          name: catalog.find((row) => row.id === trimmed.tonerId)?.name ?? '',
-          quantity: trimmed.quantity || '1',
-        })
-      }
+      const items = trimmed.tonerId
+        ? addToLines(lines, {
+            tonerId: trimmed.tonerId,
+            name: catalog.find((row) => row.id === trimmed.tonerId)?.name ?? '',
+            quantity: trimmed.quantity || '1',
+          })
+        : lines
 
       if (items.length === 0) {
         setFailure(
@@ -641,9 +653,12 @@ export default function OrderScreen() {
     <>
       <section className="slip" aria-labelledby="order-heading">
         <div className="slip__head">
-          <h2 className="slip__heading" id="order-heading">
-            注文と搬入
-          </h2>
+          <div className="slip__top">
+            <h2 className="slip__heading" id="order-heading">
+              注文と搬入
+            </h2>
+            <CompanyPicker disabled={submitting} />
+          </div>
 
           <div className="mode" role="radiogroup" aria-label="操作の種類">
             {MODES.map((item) => (
@@ -830,42 +845,20 @@ export default function OrderScreen() {
         ) : null}
 
         {batch && (
-          <div className="batch">
-            <h3 className="batch__heading">
-              明細
-              <span className="batch__count">{lines.length} 件</span>
-              {lines.length > 0 && (
-                <span className="batch__count">
-                  合計 {lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0)} 本
-                </span>
-              )}
-            </h3>
-
-            {lines.length === 0 ? (
-              <p className="batch__empty">
+          // 注文・搬入は在庫で縛らないので、上限は渡さない
+          <BatchLines
+            disabled={submitting}
+            empty={
+              <>
                 トナーを探して候補を押すと、上の欄の本数でその場で積まれます。
                 読み取ったときは Enter、または「明細に追加」で積みます。
-              </p>
-            ) : (
-              <ul className="batch__list">
-                {lines.map((line, index) => (
-                  <li className="batch__item" key={`${line.tonerId}-${index}`}>
-                    <span className="batch__id">{line.tonerId}</span>
-                    <span className="batch__name">{line.name}</span>
-                    <span className="batch__qty">{line.quantity} 本</span>
-                    <button
-                      className="batch__remove"
-                      disabled={submitting}
-                      onClick={() => removeLine(index)}
-                      type="button"
-                    >
-                      取消
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                本数は明細の −／＋ で直せます。
+              </>
+            }
+            lines={lines}
+            onQuantity={setLineQuantity}
+            onRemove={removeLine}
+          />
         )}
 
         <div className="slip__actions">

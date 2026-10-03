@@ -30,6 +30,7 @@ export declare class TonerEntriesController {
             userId: string;
             tonerId: string;
             companyId: number;
+            companyName: string;
             name: string | null;
             color: string | null;
             action: import("../generated/prisma/enums").TonerAction;

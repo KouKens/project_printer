@@ -1,6 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { PrintersService } from '../printers/printers.service';
 import { CreatePrinterAssetDto } from './dto/create-printer-asset.dto';
+export declare function modelKey(maker: string | null, model: string | null): string;
 type TonerPrinter = {
     id: number;
     name: string | null;

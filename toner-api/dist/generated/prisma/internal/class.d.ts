@@ -39,6 +39,12 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
     get tonerPrice(): Prisma.TonerPriceDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
+    get tonerOffer(): Prisma.TonerOfferDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    get tonerOfferModel(): Prisma.TonerOfferModelDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
     get tonerStock(): Prisma.TonerStockDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;

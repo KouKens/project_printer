@@ -9,6 +9,8 @@ export { Prisma };
 export type Toner = Prisma.TonerModel;
 export type TonerPrinter = Prisma.TonerPrinterModel;
 export type TonerPrice = Prisma.TonerPriceModel;
+export type TonerOffer = Prisma.TonerOfferModel;
+export type TonerOfferModel = Prisma.TonerOfferModelModel;
 export type TonerStock = Prisma.TonerStockModel;
 export type TonerEntry = Prisma.TonerEntryModel;
 export type TonerOrder = Prisma.TonerOrderModel;

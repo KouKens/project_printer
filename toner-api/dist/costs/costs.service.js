@@ -10,6 +10,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CostsService = void 0;
+exports.oneOfEachFamily = oneOfEachFamily;
+exports.priceOn = priceOn;
+exports.costPerPageOn = costPerPageOn;
 const common_1 = require("@nestjs/common");
 const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
@@ -25,6 +28,26 @@ function isColorSupply(color) {
     if (/ブラック|黒/.test(color) && !COLOR_NAME.test(color))
         return false;
     return COLOR_NAME.test(color);
+}
+function oneOfEachFamily(linked) {
+    const picked = new Map();
+    for (const toner of linked) {
+        const held = picked.get(toner.family);
+        if (!held ||
+            (toner.recycled && !held.recycled) ||
+            (toner.recycled === held.recycled && toner.id < held.id)) {
+            picked.set(toner.family, toner);
+        }
+    }
+    return linked.filter((toner) => picked.get(toner.family) === toner);
+}
+function priceOn(prices, day) {
+    const row = prices.find((p) => p.effectiveFrom <= day) ?? prices.at(-1);
+    return row?.price ?? null;
+}
+function costPerPageOn(toner, day) {
+    const price = priceOn(toner.prices, day);
+    return price !== null && toner.yieldPages ? price / toner.yieldPages : null;
 }
 let CostsService = class CostsService {
     prisma;
@@ -74,10 +97,13 @@ let CostsService = class CostsService {
                 },
             }),
             this.prisma.toner.findMany({
+                where: { hidden: false },
                 select: {
                     id: true,
                     name: true,
                     color: true,
+                    recycled: true,
+                    genuineId: true,
                     yieldPages: true,
                     prices: {
                         orderBy: { effectiveFrom: 'desc' },
@@ -98,24 +124,23 @@ let CostsService = class CostsService {
             }),
         ]);
         const dates = dailies.map((row) => row.date);
-        const first = dates.length > 0 ? dates[0] : new Date();
-        const last = dates.length > 0 ? dates[dates.length - 1] : new Date();
+        const first = dates.length > 0 ? dates[0] : (0, date_1.today)();
+        const last = dates.length > 0 ? dates[dates.length - 1] : (0, date_1.today)();
         const from = query.from ? (0, date_1.toDate)(query.from) : first;
         const to = query.to ? (0, date_1.toDate)(query.to) : last;
         const days = Math.max(daysBetween(from, to), 1);
         const share = days / DAYS_PER_YEAR;
-        const now = new Date();
-        const priceOf = (prices) => prices.find((row) => row.effectiveFrom <= now)?.price ?? null;
+        const priceDay = to < (0, date_1.today)() ? to : (0, date_1.today)();
         const costs = new Map();
         for (const toner of toners) {
-            const price = priceOf(toner.prices);
             costs.set(toner.id, {
                 id: toner.id,
                 name: toner.name,
                 color: toner.color,
-                price,
+                recycled: toner.recycled,
+                family: toner.genuineId ?? toner.id,
+                prices: toner.prices,
                 yieldPages: toner.yieldPages,
-                costPerPage: price !== null && toner.yieldPages ? price / toner.yieldPages : null,
                 isColor: isColorSupply(toner.color),
             });
         }
@@ -130,14 +155,23 @@ let CostsService = class CostsService {
                 pages: 0,
                 color: 0,
                 splitPages: 0,
+                days: [],
             };
             cur.pages += row.pages;
             if (row.colorPages !== null) {
                 cur.color += row.colorPages;
                 cur.splitPages += row.pages;
             }
+            cur.days.push({
+                date: row.date,
+                pages: row.pages,
+                color: row.colorPages ?? 0,
+            });
             pagesByPrinter.set(row.printerId, cur);
         }
+        const sumOn = (list, day) => list.reduce((total, toner) => total + (costPerPageOn(toner, day) ?? 0), 0);
+        const costOver = (days, list, pagesOf) => days.reduce((total, day) => total + pagesOf(day) * sumOn(list, day.date), 0);
+        const perPageOver = (cost, pages, list) => pages > 0 ? cost / pages : sumOn(list, priceDay);
         const repairByAsset = new Map();
         for (const repair of repairs) {
             const when = repair.restoredOn ?? repair.occurredOn;
@@ -159,19 +193,34 @@ let CostsService = class CostsService {
                 soleAsset.set(toner.id, toner.printers[0].printerAssetId);
             }
         }
+        const dayOf = (entry) => entry.receivedOn ?? (0, date_1.startOfDay)(entry.createdAt);
         const inPeriod = entries.filter((entry) => {
-            const when = entry.receivedOn ?? (0, date_1.startOfDay)(entry.createdAt);
+            const when = dayOf(entry);
             return when >= from && when <= to;
         });
+        const entryPrice = (entry) => {
+            const cost = costs.get(entry.tonerId);
+            return cost ? priceOn(cost.prices, dayOf(entry)) : null;
+        };
         const unitsByToner = new Map();
         for (const entry of inPeriod) {
             if (entry.action !== 'RECEIVE' && entry.action !== 'ISSUE')
                 continue;
-            const cur = unitsByToner.get(entry.tonerId) ?? { received: 0, issued: 0 };
-            if (entry.action === 'RECEIVE')
+            const cur = unitsByToner.get(entry.tonerId) ?? {
+                received: 0,
+                issued: 0,
+                receivedCost: 0,
+                issuedCost: 0,
+            };
+            const amount = entry.quantity * (entryPrice(entry) ?? 0);
+            if (entry.action === 'RECEIVE') {
                 cur.received += entry.quantity;
-            else
+                cur.receivedCost += amount;
+            }
+            else {
                 cur.issued += entry.quantity;
+                cur.issuedCost += amount;
+            }
             unitsByToner.set(entry.tonerId, cur);
         }
         const actualByAsset = new Map();
@@ -181,7 +230,7 @@ let CostsService = class CostsService {
             const assetId = soleAsset.get(entry.tonerId);
             if (assetId === undefined)
                 continue;
-            const price = costs.get(entry.tonerId)?.price ?? null;
+            const price = entryPrice(entry);
             if (price === null)
                 continue;
             const cur = actualByAsset.get(assetId) ?? { tonerCost: 0, issues: 0 };
@@ -189,24 +238,32 @@ let CostsService = class CostsService {
             cur.issues += entry.quantity;
             actualByAsset.set(assetId, cur);
         }
+        const daysByAsset = new Map();
         const rows = assets.map((asset) => {
             const printer = (0, printer_match_1.matchPrinter)(asset, live);
             const counted = printer !== null ? pagesByPrinter.get(printer.id) : undefined;
             const pages = counted?.pages ?? null;
             const colorPages = counted?.color ?? 0;
             const splitKnown = counted !== undefined && counted.splitPages >= counted.pages;
-            const linked = asset.toners
+            if (counted) {
+                daysByAsset.set(asset.id, splitKnown
+                    ? counted.days
+                    : counted.days.map((day) => ({ ...day, color: 0 })));
+            }
+            const linked = oneOfEachFamily(asset.toners
                 .map((link) => costs.get(link.tonerId))
-                .filter((toner) => toner !== undefined);
+                .filter((toner) => toner !== undefined));
             const base = linked.filter((toner) => !toner.isColor);
             const color = linked.filter((toner) => toner.isColor);
-            const sum = (list) => list.reduce((total, toner) => total + (toner.costPerPage ?? 0), 0);
-            const baseCpp = sum(base);
-            const colorCpp = sum(color);
+            const dayRows = counted?.days ?? [];
+            const baseCost = costOver(dayRows, base, (day) => day.pages);
+            const colorCost = costOver(dayRows, color, (day) => day.color);
+            const baseCpp = perPageOver(baseCost, pages ?? 0, base);
+            const colorCpp = perPageOver(colorCost, colorPages, color);
             const missing = linked
-                .filter((toner) => toner.costPerPage === null)
+                .filter((toner) => costPerPageOn(toner, priceDay) === null)
                 .map((toner) => toner.id);
-            const tonerCost = pages === null ? null : pages * baseCpp + colorPages * colorCpp;
+            const tonerCost = pages === null ? null : baseCost + colorCost;
             const attributable = linked.length > 0 && linked.every((toner) => soleAsset.has(toner.id));
             const perYearBody = asset.purchasePrice === null ? null : asset.purchasePrice / years;
             const maintYears = asset.maintStartOn && asset.maintEndOn
@@ -257,45 +314,43 @@ let CostsService = class CostsService {
                     .map((toner) => toner.id),
             };
         });
-        const assetPages = new Map();
-        for (const row of rows) {
-            if (row.pages === null)
-                continue;
-            assetPages.set(row.id, { pages: row.pages, color: row.colorPages ?? 0 });
-        }
         const tonerRows = toners
             .map((toner) => {
             const cost = costs.get(toner.id);
+            const priced = cost.prices.length > 0;
             let pages = 0;
+            let expectedCost = 0;
             for (const link of toner.printers) {
-                const counted = assetPages.get(link.printerAssetId);
-                if (!counted)
-                    continue;
-                pages += cost.isColor ? counted.color : counted.pages;
+                for (const day of daysByAsset.get(link.printerAssetId) ?? []) {
+                    const counted = cost.isColor ? day.color : day.pages;
+                    pages += counted;
+                    expectedCost += counted * (costPerPageOn(cost, day.date) ?? 0);
+                }
             }
-            const { received, issued } = unitsByToner.get(toner.id) ?? {
+            const units = unitsByToner.get(toner.id) ?? {
                 received: 0,
                 issued: 0,
+                receivedCost: 0,
+                issuedCost: 0,
             };
             const expected = toner.yieldPages ? pages / toner.yieldPages : null;
+            const cpp = costPerPageOn(cost, priceDay);
             return {
                 id: toner.id,
                 name: toner.name,
                 color: toner.color,
                 isColor: cost.isColor,
-                price: cost.price,
+                price: priceOn(cost.prices, priceDay),
                 yieldPages: toner.yieldPages,
-                costPerPage: cost.costPerPage,
+                costPerPage: cpp === null ? null : pages > 0 ? expectedCost / pages : cpp,
                 assetCount: toner.printers.length,
                 pages,
                 expectedUnits: expected,
-                expectedCost: expected !== null && cost.price !== null
-                    ? expected * cost.price
-                    : null,
-                receivedUnits: received,
-                receivedCost: cost.price !== null ? received * cost.price : null,
-                issuedUnits: issued,
-                issuedCost: cost.price !== null ? issued * cost.price : null,
+                expectedCost: expected !== null && priced ? expectedCost : null,
+                receivedUnits: units.received,
+                receivedCost: priced ? units.receivedCost : null,
+                issuedUnits: units.issued,
+                issuedCost: priced ? units.issuedCost : null,
             };
         })
             .filter((row) => row.pages > 0 || row.receivedUnits > 0 || row.issuedUnits > 0);

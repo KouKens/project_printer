@@ -163,6 +163,8 @@ export declare const ModelName: {
     readonly Toner: "Toner";
     readonly TonerPrinter: "TonerPrinter";
     readonly TonerPrice: "TonerPrice";
+    readonly TonerOffer: "TonerOffer";
+    readonly TonerOfferModel: "TonerOfferModel";
     readonly TonerStock: "TonerStock";
     readonly TonerEntry: "TonerEntry";
     readonly TonerOrder: "TonerOrder";
@@ -188,7 +190,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         omit: GlobalOmitOptions;
     };
     meta: {
-        modelProps: "toner" | "tonerPrinter" | "tonerPrice" | "tonerStock" | "tonerEntry" | "tonerOrder" | "tonerInvoice" | "tonerInvoiceLine" | "printer" | "printerAlert" | "printerAsset" | "company" | "maintVendor" | "pageCountDaily" | "supplyReading" | "repairRecord";
+        modelProps: "toner" | "tonerPrinter" | "tonerPrice" | "tonerOffer" | "tonerOfferModel" | "tonerStock" | "tonerEntry" | "tonerOrder" | "tonerInvoice" | "tonerInvoiceLine" | "printer" | "printerAlert" | "printerAsset" | "company" | "maintVendor" | "pageCountDaily" | "supplyReading" | "repairRecord";
         txIsolationLevel: TransactionIsolationLevel;
     };
     model: {
@@ -411,6 +413,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
                 count: {
                     args: Prisma.TonerPriceCountArgs<ExtArgs>;
                     result: runtime.Types.Utils.Optional<Prisma.TonerPriceCountAggregateOutputType> | number;
+                };
+            };
+        };
+        TonerOffer: {
+            payload: Prisma.$TonerOfferPayload<ExtArgs>;
+            fields: Prisma.TonerOfferFieldRefs;
+            operations: {
+                findUnique: {
+                    args: Prisma.TonerOfferFindUniqueArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload> | null;
+                };
+                findUniqueOrThrow: {
+                    args: Prisma.TonerOfferFindUniqueOrThrowArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>;
+                };
+                findFirst: {
+                    args: Prisma.TonerOfferFindFirstArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload> | null;
+                };
+                findFirstOrThrow: {
+                    args: Prisma.TonerOfferFindFirstOrThrowArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>;
+                };
+                findMany: {
+                    args: Prisma.TonerOfferFindManyArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>[];
+                };
+                create: {
+                    args: Prisma.TonerOfferCreateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>;
+                };
+                createMany: {
+                    args: Prisma.TonerOfferCreateManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                createManyAndReturn: {
+                    args: Prisma.TonerOfferCreateManyAndReturnArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>[];
+                };
+                delete: {
+                    args: Prisma.TonerOfferDeleteArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>;
+                };
+                update: {
+                    args: Prisma.TonerOfferUpdateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>;
+                };
+                deleteMany: {
+                    args: Prisma.TonerOfferDeleteManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                updateMany: {
+                    args: Prisma.TonerOfferUpdateManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                updateManyAndReturn: {
+                    args: Prisma.TonerOfferUpdateManyAndReturnArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>[];
+                };
+                upsert: {
+                    args: Prisma.TonerOfferUpsertArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferPayload>;
+                };
+                aggregate: {
+                    args: Prisma.TonerOfferAggregateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.AggregateTonerOffer>;
+                };
+                groupBy: {
+                    args: Prisma.TonerOfferGroupByArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.TonerOfferGroupByOutputType>[];
+                };
+                count: {
+                    args: Prisma.TonerOfferCountArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.TonerOfferCountAggregateOutputType> | number;
+                };
+            };
+        };
+        TonerOfferModel: {
+            payload: Prisma.$TonerOfferModelPayload<ExtArgs>;
+            fields: Prisma.TonerOfferModelFieldRefs;
+            operations: {
+                findUnique: {
+                    args: Prisma.TonerOfferModelFindUniqueArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload> | null;
+                };
+                findUniqueOrThrow: {
+                    args: Prisma.TonerOfferModelFindUniqueOrThrowArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>;
+                };
+                findFirst: {
+                    args: Prisma.TonerOfferModelFindFirstArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload> | null;
+                };
+                findFirstOrThrow: {
+                    args: Prisma.TonerOfferModelFindFirstOrThrowArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>;
+                };
+                findMany: {
+                    args: Prisma.TonerOfferModelFindManyArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>[];
+                };
+                create: {
+                    args: Prisma.TonerOfferModelCreateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>;
+                };
+                createMany: {
+                    args: Prisma.TonerOfferModelCreateManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                createManyAndReturn: {
+                    args: Prisma.TonerOfferModelCreateManyAndReturnArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>[];
+                };
+                delete: {
+                    args: Prisma.TonerOfferModelDeleteArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>;
+                };
+                update: {
+                    args: Prisma.TonerOfferModelUpdateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>;
+                };
+                deleteMany: {
+                    args: Prisma.TonerOfferModelDeleteManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                updateMany: {
+                    args: Prisma.TonerOfferModelUpdateManyArgs<ExtArgs>;
+                    result: BatchPayload;
+                };
+                updateManyAndReturn: {
+                    args: Prisma.TonerOfferModelUpdateManyAndReturnArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>[];
+                };
+                upsert: {
+                    args: Prisma.TonerOfferModelUpsertArgs<ExtArgs>;
+                    result: runtime.Types.Utils.PayloadToResult<Prisma.$TonerOfferModelPayload>;
+                };
+                aggregate: {
+                    args: Prisma.TonerOfferModelAggregateArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.AggregateTonerOfferModel>;
+                };
+                groupBy: {
+                    args: Prisma.TonerOfferModelGroupByArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.TonerOfferModelGroupByOutputType>[];
+                };
+                count: {
+                    args: Prisma.TonerOfferModelCountArgs<ExtArgs>;
+                    result: runtime.Types.Utils.Optional<Prisma.TonerOfferModelCountAggregateOutputType> | number;
                 };
             };
         };
@@ -1411,10 +1561,13 @@ export declare const TonerScalarFieldEnum: {
     readonly id: "id";
     readonly name: "name";
     readonly color: "color";
+    readonly part: "part";
     readonly recycled: "recycled";
     readonly alertThreshold: "alertThreshold";
     readonly disabledAt: "disabledAt";
     readonly yieldPages: "yieldPages";
+    readonly hidden: "hidden";
+    readonly genuineId: "genuineId";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
@@ -1434,6 +1587,44 @@ export declare const TonerPriceScalarFieldEnum: {
     readonly createdAt: "createdAt";
 };
 export type TonerPriceScalarFieldEnum = (typeof TonerPriceScalarFieldEnum)[keyof typeof TonerPriceScalarFieldEnum];
+export declare const TonerOfferScalarFieldEnum: {
+    readonly id: "id";
+    readonly code: "code";
+    readonly name: "name";
+    readonly brand: "brand";
+    readonly kind: "kind";
+    readonly part: "part";
+    readonly color: "color";
+    readonly yieldPages: "yieldPages";
+    readonly packQuantity: "packQuantity";
+    readonly seller: "seller";
+    readonly purchaseType: "purchaseType";
+    readonly price: "price";
+    readonly pagePrice: "pagePrice";
+    readonly monthlyFee: "monthlyFee";
+    readonly shippingFee: "shippingFee";
+    readonly minOrder: "minOrder";
+    readonly leadTime: "leadTime";
+    readonly warranty: "warranty";
+    readonly takesBack: "takesBack";
+    readonly payment: "payment";
+    readonly quotedOn: "quotedOn";
+    readonly validUntil: "validUntil";
+    readonly reference: "reference";
+    readonly url: "url";
+    readonly contact: "contact";
+    readonly note: "note";
+    readonly createdAt: "createdAt";
+    readonly updatedAt: "updatedAt";
+};
+export type TonerOfferScalarFieldEnum = (typeof TonerOfferScalarFieldEnum)[keyof typeof TonerOfferScalarFieldEnum];
+export declare const TonerOfferModelScalarFieldEnum: {
+    readonly id: "id";
+    readonly offerId: "offerId";
+    readonly maker: "maker";
+    readonly model: "model";
+};
+export type TonerOfferModelScalarFieldEnum = (typeof TonerOfferModelScalarFieldEnum)[keyof typeof TonerOfferModelScalarFieldEnum];
 export declare const TonerStockScalarFieldEnum: {
     readonly tonerId: "tonerId";
     readonly companyId: "companyId";
@@ -1640,11 +1831,19 @@ export declare const NullsOrder: {
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder];
 export type StringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String'>;
 export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>;
+export type EnumSupplyPartFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SupplyPart'>;
+export type ListEnumSupplyPartFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SupplyPart[]'>;
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>;
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>;
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>;
 export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>;
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>;
+export type EnumOfferKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OfferKind'>;
+export type ListEnumOfferKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OfferKind[]'>;
+export type EnumPurchaseTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PurchaseType'>;
+export type ListEnumPurchaseTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PurchaseType[]'>;
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>;
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>;
 export type EnumTonerActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TonerAction'>;
 export type ListEnumTonerActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TonerAction[]'>;
 export type EnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OrderStatus'>;
@@ -1661,8 +1860,6 @@ export type EnumRepairHandlerFieldRefInput<$PrismaModel> = FieldRefInputType<$Pr
 export type ListEnumRepairHandlerFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RepairHandler[]'>;
 export type EnumRepairStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RepairStatus'>;
 export type ListEnumRepairStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'RepairStatus[]'>;
-export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>;
-export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>;
 export type BatchPayload = {
     count: number;
 };
@@ -1694,6 +1891,8 @@ export type GlobalOmitConfig = {
     toner?: Prisma.TonerOmit;
     tonerPrinter?: Prisma.TonerPrinterOmit;
     tonerPrice?: Prisma.TonerPriceOmit;
+    tonerOffer?: Prisma.TonerOfferOmit;
+    tonerOfferModel?: Prisma.TonerOfferModelOmit;
     tonerStock?: Prisma.TonerStockOmit;
     tonerEntry?: Prisma.TonerEntryOmit;
     tonerOrder?: Prisma.TonerOrderOmit;

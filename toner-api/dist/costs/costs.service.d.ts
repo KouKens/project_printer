@@ -1,9 +1,26 @@
 import { PrismaService } from '../prisma/prisma.service';
+export declare function oneOfEachFamily(linked: TonerCost[]): TonerCost[];
 export type CostQuery = {
     from?: string;
     to?: string;
     years?: number;
 };
+export type PriceRow = {
+    price: number;
+    effectiveFrom: Date;
+};
+export declare function priceOn(prices: PriceRow[], day: Date): number | null;
+export type TonerCost = {
+    id: string;
+    name: string | null;
+    color: string | null;
+    recycled: boolean;
+    family: string;
+    prices: PriceRow[];
+    yieldPages: number | null;
+    isColor: boolean;
+};
+export declare function costPerPageOn(toner: TonerCost, day: Date): number | null;
 export declare class CostsService {
     private readonly prisma;
     constructor(prisma: PrismaService);

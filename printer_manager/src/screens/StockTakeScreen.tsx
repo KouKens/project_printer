@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CompanyPicker from '../components/CompanyPicker';
 import CsvButton from '../components/CsvButton';
 import SearchBox from '../components/SearchBox';
 import TableBox from '../components/TableBox';
@@ -62,7 +63,7 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 const CSV_HEADER = COLUMNS.map((col) => col.label);
 
 export default function StockTakeScreen() {
-  // 数える対象も書き戻す先も、右上で選んでいる拠点の在庫
+  // 数える対象も書き戻す先も、道具欄で選んでいる拠点の在庫
   const { companyId } = useCompany()
   const [rows, setRows] = useState<StockRow[]>([]);
   /** 数えた本数。キーはトナーID、値は入力欄の文字列。未入力の行は持たない */
@@ -208,7 +209,7 @@ export default function StockTakeScreen() {
         method: 'POST',
         body: JSON.stringify({
           userId: userId.trim(),
-          // 数えた結果を書き戻す先。右上で選んでいる拠点の在庫
+          // 数えた結果を書き戻す先。道具欄で選んでいる拠点の在庫
           companyId,
           counts: [...entered.entries()].map(([tonerId, count]) => ({
             tonerId,
@@ -247,6 +248,24 @@ export default function StockTakeScreen() {
     setNotice(null);
   };
 
+  /**
+   * 拠点を切り替える前に、打ちかけの実数を捨てる。
+   * 実数はトナーID だけを鍵に持つので、残すと数えた棚とは別の拠点の在庫へ
+   * そのまま書き戻してしまう。入力があるときだけ確かめる
+   */
+  const beforeCompanyChange = () => {
+    if (
+      entered.size > 0 &&
+      !window.confirm(
+        `入力した実数 ${entered.size} 件を消して、拠点を切り替えます。よろしいですか。`,
+      )
+    ) {
+      return false;
+    }
+    clear();
+    return true;
+  };
+
   return (
     <div className="st">
       <header className="st-head">
@@ -260,6 +279,8 @@ export default function StockTakeScreen() {
       </header>
 
       <div className="st-tools">
+        <CompanyPicker beforeChange={beforeCompanyChange} disabled={busy} />
+
         <label>
           <span>ユーザーID（未入力可）</span>
           <input

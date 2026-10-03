@@ -3,6 +3,7 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -11,6 +12,8 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { SUPPLY_PARTS } from '../../common/supply-part';
+import type { SupplyPartInput } from '../../common/supply-part';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -32,11 +35,35 @@ export class CreateTonerDto {
   @MaxLength(40)
   color?: string | null;
 
+  /** 種類（トナー・ドラム・廃トナーボトル…）。未指定ならトナー・インク */
+  @IsOptional()
+  @IsIn(SUPPLY_PARTS, { message: '種類を選んでください' })
+  part?: SupplyPartInput;
+
   @IsOptional()
   @IsBoolean({
     message: 'リサイクル品かどうかは true / false で指定してください',
   })
   recycled?: boolean;
+
+  /**
+   * 比較の基準にする純正品の品番。リサイクル品だけが持てる。
+   * 未入力（null）なら組を作らない
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  genuineId?: string | null;
+
+  /**
+   * 他の画面（受付・注文の候補、トナー個数状況など）に出さない。
+   * 価格を比べるためだけに登録する品番用。未指定なら出す
+   */
+  @IsOptional()
+  @IsBoolean({
+    message: '他の画面に出すかどうかは true / false で指定してください',
+  })
+  hidden?: boolean;
 
   /**
    * 在庫がこの本数以下になったら一覧で警告する。

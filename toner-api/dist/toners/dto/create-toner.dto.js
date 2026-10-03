@@ -12,12 +12,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateTonerDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
+const supply_part_1 = require("../../common/supply-part");
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 class CreateTonerDto {
     id;
     name;
     color;
+    part;
     recycled;
+    genuineId;
+    hidden;
     alertThreshold;
     yieldPages;
     printerAssetIds;
@@ -45,11 +49,29 @@ __decorate([
 ], CreateTonerDto.prototype, "color", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(supply_part_1.SUPPLY_PARTS, { message: '種類を選んでください' }),
+    __metadata("design:type", String)
+], CreateTonerDto.prototype, "part", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsBoolean)({
         message: 'リサイクル品かどうかは true / false で指定してください',
     }),
     __metadata("design:type", Boolean)
 ], CreateTonerDto.prototype, "recycled", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(64),
+    __metadata("design:type", Object)
+], CreateTonerDto.prototype, "genuineId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)({
+        message: '他の画面に出すかどうかは true / false で指定してください',
+    }),
+    __metadata("design:type", Boolean)
+], CreateTonerDto.prototype, "hidden", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Type)(() => Number),

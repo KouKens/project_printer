@@ -5,13 +5,67 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { fromDate, toDate, today } from '../common/date';
+import type { SupplyPartInput } from '../common/supply-part';
 import { toText } from '../common/text';
+import { modelKey } from '../printer-assets/printer-assets.service';
+import { indexPrinters, matchPrinter } from '../printers/printer-match';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTonerPriceDto } from './dto/create-toner-price.dto';
 import { CreateTonerDto } from './dto/create-toner.dto';
 import { UpdateTonerDto } from './dto/update-toner.dto';
 
 type PriceRow = { price: number; effectiveFrom: Date; note: string | null };
+
+/**
+ * 月の印刷枚数を出すのに見る日数（直近）。
+ * 月によって刷る量が上下するので 1 か月ぶんより長く取り、季節の変わり目に追いつく程度に短くする
+ */
+export const VOLUME_DAYS = 90;
+/** 記録がこの日数より少ない台は、月の枚数を出さない（数日の偏りで月額の割り方が大きく狂うため） */
+const VOLUME_MIN_DAYS = 7;
+/** 1 か月の日数。年 365 日を 12 で割る */
+const DAYS_PER_MONTH = 365 / 12;
+const DAY_MS = 86_400_000;
+
+/**
+ * 台ごとの月の印刷枚数（直近 `VOLUME_DAYS` 日の、記録のある日の平均 × 1 か月）。
+ *
+ * **記録の無い日（電源が切れていた・取れなかった）は数えない。** 暦の日数で割ると、
+ * 取れなかった日を「0 枚刷った」と読んで月の枚数が小さくなり、月額の 1 枚あたりが大きく出る。
+ * 累計が戻って枚数が null の日も同じ理由で外す
+ */
+export function monthlyPagesOf(
+  rows: { pages: number | null }[],
+): number | null {
+  const counted = rows.filter(
+    (row): row is { pages: number } => row.pages !== null,
+  );
+  if (counted.length < VOLUME_MIN_DAYS) return null;
+  const total = counted.reduce((sum, row) => sum + row.pages, 0);
+  return (total / counted.length) * DAYS_PER_MONTH;
+}
+
+/** 一覧と 1 件の読み出しで添えるもの。toResponse がこの形を受ける */
+const TONER_INCLUDE = {
+  stocks: true,
+  prices: { orderBy: { effectiveFrom: 'desc' } },
+  printers: {
+    include: {
+      asset: {
+        select: {
+          id: true,
+          department: true,
+          no: true,
+          ipAddress: true,
+          maker: true,
+          model: true,
+        },
+      },
+    },
+  },
+  // この品番を純正として指しているリサイクル品。トナー登録の一覧で組を見せる
+  alternatives: { select: { id: true }, orderBy: { id: 'asc' } },
+} as const;
 
 /**
  * 拠点ごとに分かれている在庫を足す。
@@ -45,13 +99,23 @@ export class TonersService {
 
     await this.assertAssetsExist(dto.printerAssetIds ?? []);
 
+    const recycled = dto.recycled ?? false;
+    const genuineId = await this.resolveGenuine(
+      id,
+      recycled,
+      dto.genuineId ?? null,
+    );
+
     await this.prisma.$transaction(async (tx) => {
       await tx.toner.create({
         data: {
           id,
           name: toText(dto.name),
           color: toText(dto.color),
-          recycled: dto.recycled ?? false,
+          part: dto.part ?? 'TONER',
+          recycled,
+          genuineId,
+          hidden: dto.hidden ?? false,
           alertThreshold: dto.alertThreshold ?? null,
           yieldPages: dto.yieldPages ?? null,
           printers: {
@@ -79,34 +143,18 @@ export class TonersService {
   }
 
   /**
-   * マスタの一覧。**既定では無効にした品番を返さない。**
+   * マスタの一覧。**既定では無効にした品番と、他の画面に出さない品番を返さない。**
    *
    * 受付の検索・注文・請求書の明細はどれもここから候補を作るので、
    * ここで外しておけば「使っていない品番を選べてしまう」場所が残らない。
-   * 無効の分まで要るのはトナー登録の画面だけで、そこだけ true を渡す
+   * 全部まで要るのはトナー登録の画面だけで、そこだけ true を渡す
+   * （価格比較は findPriceCompare で別に引く）
    */
   async findAll(includeDisabled = false) {
     const toners = await this.prisma.toner.findMany({
-      where: includeDisabled ? {} : { disabledAt: null },
+      where: includeDisabled ? {} : { disabledAt: null, hidden: false },
       orderBy: [{ name: 'asc' }, { id: 'asc' }],
-      include: {
-        stocks: true,
-        prices: { orderBy: { effectiveFrom: 'desc' } },
-        printers: {
-          include: {
-            asset: {
-              select: {
-                id: true,
-                department: true,
-                no: true,
-                ipAddress: true,
-                maker: true,
-                model: true,
-              },
-            },
-          },
-        },
-      },
+      include: TONER_INCLUDE,
     });
 
     return toners.map((toner) => this.toResponse(toner));
@@ -115,24 +163,7 @@ export class TonersService {
   async findOne(id: string) {
     const toner = await this.prisma.toner.findUnique({
       where: { id },
-      include: {
-        stocks: true,
-        prices: { orderBy: { effectiveFrom: 'desc' } },
-        printers: {
-          include: {
-            asset: {
-              select: {
-                id: true,
-                department: true,
-                no: true,
-                ipAddress: true,
-                maker: true,
-                model: true,
-              },
-            },
-          },
-        },
-      },
+      include: TONER_INCLUDE,
     });
 
     if (!toner) {
@@ -141,9 +172,196 @@ export class TonersService {
     return this.toResponse(toner);
   }
 
-  /** 名前・色・リサイクル区分と対応機器を更新する。価格は addPrice で足す */
+  /**
+   * 他の画面に出さない品番。**無効にしたものも含める。**
+   *
+   * トナー入出状況は受け払いの記録を並べる画面で、品番マスタを引かずに
+   * 行を作っている。どの行を隠すかを決めるために品番だけを渡す
+   */
+  async findHiddenIds(): Promise<string[]> {
+    const rows = await this.prisma.toner.findMany({
+      where: { hidden: true },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * 価格比較の画面用。**全品番**（無効・他の画面に出さないものも含む）を、
+   * 価格の履歴（古い順）と、使える機種を添えて返す。
+   *
+   * 機種は対応プリンターの台帳から引き、**有効な台だけ**を見る
+   * （入れ替えて無効にした台の機種まで「使える」に数えないため）。
+   * 機種のまとめ方はトナー個数状況と同じ `modelKey`。
+   *
+   * 純正とリサイクル品の組（genuineId）をまとめるのは画面の仕事にする。
+   * 対応プリンターを付けていない品番でも、組の相手が付けていれば
+   * その機種で引けるよう、画面が組の中で機種を足し合わせる
+   */
+  async findPriceCompare() {
+    const since = new Date(today().getTime() - VOLUME_DAYS * DAY_MS);
+    const [toners, assets, printers, dailies] = await Promise.all([
+      this.prisma.toner.findMany({
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        include: {
+          prices: { orderBy: { effectiveFrom: 'asc' } },
+          printers: {
+            where: { asset: { disabledAt: null } },
+            select: { printerAssetId: true },
+          },
+        },
+      }),
+      this.prisma.printerAsset.findMany({
+        where: { disabledAt: null },
+        orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          no: true,
+          department: true,
+          maker: true,
+          model: true,
+          // 実機と突き合わせて、月の印刷枚数を引く（月額の基本料金を 1 枚あたりに割るため）
+          ipAddress: true,
+          serialNumber: true,
+          company: { select: { name: true } },
+        },
+      }),
+      this.prisma.printer.findMany({
+        select: { id: true, ipAddress: true, serialNumber: true },
+      }),
+      this.prisma.pageCountDaily.findMany({
+        where: { date: { gte: since } },
+        select: { printerId: true, pages: true },
+      }),
+    ]);
+
+    // 実機ごとの日々の枚数。台帳 → 実機の突き合わせは他の一覧と同じ printer-match
+    const pagesByPrinter = new Map<number, { pages: number | null }[]>();
+    for (const row of dailies) {
+      const list = pagesByPrinter.get(row.printerId) ?? [];
+      list.push(row);
+      pagesByPrinter.set(row.printerId, list);
+    }
+    const live = indexPrinters(printers, assets);
+
+    // 機種の呼び名は、その機種でいちばん多く使われている書き方にする（findByModel と同じ）
+    const spellings = new Map<string, Map<string, number>>();
+    const assetCounts = new Map<string, number>();
+    for (const asset of assets) {
+      const key = modelKey(asset.maker, asset.model);
+      const spelling = [asset.maker, asset.model].filter(Boolean).join(' ');
+      const seen = spellings.get(key) ?? new Map<string, number>();
+      seen.set(spelling, (seen.get(spelling) ?? 0) + 1);
+      spellings.set(key, seen);
+      assetCounts.set(key, (assetCounts.get(key) ?? 0) + 1);
+    }
+
+    const models = [...spellings.entries()]
+      .map(([key, seen]) => {
+        const label =
+          [...seen.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+        return {
+          key,
+          /** メーカーも型番も未入力の台帳は空文字。画面は「型番未入力」と出す */
+          label,
+          assetCount: assetCounts.get(key) ?? 0,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, 'ja', { numeric: true }));
+
+    const assetById = new Map(assets.map((asset) => [asset.id, asset]));
+    const now = today();
+
+    return {
+      models,
+      /** 月の印刷枚数を出すのに見た日数。画面の断り書きに出す */
+      volumeDays: VOLUME_DAYS,
+      /**
+       * 有効な台帳の全台。画面の「プリンターを選ぶ」の選択肢で、
+       * 選んだ台が今使っているトナーは toners[].printers から引く。
+       * トナーを紐づけていない台も選べるよう、紐づけとは別に全台を返す
+       */
+      assets: assets.map((asset) => {
+        const printer = matchPrinter(asset, live);
+        return {
+          id: asset.id,
+          no: asset.no,
+          department: asset.department,
+          maker: asset.maker,
+          model: asset.model,
+          companyName: asset.company?.name ?? null,
+          modelKey: modelKey(asset.maker, asset.model),
+          /**
+           * 月の印刷枚数（直近の記録のある日の平均 × 1 か月）。
+           * 実機と結び付かない・記録が少ない台は null。月額の基本料金を 1 枚あたりに割る数
+           */
+          monthlyPages:
+            printer === null
+              ? null
+              : monthlyPagesOf(pagesByPrinter.get(printer.id) ?? []),
+        };
+      }),
+      toners: toners.map((toner) => {
+        // 古い順に並んでいるので、今日以前の最後の行が今の価格
+        const current =
+          toner.prices.filter((row) => row.effectiveFrom <= now).at(-1) ?? null;
+        const linked = toner.printers
+          .map((link) => assetById.get(link.printerAssetId))
+          .filter((asset) => asset !== undefined);
+
+        return {
+          id: toner.id,
+          name: toner.name,
+          color: toner.color,
+          /** 種類。比較の画面はこれと色でまとめる */
+          part: toner.part,
+          recycled: toner.recycled,
+          genuineId: toner.genuineId,
+          hidden: toner.hidden,
+          disabledAt: toner.disabledAt,
+          yieldPages: toner.yieldPages,
+          price: current?.price ?? null,
+          priceFrom: current ? fromDate(current.effectiveFrom) : null,
+          costPerPage:
+            current && toner.yieldPages
+              ? current.price / toner.yieldPages
+              : null,
+          /** 価格の履歴。**古い順**（グラフが左から描くため） */
+          prices: toner.prices.map((row) => ({
+            effectiveFrom: fromDate(row.effectiveFrom),
+            price: row.price,
+            note: row.note,
+          })),
+          /** 対応プリンターのうち有効な台。探す欄で部署や No. から引くのに使う */
+          printers: linked.map((asset) => ({
+            id: asset.id,
+            no: asset.no,
+            department: asset.department,
+            maker: asset.maker,
+            model: asset.model,
+            companyName: asset.company?.name ?? null,
+          })),
+          /** 使える機種の鍵（models の key）。重なりは落とす */
+          modelKeys: [
+            ...new Set(
+              linked.map((asset) => modelKey(asset.maker, asset.model)),
+            ),
+          ],
+        };
+      }),
+    };
+  }
+
+  /**
+   * 名前・色・リサイクル区分・純正品・他の画面に出すかと、対応機器を更新する。
+   * 価格は addPrice で足す
+   */
   async update(id: string, dto: UpdateTonerDto) {
-    const toner = await this.prisma.toner.findUnique({ where: { id } });
+    const toner = await this.prisma.toner.findUnique({
+      where: { id },
+      include: { _count: { select: { alternatives: true } } },
+    });
     if (!toner) {
       throw new NotFoundException(`${id} は登録されていません`);
     }
@@ -152,13 +370,37 @@ export class TonersService {
       await this.assertAssetsExist(dto.printerAssetIds);
     }
 
+    const recycled = dto.recycled ?? toner.recycled;
+
+    // 純正として指されている品番をリサイクル品にすると、組の軸が消える
+    if (recycled && toner._count.alternatives > 0) {
+      throw new BadRequestException(
+        `${id} はリサイクル品 ${toner._count.alternatives} 件から純正品として選ばれているため、` +
+          'リサイクル品・互換品にはできません。先にそちらの「純正品」を外してください',
+      );
+    }
+
+    /*
+     * 純正品の指定。送られてこなければ今の値のまま。
+     * ただし純正に変えたときは外す（純正は何も指さないので、残すと組が食い違う）
+     */
+    const genuineId =
+      dto.genuineId !== undefined
+        ? await this.resolveGenuine(id, recycled, dto.genuineId)
+        : !recycled && toner.genuineId !== null
+          ? null
+          : undefined;
+
     await this.prisma.$transaction(async (tx) => {
       await tx.toner.update({
         where: { id },
         data: {
           name: dto.name === undefined ? undefined : toText(dto.name),
           color: dto.color === undefined ? undefined : toText(dto.color),
+          part: dto.part,
           recycled: dto.recycled,
+          genuineId,
+          hidden: dto.hidden,
           alertThreshold:
             dto.alertThreshold === undefined ? undefined : dto.alertThreshold,
           yieldPages: dto.yieldPages === undefined ? undefined : dto.yieldPages,
@@ -260,6 +502,7 @@ export class TonersService {
             invoiceLines: true,
             printers: true,
             prices: true,
+            alternatives: true,
           },
         },
         stocks: true,
@@ -310,6 +553,8 @@ export class TonersService {
       removed: {
         prices: toner._count.prices,
         printers: toner._count.printers,
+        /** この品番を純正に選んでいたリサイクル品の数。そちらは組から外れる（SetNull） */
+        alternatives: toner._count.alternatives,
       },
     };
   }
@@ -355,6 +600,47 @@ export class TonersService {
 
   // ── 内部ヘルパー ──────────────────────
 
+  /**
+   * 純正品の指定を確かめて、保存する値を返す。空なら null（組を作らない）。
+   *
+   * 組は「純正 1 ＋ リサイクル N」の星形に限る。純正は何も指さず、
+   * リサイクル品は純正だけを指す。リサイクル品を指せると鎖ができて、
+   * どれが基準なのか分からなくなる
+   */
+  private async resolveGenuine(
+    selfId: string,
+    recycled: boolean,
+    genuineId: string | null,
+  ): Promise<string | null> {
+    const target = genuineId?.trim() || null;
+    if (target === null) return null;
+
+    if (!recycled) {
+      throw new BadRequestException(
+        '純正品には「純正品」を選べません。リサイクル品・互換品にしてから選んでください',
+      );
+    }
+    if (target === selfId) {
+      throw new BadRequestException('自分自身は純正品に選べません');
+    }
+
+    const genuine = await this.prisma.toner.findUnique({
+      where: { id: target },
+      select: { recycled: true },
+    });
+    if (!genuine) {
+      throw new BadRequestException(
+        `純正品に選んだ ${target} は登録されていません`,
+      );
+    }
+    if (genuine.recycled) {
+      throw new BadRequestException(
+        `${target} はリサイクル品・互換品です。純正品を選んでください`,
+      );
+    }
+    return target;
+  }
+
   /** 存在しない台帳 ID を弾く。外部キー違反を 500 で返さないため */
   private async assertAssetsExist(assetIds: number[]) {
     if (assetIds.length === 0) return;
@@ -383,12 +669,16 @@ export class TonersService {
     id: string;
     name: string | null;
     color: string | null;
+    part: SupplyPartInput;
     recycled: boolean;
+    genuineId: string | null;
+    hidden: boolean;
     alertThreshold: number | null;
     yieldPages: number | null;
     disabledAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    alternatives: { id: string }[];
     /** 拠点ごとの在庫。**品番マスタは全拠点共通**なので拠点の数だけ並ぶ */
     stocks: { quantity: number }[];
     prices: (PriceRow & { id: number; createdAt: Date })[];
@@ -409,7 +699,15 @@ export class TonersService {
       id: toner.id,
       name: toner.name,
       color: toner.color,
+      /** 種類（トナー・ドラム・廃トナーボトル…） */
+      part: toner.part,
       recycled: toner.recycled,
+      /** 比較の基準にする純正品。リサイクル品だけが持つ。未設定は null */
+      genuineId: toner.genuineId,
+      /** この品番を純正に選んでいるリサイクル品 */
+      alternativeIds: toner.alternatives.map((alt) => alt.id),
+      /** 他の画面（受付・注文の候補、トナー個数状況など）に出さないか */
+      hidden: toner.hidden,
       /** 在庫がこの本数以下なら画面で警告する。未設定は null */
       alertThreshold: toner.alertThreshold,
       /** 1 本で刷れる枚数（カタログ値）。未設定は null */

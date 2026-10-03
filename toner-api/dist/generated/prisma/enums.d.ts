@@ -58,3 +58,25 @@ export declare const OrderStatus: {
     readonly CANCELED: "CANCELED";
 };
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+export declare const SupplyPart: {
+    readonly TONER: "TONER";
+    readonly DRUM: "DRUM";
+    readonly WASTE: "WASTE";
+    readonly MAINTENANCE: "MAINTENANCE";
+    readonly OTHER: "OTHER";
+};
+export type SupplyPart = (typeof SupplyPart)[keyof typeof SupplyPart];
+export declare const OfferKind: {
+    readonly GENUINE: "GENUINE";
+    readonly RECYCLED: "RECYCLED";
+    readonly COMPATIBLE: "COMPATIBLE";
+};
+export type OfferKind = (typeof OfferKind)[keyof typeof OfferKind];
+export declare const PurchaseType: {
+    readonly SPOT: "SPOT";
+    readonly ONLINE: "ONLINE";
+    readonly CONTRACT: "CONTRACT";
+    readonly SUBSCRIPTION: "SUBSCRIPTION";
+    readonly OTHER: "OTHER";
+};
+export type PurchaseType = (typeof PurchaseType)[keyof typeof PurchaseType];

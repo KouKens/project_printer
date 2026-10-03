@@ -79,10 +79,10 @@ __decorate([
 ], TonerOrdersController.prototype, "findPending", null);
 __decorate([
     (0, common_1.Get)('delivery-check'),
-    __param(0, (0, common_1.Query)('companyId', common_1.ParseIntPipe)),
+    __param(0, (0, common_1.Query)('companyId', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('days', new common_1.DefaultValuePipe(180), common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Number]),
+    __metadata("design:paramtypes", [Object, Number]),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "findDeliveryCheck", null);
 exports.TonerOrdersController = TonerOrdersController = __decorate([

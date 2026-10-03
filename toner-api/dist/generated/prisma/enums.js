@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OrderStatus = exports.CountLayout = exports.RepairStatus = exports.RepairHandler = exports.RepairCategory = exports.PrinterProtocol = exports.SnmpVersion = exports.TonerAction = void 0;
+exports.PurchaseType = exports.OfferKind = exports.SupplyPart = exports.OrderStatus = exports.CountLayout = exports.RepairStatus = exports.RepairHandler = exports.RepairCategory = exports.PrinterProtocol = exports.SnmpVersion = exports.TonerAction = void 0;
 exports.TonerAction = {
     REGISTER: 'REGISTER',
     RECEIVE: 'RECEIVE',
@@ -52,5 +52,24 @@ exports.OrderStatus = {
     PENDING: 'PENDING',
     RECEIVED: 'RECEIVED',
     CANCELED: 'CANCELED'
+};
+exports.SupplyPart = {
+    TONER: 'TONER',
+    DRUM: 'DRUM',
+    WASTE: 'WASTE',
+    MAINTENANCE: 'MAINTENANCE',
+    OTHER: 'OTHER'
+};
+exports.OfferKind = {
+    GENUINE: 'GENUINE',
+    RECYCLED: 'RECYCLED',
+    COMPATIBLE: 'COMPATIBLE'
+};
+exports.PurchaseType = {
+    SPOT: 'SPOT',
+    ONLINE: 'ONLINE',
+    CONTRACT: 'CONTRACT',
+    SUBSCRIPTION: 'SUBSCRIPTION',
+    OTHER: 'OTHER'
 };
 //# sourceMappingURL=enums.js.map

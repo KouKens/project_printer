@@ -13,6 +13,10 @@ function prismaWith(orders: unknown[], entries: unknown[]) {
 
 const TONER = { name: 'トナー黒', color: 'BLACK' };
 
+/** 拠点。行には id と名前・並び順が付いてくる */
+const HONIN = { companyId: 1, company: { name: '本院', sortOrder: 0 } };
+const BRANCH = { companyId: 2, company: { name: '事業所', sortOrder: 1 } };
+
 describe('TonerOrdersService', () => {
   async function make(prisma: object) {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,11 +29,7 @@ describe('TonerOrdersService', () => {
   }
 
   describe('findDeliveryCheck', () => {
-    /**
-     * 鍵が「品番 ＋ 日付」だけなので、拠点で絞らないと他の拠点の搬入が
-     * 同じ行にまとまり、こちらの注文が埋まったように見えて差が消える
-     */
-    it('注文と搬入の両方を拠点で絞る', async () => {
+    it('拠点を渡せば注文と搬入の両方をその拠点で絞る', async () => {
       const prisma = prismaWith([], []);
       const service = await make(prisma);
 
@@ -43,12 +43,82 @@ describe('TonerOrdersService', () => {
       expect(entryWhere.action).toBe('RECEIVE');
     });
 
+    it('拠点を省けば全拠点を引く', async () => {
+      const prisma = prismaWith([], []);
+      const service = await make(prisma);
+
+      await service.findDeliveryCheck(undefined, 90);
+
+      expect(whereArg(prisma.tonerOrder.findMany)).not.toHaveProperty(
+        'companyId',
+      );
+      expect(whereArg(prisma.tonerEntry.findMany)).not.toHaveProperty(
+        'companyId',
+      );
+    });
+
+    /**
+     * 全拠点を並べても、拠点が鍵に入っているので混ざらない。
+     * 鍵が「品番 ＋ 日付」だけだと、事業所の搬入が本院の注文を埋めて差が消える
+     */
+    it('同じ品番・同じ日でも拠点が違えば別の行になる', async () => {
+      const service = await make(
+        prismaWith(
+          [
+            {
+              id: 1,
+              ...HONIN,
+              tonerId: 'T1',
+              toner: TONER,
+              quantity: 2,
+              orderedAt: new Date('2026-09-01'),
+              // 過ぎた日付。まだ来ていない「waiting」と区別する
+              deliveryOn: new Date(Date.UTC(2020, 0, 5)),
+              status: 'PENDING',
+            },
+          ],
+          [
+            {
+              id: 10,
+              ...BRANCH,
+              tonerId: 'T1',
+              toner: TONER,
+              quantity: 2,
+              userId: 'u1',
+              createdAt: new Date('2020-01-05'),
+              receivedOn: new Date(Date.UTC(2020, 0, 5)),
+            },
+          ],
+        ),
+      );
+
+      const rows = await service.findDeliveryCheck(undefined, 90);
+
+      expect(rows).toHaveLength(2);
+      // 同じ日付は拠点登録の並び順（本院 → 事業所）
+      expect(rows[0]).toMatchObject({
+        companyId: 1,
+        companyName: '本院',
+        ordered: 2,
+        received: 0,
+        status: 'short',
+      });
+      expect(rows[1]).toMatchObject({
+        companyId: 2,
+        companyName: '事業所',
+        ordered: 0,
+        received: 2,
+        status: 'no-order',
+      });
+    });
+
     it('注文と搬入の本数が合えば match', async () => {
       const service = await make(
         prismaWith(
           [
             {
               id: 1,
+              ...HONIN,
               tonerId: 'T1',
               toner: TONER,
               quantity: 2,
@@ -60,6 +130,7 @@ describe('TonerOrdersService', () => {
           [
             {
               id: 10,
+              ...HONIN,
               tonerId: 'T1',
               toner: TONER,
               quantity: 2,
@@ -75,6 +146,7 @@ describe('TonerOrdersService', () => {
 
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
+        companyName: '本院',
         tonerId: 'T1',
         date: '2026-09-05',
         ordered: 2,
@@ -84,16 +156,13 @@ describe('TonerOrdersService', () => {
       });
     });
 
-    /**
-     * 拠点で絞ったあとの姿。1 拠点ぶんだけが渡ってくれば、
-     * 同じ品番・同じ日でも自分の注文が埋まらないまま short として残る
-     */
     it('搬入が無ければ注文だけの行が short で残る', async () => {
       const service = await make(
         prismaWith(
           [
             {
               id: 2,
+              ...BRANCH,
               tonerId: 'T1',
               toner: TONER,
               quantity: 2,
@@ -123,6 +192,7 @@ describe('TonerOrdersService', () => {
           [
             {
               id: 3,
+              ...HONIN,
               tonerId: 'T1',
               toner: TONER,
               quantity: 5,

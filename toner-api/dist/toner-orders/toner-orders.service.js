@@ -25,11 +25,16 @@ function statusOf(ordered, received, date, todayKey) {
         return 'match';
     return received < ordered ? 'short' : 'over';
 }
+const ORDER_INCLUDE = {
+    toner: { select: { name: true } },
+    company: { select: { name: true } },
+};
 function toResponse(order) {
     return {
         id: order.id,
         tonerId: order.tonerId,
         companyId: order.companyId,
+        companyName: order.company.name,
         userId: order.userId,
         name: order.toner.name,
         quantity: order.quantity,
@@ -70,7 +75,7 @@ let TonerOrdersService = class TonerOrdersService {
                 orderedAt,
                 deliveryOn: (0, date_1.toDate)(dto.deliveryOn),
             },
-            include: { toner: { select: { name: true } } },
+            include: ORDER_INCLUDE,
         });
         return toResponse(order);
     }
@@ -78,7 +83,7 @@ let TonerOrdersService = class TonerOrdersService {
         const orders = await this.prisma.tonerOrder.findMany({
             where: { status: 'PENDING', ...(companyId ? { companyId } : {}) },
             orderBy: { orderedAt: 'asc' },
-            include: { toner: { select: { name: true } } },
+            include: ORDER_INCLUDE,
         });
         return orders.map(toResponse);
     }
@@ -107,7 +112,7 @@ let TonerOrdersService = class TonerOrdersService {
                         orderedAt,
                         deliveryOn,
                     },
-                    include: { toner: { select: { name: true } } },
+                    include: ORDER_INCLUDE,
                 });
                 saved.push(toResponse(order));
             }
@@ -117,23 +122,39 @@ let TonerOrdersService = class TonerOrdersService {
     async findDeliveryCheck(companyId, days = 180) {
         const from = new Date();
         from.setDate(from.getDate() - days);
+        const include = {
+            toner: { select: { name: true, color: true } },
+            company: { select: { name: true, sortOrder: true } },
+        };
         const [orders, entries] = await Promise.all([
             this.prisma.tonerOrder.findMany({
-                where: { companyId, orderedAt: { gte: from } },
+                where: {
+                    ...(companyId ? { companyId } : {}),
+                    orderedAt: { gte: from },
+                },
                 orderBy: { orderedAt: 'desc' },
-                include: { toner: { select: { name: true, color: true } } },
+                include,
             }),
             this.prisma.tonerEntry.findMany({
-                where: { companyId, action: 'RECEIVE', createdAt: { gte: from } },
+                where: {
+                    ...(companyId ? { companyId } : {}),
+                    action: 'RECEIVE',
+                    createdAt: { gte: from },
+                },
                 orderBy: { createdAt: 'desc' },
-                include: { toner: { select: { name: true, color: true } } },
+                include,
             }),
         ]);
         const rows = new Map();
-        const rowFor = (tonerId, toner, date) => {
-            const key = `${tonerId}\0${date ?? ''}`;
+        const companyOrder = new Map();
+        const rowFor = (source, date) => {
+            const { companyId: company, tonerId, toner } = source;
+            companyOrder.set(company, source.company.sortOrder);
+            const key = `${company}\0${tonerId}\0${date ?? ''}`;
             const row = rows.get(key) ?? {
                 key,
+                companyId: company,
+                companyName: source.company.name,
                 tonerId,
                 name: toner.name,
                 color: toner.color,
@@ -147,7 +168,7 @@ let TonerOrdersService = class TonerOrdersService {
             return row;
         };
         for (const order of orders) {
-            const row = rowFor(order.tonerId, order.toner, (0, date_1.fromDate)(order.deliveryOn));
+            const row = rowFor(order, (0, date_1.fromDate)(order.deliveryOn));
             if (order.status !== 'CANCELED')
                 row.ordered += order.quantity;
             row.orders.push({
@@ -158,7 +179,7 @@ let TonerOrdersService = class TonerOrdersService {
             });
         }
         for (const entry of entries) {
-            const row = rowFor(entry.tonerId, entry.toner, (0, date_1.fromDate)(entry.receivedOn));
+            const row = rowFor(entry, (0, date_1.fromDate)(entry.receivedOn));
             row.received += entry.quantity;
             row.entries.push({
                 id: entry.id,
@@ -175,8 +196,12 @@ let TonerOrdersService = class TonerOrdersService {
             status: statusOf(row.ordered, row.received, row.date, todayKey),
         }))
             .sort((a, b) => {
-            if (a.date === b.date)
-                return a.tonerId.localeCompare(b.tonerId, 'ja');
+            if (a.date === b.date) {
+                return ((companyOrder.get(a.companyId) ?? 0) -
+                    (companyOrder.get(b.companyId) ?? 0) ||
+                    a.companyId - b.companyId ||
+                    a.tonerId.localeCompare(b.tonerId, 'ja'));
+            }
             if (a.date === null)
                 return 1;
             if (b.date === null)
@@ -197,7 +222,7 @@ let TonerOrdersService = class TonerOrdersService {
             ...(companyId ? { where: { companyId } } : {}),
             orderBy: { orderedAt: 'desc' },
             take: 50,
-            include: { toner: { select: { name: true } } },
+            include: ORDER_INCLUDE,
         });
         return orders.map(toResponse);
     }

@@ -3,12 +3,15 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
   MaxLength,
   Min,
 } from 'class-validator';
+import { SUPPLY_PARTS } from '../../common/supply-part';
+import type { SupplyPartInput } from '../../common/supply-part';
 
 /**
  * マスタの更新。主キー（品番）は変えられない。
@@ -25,11 +28,35 @@ export class UpdateTonerDto {
   @MaxLength(40)
   color?: string | null;
 
+  /** 種類。省略すると変更しない */
+  @IsOptional()
+  @IsIn(SUPPLY_PARTS, { message: '種類を選んでください' })
+  part?: SupplyPartInput;
+
   @IsOptional()
   @IsBoolean({
     message: 'リサイクル品かどうかは true / false で指定してください',
   })
   recycled?: boolean;
+
+  /**
+   * 比較の基準にする純正品の品番。リサイクル品だけが持てる。
+   * 省略すると変更しない。null を送れば組から外す
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  genuineId?: string | null;
+
+  /**
+   * 他の画面に出さない。省略すると変更しない。
+   * 一覧のチェックはこれだけを送る（他の列に触らない）
+   */
+  @IsOptional()
+  @IsBoolean({
+    message: '他の画面に出すかどうかは true / false で指定してください',
+  })
+  hidden?: boolean;
 
   /**
    * 在庫がこの本数以下になったら一覧で警告する。

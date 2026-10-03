@@ -91,3 +91,34 @@ export const OrderStatus = {
 } as const
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
+
+
+export const SupplyPart = {
+  TONER: 'TONER',
+  DRUM: 'DRUM',
+  WASTE: 'WASTE',
+  MAINTENANCE: 'MAINTENANCE',
+  OTHER: 'OTHER'
+} as const
+
+export type SupplyPart = (typeof SupplyPart)[keyof typeof SupplyPart]
+
+
+export const OfferKind = {
+  GENUINE: 'GENUINE',
+  RECYCLED: 'RECYCLED',
+  COMPATIBLE: 'COMPATIBLE'
+} as const
+
+export type OfferKind = (typeof OfferKind)[keyof typeof OfferKind]
+
+
+export const PurchaseType = {
+  SPOT: 'SPOT',
+  ONLINE: 'ONLINE',
+  CONTRACT: 'CONTRACT',
+  SUBSCRIPTION: 'SUBSCRIPTION',
+  OTHER: 'OTHER'
+} as const
+
+export type PurchaseType = (typeof PurchaseType)[keyof typeof PurchaseType]

@@ -12,6 +12,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RepairsModule } from './repairs/repairs.module';
 import { TonerEntriesModule } from './toner-entries/toner-entries.module';
 import { TonerInvoicesModule } from './toner-invoices/toner-invoices.module';
+import { TonerOffersModule } from './toner-offers/toner-offers.module';
 import { TonerOrdersModule } from './toner-orders/toner-orders.module';
 import { TonersModule } from './toners/toners.module';
 
@@ -25,6 +26,7 @@ import { TonersModule } from './toners/toners.module';
     TonerInvoicesModule,
     TonerOrdersModule,
     TonersModule,
+    TonerOffersModule,
     PrintersModule,
     PrinterAssetsModule,
     MaintVendorsModule,

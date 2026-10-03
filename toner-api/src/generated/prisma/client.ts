@@ -64,6 +64,27 @@ export type TonerPrinter = Prisma.TonerPrinterModel
  */
 export type TonerPrice = Prisma.TonerPriceModel
 /**
+ * Model TonerOffer
+ * 価格を比べるためのトナー情報。**販売店 × 買い方ごとに 1 件。**
+ * 
+ * **トナー価格比較の画面だけが読む。** 受付・注文・在庫・棚卸・請求書・運用コストは
+ * トナー登録（Toner）だけを使い、ここは見ない。今は使っていないトナーや、
+ * 使っているトナーを別の店で買ったときの値段を、選び直しの材料として残す場所。
+ * 
+ * トナー登録とは品番でつながない（外部キーを持たない）。同じ品番を別の店が
+ * 売っていることを示すだけなので、画面が品番を畳んで突き合わせる
+ */
+export type TonerOffer = Prisma.TonerOfferModel
+/**
+ * Model TonerOfferModel
+ * トナー情報が使える機種。**台帳の 1 台ではなく機種（メーカー + 型番）につなぐ。**
+ * 
+ * 同じ機種を何台入れても付け直さずに済むように。突き合わせは保存した表記を
+ * `modelKey`（トナー個数状況と同じ畳み方）で畳んで、有効な台帳の機種と比べる。
+ * 台帳の型番を書き直しても、畳んで同じになる表記ゆれならつながったまま
+ */
+export type TonerOfferModel = Prisma.TonerOfferModelModel
+/**
  * Model TonerStock
  * 在庫テーブル（**品番 × 拠点**ごとの現在数と累計）
  * 

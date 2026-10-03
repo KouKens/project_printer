@@ -11,7 +11,7 @@ import type { TonerCatalogRow } from '../api';
  * どちらが正なのか分からなくなるため。
  */
 
-/** 検索に当てる文字列。品番・名称・色に、設置場所（部署・No.・IP・型番）を足す */
+/** 検索に当てる文字列。品番・名称・色・純正かリサイクルかに、設置場所（部署・No.・IP・型番）を足す */
 function haystack(row: TonerCatalogRow): string {
   const printers = row.printers
     .map((p) =>
@@ -20,7 +20,9 @@ function haystack(row: TonerCatalogRow): string {
         .join(' '),
     )
     .join(' ');
-  return `${row.id} ${row.name ?? ''} ${row.color ?? ''} ${printers}`.toLowerCase();
+  // 札と同じ言葉でも引けるようにする（「P500H リサイクル」で絞れる）
+  const kind = row.recycled ? 'リサイクル' : '純正';
+  return `${row.id} ${row.name ?? ''} ${row.color ?? ''} ${kind} ${printers}`.toLowerCase();
 }
 
 /**
@@ -37,6 +39,18 @@ function matchToners(
     const text = haystack(row);
     return words.every((word) => text.includes(word));
   });
+}
+
+/**
+ * 純正かリサイクル品かの札。**比べるために同じ品番の純正を登録すると、
+ * 名前のよく似た 2 つが候補に並ぶ**ので、取り違えないよう文字で示す
+ */
+function KindTag({ recycled }: { recycled: boolean }) {
+  return (
+    <span className={`finder__kind${recycled ? ' finder__kind--recycled' : ''}`}>
+      {recycled ? 'リサイクル' : '純正'}
+    </span>
+  );
 }
 
 /** 候補に出す設置場所。台帳の No. と部署で示し、多いときは件数でまとめる */
@@ -200,6 +214,7 @@ export default function TonerPickerRow({
         {picked ? (
           <p className="finder__picked">
             <span className="finder__id">{picked.id}</span>
+            <KindTag recycled={picked.recycled} />
             <span className="finder__name">
               {picked.name ?? ''}
               {picked.color ? `／${picked.color}` : ''}
@@ -236,11 +251,14 @@ export default function TonerPickerRow({
                     type="button"
                   >
                     <span className="finder__id">{item.id}</span>
+                    <KindTag recycled={item.recycled} />
                     <span className="finder__name">
                       {item.name ?? ''}
                       {item.color ? `／${item.color}` : ''}
                     </span>
-                    <span className="finder__place">{placeOf(item)}</span>
+                    <span className="finder__place" title={placeOf(item)}>
+                      {placeOf(item)}
+                    </span>
                     <span className="finder__stock">在庫 {item.stock}</span>
                   </button>
                 </li>

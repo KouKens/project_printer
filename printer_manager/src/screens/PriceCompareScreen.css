@@ -1,0 +1,307 @@
+/* トナー価格比較。枠・表・グラフの土台は DataTable.css（dt-）を使い、ここは差分だけ */
+
+.pc {
+  /*
+   * グラフの色。組ごとに 1 色を割り当てる（純正は実線、リサイクル品は破線）。
+   * 並びは色覚の型を問わず隣どうしが見分けられる順で、検証済み
+   * （白地で隣り合う組の色差 ΔE 9.1 以上）。順番を入れ替えないこと。
+   * 3・4・5 番は白地に対して 3:1 を下回るので、凡例・右端の名前・
+   * 「価格の履歴を表で見る」を必ず添える
+   */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+}
+
+.pc .dt-tools .pc-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink);
+  padding-bottom: 8px;
+}
+
+.pc-sub {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --- グラフの枠 --- */
+.pc-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pc-chart-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.pc-chart-tools button {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pc-chart-tools button:hover:enabled { background: #eef3f7; }
+.pc-chart-tools button:disabled { color: #a7b3bd; cursor: not-allowed; }
+.pc-empty { margin: 8px 0 4px; }
+
+.pc-bars-head { margin-top: 18px; }
+.pc-measure { display: flex; gap: 14px; font-size: 12.5px; }
+.pc-measure label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+
+/* --- 価格の推移 --- */
+.pc-plot { position: relative; }
+.pc-svg { cursor: crosshair; }
+.pc-svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pc-step {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* 改定日の点。白い縁で線どうしが重なっても点が埋もれない */
+.pc-dot { stroke: var(--panel); stroke-width: 2; }
+.pc-direct { fill: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pc-cross { stroke: var(--muted); stroke-width: 1; pointer-events: none; }
+.pc-today line { stroke: #c3cbd4; stroke-width: 1; }
+.pc-today text { fill: var(--muted); font-size: 10.5px; }
+
+/* 読み取りの箱。値を太く、名前を控えめに（凡例とは逆の強さ） */
+.pc-tip {
+  position: absolute;
+  top: 8px;
+  z-index: 2;
+  min-width: 200px;
+  padding: 8px 10px;
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(22, 32, 43, 0.12);
+  pointer-events: none;
+}
+/* 右寄りでは線の左に出して、箱が枠からはみ出さないようにする */
+.pc-tip-left { transform: translateX(calc(-100% - 24px)); }
+.pc-tip-date { margin-bottom: 4px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pc-tip-row { display: flex; align-items: center; gap: 6px; line-height: 1.7; white-space: nowrap; }
+.pc-tip-row strong { min-width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+.pc-tip-row span { color: var(--muted); }
+.pc-linekey { flex: none; vertical-align: middle; }
+
+/* --- 今の価格の横棒 --- */
+.pc-bars {
+  display: grid;
+  grid-template-columns: minmax(150px, max-content) minmax(160px, 1fr) minmax(220px, max-content);
+  gap: 2px 12px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 12px;
+}
+/* 1 行 = 名前・棒・値。3 つを親の格子の列に直接並べ、名前と値の幅を全行で揃える */
+.pc-bar-row { display: contents; }
+.pc-bar-label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pc-bar-id { font-variant-numeric: tabular-nums; }
+.pc-bar-track {
+  position: relative;
+  height: 18px;
+  border-left: 1px solid #c3cbd4;
+}
+/* 棒は根元を軸に付け、先だけ丸める */
+.pc-bar {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  height: 14px;
+  border-radius: 0 4px 4px 0;
+}
+.pc-bar-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* --- 区分の札 --- */
+.pc-kind {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.pc-kind-recycled { color: #1d6b48; background: #eef8f2; border-color: #b9dcc8; }
+.pc-flag {
+  margin-left: 4px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  background: #f2f4f7;
+  border-radius: 3px;
+}
+.pc-soon {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  color: #8a5a00;
+  background: #fdf6e7;
+  border-radius: 3px;
+}
+
+/* --- 表 --- */
+.pc-pick { white-space: nowrap; }
+.pc-pick input { width: 15px; height: 15px; vertical-align: middle; cursor: pointer; }
+/* グラフでの色。表のどの行がどの線かを結ぶ */
+.pc-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.pc-models { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.pc-row-disabled td { color: #94a3b0; }
+
+.pc-details { margin-top: 14px; font-size: 12.5px; }
+.pc-details summary { cursor: pointer; color: var(--accent); }
+.pc-history-table { margin-top: 8px; }
+.pc-history-table td { padding: 6px 12px; }
+
+@media (max-width: 720px) {
+  .pc-bars { grid-template-columns: minmax(120px, max-content) 1fr; }
+  .pc-bar-value { grid-column: 2; margin-bottom: 4px; }
+}
+
+/* --- 画面の見出し。「読み直す」は上下どちらの表も取り直すので見出しの横に置く --- */
+.pc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pc-reload {
+  flex: none;
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pc-reload:hover { background: #eef3f7; }
+
+/* 下半分（トナー登録の品番の価格の推移）。上の比較と混ざらないよう線で区切る */
+.pc-part {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 2px solid #c9d6df;
+}
+.pc-part-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+/* --- 上半分: すべてのトナー / プリンター別の比較（OfferCompare） --- */
+.pcx h2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pcx .dt-tools .pc-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink);
+  padding-bottom: 8px;
+}
+/* プリンターの選択は機種と台を並べるので幅を取る */
+.pcx-target select { min-width: 300px; max-width: 420px; }
+
+.pcx-summary {
+  margin: 0 0 10px;
+  padding: 10px 13px;
+  font-size: 13px;
+  color: var(--ink);
+  background: #eef4f7;
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+}
+
+.pcx-table td { vertical-align: top; }
+.pcx-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.pcx-source {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+}
+.pcx-source-master { color: var(--accent); border-style: solid; background: #eef3f7; }
+.pcx-link {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+/* 色ごとのまとまり。見出し行は sticky の列見出しの下に重ならないよう、流れるままにする */
+.pcx-table .pcx-group th {
+  position: static;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--ink);
+  text-align: left;
+  background: #eef4f7;
+  border-top: 2px solid #c9d6df;
+}
+.pcx-group-count { margin-left: 8px; font-weight: 400; color: var(--muted); }
+.pcx-group-note { margin-left: 12px; font-weight: 400; font-size: 11px; color: var(--muted); }
+
+/* その台が今使っているトナー。比べる基準なので行ごと目立たせる */
+.pcx-row-inuse td { background: #f2f8fb; }
+.pcx-row-inuse td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.pcx-table tbody tr.pcx-row-inuse:hover td { background: #e8f2f7; }
+.pcx-row-expired td { color: #7d8a96; }
+
+.pcx-standing {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  border-radius: 3px;
+  color: var(--muted);
+  background: #f2f4f7;
+}
+.pcx-standing-inUse { color: #ffffff; background: var(--accent); font-weight: 600; }
+.pcx-standing-sameModel { color: var(--accent); background: #eef3f7; }
+
+/* 種類がトナー・インク以外（ドラム・廃トナーボトルなど）。トナーの行と見分けやすくする */
+.pcx-part { color: #1f4f8b; }
+
+/* 月額をどの枚数で割ったか。上の一文の続きに改行して置く */
+.pcx-volume { display: block; margin-top: 4px; font-size: 12px; }
+/* 1 枚あたりに足せなかったもの（送料・月額）。その分だけ安く見えるので目に留まる色にする */
+.pcx-missing { color: #8a5a00; }
+
+/* 差の向きは文言（安い／高い）で示し、色は添えるだけ */
+.pcx-cheaper { color: #1d6b48; font-weight: 600; }
+.pcx-dearer { color: var(--danger); }

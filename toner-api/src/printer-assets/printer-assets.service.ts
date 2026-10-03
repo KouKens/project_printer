@@ -33,9 +33,12 @@ function sumCounts(mono: number | null, color: number | null): number | null {
  * 台帳には手入力で 'Ricoh P501' と 'Ricoh P 501' の両方が入っており、
  * そのまま比べると同じ機種が 2 つに割れる。
  * 全角・半角（NFKC）、大文字小文字、空白と区切り記号を落として比べる。
- * 元の表記は variants で返すので、どちらの書き方が混じっているかは画面で分かる
+ * 元の表記は variants で返すので、どちらの書き方が混じっているかは画面で分かる。
+ *
+ * トナーの価格比較（toners.service の findPriceCompare）も同じ鍵で機種をまとめる。
+ * 画面で 1 行に見える機種と、比較で選べる機種を揃えるため
  */
-function modelKey(maker: string | null, model: string | null): string {
+export function modelKey(maker: string | null, model: string | null): string {
   const fold = (value: string | null) =>
     (value ?? '')
       .normalize('NFKC')
@@ -510,6 +513,8 @@ export class PrinterAssetsService {
           model: true,
           serialNumber: true,
           toners: {
+            // 他の画面に出さない品番（価格を比べるためだけに登録した純正など）は数えない
+            where: { toner: { hidden: false } },
             select: {
               toner: {
                 select: {

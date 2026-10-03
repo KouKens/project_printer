@@ -8,6 +8,7 @@ export declare class TonerOrdersController {
         id: number;
         tonerId: string;
         companyId: number;
+        companyName: string;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -19,6 +20,7 @@ export declare class TonerOrdersController {
         id: number;
         tonerId: string;
         companyId: number;
+        companyName: string;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -35,6 +37,7 @@ export declare class TonerOrdersController {
         id: number;
         tonerId: string;
         companyId: number;
+        companyName: string;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -46,6 +49,7 @@ export declare class TonerOrdersController {
         id: number;
         tonerId: string;
         companyId: number;
+        companyName: string;
         userId: string | null;
         name: string | null;
         quantity: number;
@@ -53,10 +57,12 @@ export declare class TonerOrdersController {
         deliveryOn: string | null;
         status: string;
     }[]>;
-    findDeliveryCheck(companyId: number, days: number): Promise<{
+    findDeliveryCheck(companyId: number | undefined, days: number): Promise<{
         diff: number;
         status: "match" | "short" | "over" | "no-order" | "waiting" | "undated";
         key: string;
+        companyId: number;
+        companyName: string;
         tonerId: string;
         name: string | null;
         color: string | null;

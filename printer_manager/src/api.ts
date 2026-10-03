@@ -34,6 +34,8 @@ export type TonerCatalogRow = {
   id: string
   name: string | null
   color: string | null
+  /** リサイクル品・互換品か。候補に札を付けて純正と取り違えないようにする */
+  recycled: boolean
   stock: number
   printers: {
     id: number
@@ -57,6 +59,9 @@ export type EntryResult = {
 export type OrderRow = {
   id: number
   tonerId: string
+  /** どの拠点の注文か。トナー入出状況は全拠点を並べるので列に出す */
+  companyId: number
+  companyName: string
   /** 注文した人。名前を入れずに注文した分は「ゲスト」。列を足す前の注文は null */
   userId: string | null
   name: string | null
@@ -82,6 +87,9 @@ export type EntryRow = {
   id: number
   userId: string
   tonerId: string
+  /** どの拠点の受け払いか。無効にした拠点の名前も API が引いて添える */
+  companyId: number
+  companyName: string
   name: string | null
   color: string | null
   action: 'REGISTER' | 'RECEIVE' | 'ISSUE' | 'DISPOSE' | 'ADJUST'
@@ -92,9 +100,11 @@ export type EntryRow = {
   createdAt: string
 }
 
-/** 注文と搬入の突き合わせ 1 行（品番 ＋ 日付） */
+/** 注文と搬入の突き合わせ 1 行（拠点 ＋ 品番 ＋ 日付） */
 export type DeliveryCheckRow = {
   key: string
+  companyId: number
+  companyName: string
   tonerId: string
   name: string | null
   color: string | null
@@ -163,6 +173,17 @@ export function fetchToners() {
   )
 }
 
+/**
+ * 他の画面に出さない品番（トナー登録で「表示」を外したもの。無効も含む）。
+ * トナー入出状況が記録を絞るのに使う
+ */
+export function fetchHiddenTonerIds() {
+  return get<string[]>(
+    `${API}/toners/hidden`,
+    '表示を外した品番を取得できませんでした',
+  )
+}
+
 export function submitOrder(payload: Record<string, unknown>) {
   return post<OrderResult>(`${API}/toner-orders`, payload)
 }
@@ -180,10 +201,10 @@ export function fetchPendingOrders(companyId: number) {
   )
 }
 
-/** 注文履歴（直近 50 件）。**拠点ごと** */
-export function fetchOrders(companyId: number) {
+/** 注文履歴（直近 50 件）。拠点を渡さなければ全拠点（トナー入出状況） */
+export function fetchOrders(companyId?: number) {
   return get<OrderRow[]>(
-    `${API}/toner-orders?companyId=${companyId}`,
+    `${API}/toner-orders${companyId ? `?companyId=${companyId}` : ''}`,
     '注文を取得できませんでした',
   )
 }
@@ -202,7 +223,7 @@ export type EntryHistory = {
 
 /**
  * 受付の履歴。区分で絞れる。
- * `companyId` を渡すとその拠点の分だけ（トナー入出状況は拠点ごとに見る）
+ * `companyId` を渡すとその拠点の分だけ、渡さなければ全拠点（トナー入出状況）
  */
 export function fetchEntryHistory(days: number, action?: string, companyId?: number) {
   const query =
@@ -228,12 +249,13 @@ export function deleteOrder(id: number) {
 }
 
 /**
- * 注文と搬入の突き合わせ。**拠点ごと。**
- * 拠点を渡さないと API が 400 で断る（他の拠点の搬入が本数に混ざるため）
+ * 注文と搬入の突き合わせ。拠点を渡さなければ全拠点（トナー入出状況）。
+ * 拠点は突き合わせの鍵に入っているので、全拠点でも別の拠点の搬入は混ざらない
  */
-export function fetchDeliveryCheck(companyId: number, days: number) {
+export function fetchDeliveryCheck(days: number, companyId?: number) {
   return get<DeliveryCheckRow[]>(
-    `${API}/toner-orders/delivery-check?companyId=${companyId}&days=${days}`,
+    `${API}/toner-orders/delivery-check?days=${days}` +
+      `${companyId ? `&companyId=${companyId}` : ''}`,
     '突き合わせを取得できませんでした',
   )
 }

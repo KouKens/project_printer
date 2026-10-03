@@ -56,15 +56,16 @@ export class TonerOrdersController {
   }
 
   /**
-   * 注文と搬入の突き合わせ。品番と日付でまとめ、本数の差を返す。
+   * 注文と搬入の突き合わせ。拠点・品番・日付でまとめ、本数の差を返す。
    * ':id' より前に置く必要はないが、pending と並べておく。
    *
-   * **`companyId` は必須。** 省くと他の拠点の搬入が本数に混ざり、
-   * 差が消えてしまう（在庫一覧と同じ扱い）
+   * `companyId` を付けるとその拠点の分だけ。省けば全拠点（トナー入出状況）。
+   * 拠点が鍵に入っているので、省いても他の拠点の搬入が本数に混ざらない
    */
   @Get('delivery-check')
   findDeliveryCheck(
-    @Query('companyId', ParseIntPipe) companyId: number,
+    @Query('companyId', new ParseIntPipe({ optional: true }))
+    companyId: number | undefined,
     @Query('days', new DefaultValuePipe(180), ParseIntPipe) days: number,
   ) {
     return this.service.findDeliveryCheck(companyId, days);

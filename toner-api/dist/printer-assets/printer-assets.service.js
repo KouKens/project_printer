@@ -10,6 +10,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrinterAssetsService = void 0;
+exports.modelKey = modelKey;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const date_1 = require("../common/date");
@@ -242,6 +243,7 @@ let PrinterAssetsService = class PrinterAssetsService {
                     model: true,
                     serialNumber: true,
                     toners: {
+                        where: { toner: { hidden: false } },
                         select: {
                             toner: {
                                 select: {

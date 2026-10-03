@@ -11,10 +11,12 @@ import MaintVendorScreen from './screens/MaintVendorScreen'
 import ModelTonerScreen from './screens/ModelTonerScreen'
 import OrderScreen from './screens/OrderScreen'
 import PageCountScreen from './screens/PageCountScreen'
+import PriceCompareScreen from './screens/PriceCompareScreen'
 import PrinterListScreen from './screens/PrinterListScreen'
 import ReceptionScreen from './screens/ReceptionScreen'
 import RepairScreen from './screens/RepairScreen'
 import StockTakeScreen from './screens/StockTakeScreen'
+import TonerOfferScreen from './screens/TonerOfferScreen'
 import TonerScreen from './screens/TonerScreen'
 import CompanyScreen from './screens/CompanyScreen'
 import { CompanyProvider, useCompanies } from './lib/company'
@@ -27,7 +29,9 @@ type View =
   | 'pages'
   | 'asset'
   | 'toner'
+  | 'tonerOffer'
   | 'models'
+  | 'priceCompare'
   | 'cost'
   | 'stocktake'
   | 'repair'
@@ -71,6 +75,7 @@ const GROUPS: {
       { value: 'pages', label: '印刷状況', wide: true },
       { value: 'models', label: 'トナー個数状況', wide: true },
       { value: 'delivery', label: 'トナー入出状況', wide: true },
+      { value: 'priceCompare', label: 'トナー価格比較', wide: true },
     ],
   },
   {
@@ -78,6 +83,8 @@ const GROUPS: {
     views: [
       { value: 'asset', label: 'プリンター登録', wide: true },
       { value: 'toner', label: 'トナー登録', wide: true },
+      // 価格を比べるためだけのトナー。トナー価格比較にだけ出る（他の画面はトナー登録を使う）
+      { value: 'tonerOffer', label: 'トナー情報登録', wide: true },
       { value: 'vendor', label: '保守登録', wide: true },
       { value: 'company', label: '拠点登録', wide: true },
     ],
@@ -104,7 +111,9 @@ const SCREENS: Record<View, ComponentType> = {
   pages: PageCountScreen,
   asset: AssetScreen,
   toner: TonerScreen,
+  tonerOffer: TonerOfferScreen,
   models: ModelTonerScreen,
+  priceCompare: PriceCompareScreen,
   cost: CostScreen,
   stocktake: StockTakeScreen,
   repair: RepairScreen,
@@ -218,35 +227,10 @@ export default function App() {
         </nav>
 
         {/*
-          * 拠点の切り替え。**在庫と受け払いを分ける単位。**
-          * 持ち出し・注文・棚卸とトナーの 2 画面がこの拠点の分だけを扱う。
-          * プリンター状況・印刷状況・修理・請求書は全拠点まとめて出すので変わらない。
-          * 認証が無いので、これは「見せない」仕組みではない
+          * 拠点の切り替えはここに置かない。拠点ごとに数える 4 画面
+          * （持出/廃棄・注文/搬入・棚卸・トナー個数状況）が画面の中に
+          * components/CompanyPicker を持つ。他の画面は全拠点をまとめて出す
           */}
-        <label className="station__company">
-          <span className="station__company-label">拠点</span>
-          <select
-            value={companyId ?? ''}
-            onChange={(e) => select(Number(e.target.value))}
-            disabled={companies.length === 0}
-            title={
-              companies.length === 0
-                ? '拠点が登録されていません。「登録 → 拠点登録」で追加してください'
-                : '在庫・持ち出し・注文・棚卸をこの拠点の分だけ扱います（プリンター状況や修理は全拠点のままです）'
-            }
-          >
-            {companies.length === 0 ? (
-              <option value="">拠点が未登録</option>
-            ) : (
-              companies.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.name}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
-
         <p className="station__clock">
           <span className="station__date">{dateFormat.format(now)}</span>
           <time className="station__time">{timeFormat.format(now)}</time>

@@ -7,6 +7,9 @@ import {
   useState,
 } from 'react'
 import type { EntryResult, ReceptionMode, StockRow, TonerCatalogRow } from '../api'
+import BatchLines from '../components/BatchLines'
+import CompanyPicker from '../components/CompanyPicker'
+import type { PickOrigin } from '../components/TonerPickerRow'
 import TonerPickerRow from '../components/TonerPickerRow'
 import {
   fetchStock,
@@ -14,6 +17,8 @@ import {
   submitBulkEntry,
   submitEntry,
 } from '../api'
+import type { BatchLine } from '../lib/batch'
+import { addToLines } from '../lib/batch'
 import { STAFF_ID_HINT, filterStaffId, staffIdError } from '../lib/staffId'
 import { useCompany } from '../lib/company'
 
@@ -93,9 +98,6 @@ function fieldsFor(mode: ReceptionMode): FieldDef[] {
   return fields
 }
 
-/** まとめ処理の明細 1 行 */
-type Line = { tonerId: string; name: string; quantity: string }
-
 /** まとめ処理の結果をひとことで */
 function bulkNotice(mode: ReceptionMode, results: EntryResult[]): string {
   const bottles = results.reduce((sum, row) => sum + row.quantity, 0)
@@ -122,7 +124,7 @@ function noticeFor(result: EntryResult): string {
 }
 
 export default function ReceptionScreen() {
-  // 在庫も受付も、右上で選んでいる拠点の分だけを扱う
+  // 在庫も受付も、見出しの横で選んでいる拠点の分だけを扱う
   const { companyId } = useCompany()
   const [mode, setMode] = useState<ReceptionMode>('ISSUE')
   const [values, setValues] = useState<FormValues>(EMPTY)
@@ -135,7 +137,7 @@ export default function ReceptionScreen() {
   const [catalog, setCatalog] = useState<TonerCatalogRow[]>([])
   /** まとめて受け付けるか。バーコードの Enter の行き先が変わる */
   const [batch, setBatch] = useState(false)
-  const [lines, setLines] = useState<Line[]>([])
+  const [lines, setLines] = useState<BatchLine[]>([])
   /** トナーID を探すための入力。品番そのものは 02 の欄に入る */
   const [search, setSearch] = useState('')
 
@@ -186,7 +188,16 @@ export default function ReceptionScreen() {
     setFailure(null)
   }
 
-  const pick = (row: TonerCatalogRow) => {
+  const pick = (row: TonerCatalogRow, origin: PickOrigin) => {
+    // まとめ処理では候補を押した時点で明細へ積む（「明細に追加」は要らない）。
+    // 読み取り（auto）と Enter は入力欄に入れるだけにしておく。読み取りは
+    // 打った途中で短い品番に一致して決まることがあり（LB321 と LB321B）、
+    // その場で積むと違う品番が明細に入るため
+    if (batch && origin === 'click') {
+      appendLine(row.id, row.name ?? '', values.quantity.trim())
+      return
+    }
+
     setValues((prev) => ({ ...prev, tonerId: row.id }))
     setErrors((prev) => ({ ...prev, tonerId: undefined }))
     setFailure(null)
@@ -214,9 +225,40 @@ export default function ReceptionScreen() {
   }
 
   /**
-   * 明細に足す。トナーと本数だけを見る（名前は送信時にまとめて確かめる）。
-   * 続けて読み取れるよう、トナーの欄に戻す。
+   * 明細に 1 行足す。トナーと本数だけを見る（名前は送信時にまとめて確かめる）。
+   * 同じ品番がもう積んであれば、その行の本数に足す。
+   * 続けて探せるよう、トナーの欄に戻す。**探す欄の文字は消さない**
+   * （消すかどうかは呼び出し側が決める。候補を押したときは、同じ語で
+   * 色違いを続けて押せるよう残す）。
+   *
+   * 品番を引数で受けるのは、候補を押したその場から呼ぶため。
+   * setValues の反映を待たないと values.tonerId はまだ前の値になる
    */
+  const appendLine = useCallback(
+    (tonerId: string, name: string, quantity: string): boolean => {
+      const parsed = Number(quantity)
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        setErrors((prev) => ({
+          ...prev,
+          quantity: '本数は 1 以上の整数で入力してください',
+        }))
+        return false
+      }
+
+      setLines((prev) => addToLines(prev, { tonerId, name, quantity: String(parsed) }))
+      setValues((prev) => ({ ...prev, tonerId: '', name: '', quantity: '1' }))
+      setErrors({})
+      setFailure(null)
+
+      const index = fields.findIndex((f) => f.key === 'tonerId')
+      setActiveIndex(index)
+      focusField(index)
+      return true
+    },
+    [fields, focusField],
+  )
+
+  /** 入力欄に入っているトナーを明細へ。読み取りの Enter と「明細に追加」から呼ぶ */
   const addLine = useCallback((): boolean => {
     const tonerId = values.tonerId.trim()
     if (!tonerId) {
@@ -224,31 +266,31 @@ export default function ReceptionScreen() {
       return false
     }
 
-    const quantity = values.quantity.trim()
-    const parsed = Number(quantity)
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      setErrors((prev) => ({
-        ...prev,
-        quantity: '本数は 1 以上の整数で入力してください',
-      }))
-      return false
-    }
-
     const name = catalog.find((row) => row.id === tonerId)?.name ?? ''
-    setLines((prev) => [...prev, { tonerId, name, quantity: quantity || '1' }])
-    setValues((prev) => ({ ...prev, tonerId: '', name: '', quantity: '1' }))
-    setSearch('')
-    setErrors({})
-    setFailure(null)
+    if (!appendLine(tonerId, name, values.quantity.trim())) return false
 
-    const index = fields.findIndex((f) => f.key === 'tonerId')
-    setActiveIndex(index)
-    focusField(index)
+    // 欄には選んだ品番（「品番 名称」）が入っているだけなので、次の読み取りに備えて空ける
+    setSearch('')
     return true
-  }, [catalog, fields, focusField, values])
+  }, [appendLine, catalog, values])
 
   const removeLine = (index: number) =>
     setLines((prev) => prev.filter((_, i) => i !== index))
+
+  const setLineQuantity = (index: number, quantity: number) =>
+    setLines((prev) =>
+      prev.map((line, i) => (i === index ? { ...line, quantity: String(quantity) } : line)),
+    )
+
+  /**
+   * その品番を何本まで積めるか。持ち出しは在庫、廃棄は搬入累計 − 廃棄累計
+   * （API が断る条件と同じ）。在庫の一覧に無い品番は分からないので縛らない
+   */
+  const limitOf = (tonerId: string): number | null => {
+    const stock = stocks.find((row) => row.id === tonerId)
+    if (!stock) return null
+    return mode === 'ISSUE' ? stock.quantity : stock.received - stock.disposed
+  }
 
   const submit = useCallback(async () => {
     if (submitting) return
@@ -260,16 +302,15 @@ export default function ReceptionScreen() {
       quantity: values.quantity.trim(),
     }
 
-    // まとめ処理：明細に、入力途中の行があればそれも足して送る
+    // まとめ処理：明細に、入力途中の行があればそれも足して送る（同じ品番なら本数に足す）
     if (batch) {
-      const items = [...lines]
-      if (trimmed.tonerId) {
-        items.push({
-          tonerId: trimmed.tonerId,
-          name: trimmed.name,
-          quantity: trimmed.quantity || '1',
-        })
-      }
+      const items = trimmed.tonerId
+        ? addToLines(lines, {
+            tonerId: trimmed.tonerId,
+            name: trimmed.name,
+            quantity: trimmed.quantity || '1',
+          })
+        : lines
 
       const userIdError = staffIdError(trimmed.userId, false)
       if (userIdError) {
@@ -279,7 +320,9 @@ export default function ReceptionScreen() {
         return
       }
       if (items.length === 0) {
-        setFailure('明細がありません。トナーIDを読み取って「明細に追加」してください')
+        setFailure(
+          '明細がありません。トナーを探して候補を押すか、読み取って「明細に追加」してください',
+        )
         return
       }
 
@@ -445,9 +488,12 @@ export default function ReceptionScreen() {
     <>
       <section className="slip" aria-labelledby="slip-heading">
         <div className="slip__head">
-          <h2 className="slip__heading" id="slip-heading">
-            トナーを受け付ける
-          </h2>
+          <div className="slip__top">
+            <h2 className="slip__heading" id="slip-heading">
+              トナーを受け付ける
+            </h2>
+            <CompanyPicker disabled={submitting} />
+          </div>
 
           <div className="mode" role="radiogroup" aria-label="操作の種類">
             {MODES.map((item) => (
@@ -484,7 +530,7 @@ export default function ReceptionScreen() {
             />
             <span>まとめて受け付ける</span>
             <span className="batch__note">
-              読み取るごとに明細へ積み、最後にまとめて処理します
+              候補を押すか読み取るごとに明細へ積み、最後にまとめて処理します
             </span>
           </label>
         </div>
@@ -610,41 +656,21 @@ export default function ReceptionScreen() {
         ) : null}
 
         {batch && (
-          <div className="batch">
-            <h3 className="batch__heading">
-              明細
-              <span className="batch__count">{lines.length} 件</span>
-              {lines.length > 0 && (
-                <span className="batch__count">
-                  合計 {lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0)} 本
-                </span>
-              )}
-            </h3>
-
-            {lines.length === 0 ? (
-              <p className="batch__empty">
-                トナーIDを読み取って Enter、または「明細に追加」で積みます。
-              </p>
-            ) : (
-              <ul className="batch__list">
-                {lines.map((line, index) => (
-                  <li className="batch__item" key={`${line.tonerId}-${index}`}>
-                    <span className="batch__id">{line.tonerId}</span>
-                    <span className="batch__name">{line.name}</span>
-                    <span className="batch__qty">{line.quantity} 本</span>
-                    <button
-                      className="batch__remove"
-                      disabled={submitting}
-                      onClick={() => removeLine(index)}
-                      type="button"
-                    >
-                      取消
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <BatchLines
+            disabled={submitting}
+            empty={
+              <>
+                トナーを探して候補を押すと、「本数」の欄の数（既定 1 本）でその場で積まれます。
+                読み取ったときは Enter、または「明細に追加」で積みます。
+                本数は明細の −／＋ で直せます。
+              </>
+            }
+            limitLabel={mode === 'ISSUE' ? '在庫' : '廃棄できる本数'}
+            limitOf={limitOf}
+            lines={lines}
+            onQuantity={setLineQuantity}
+            onRemove={removeLine}
+          />
         )}
 
         <div className="slip__actions">

@@ -14,6 +14,8 @@ export declare const ModelName: {
     readonly Toner: "Toner";
     readonly TonerPrinter: "TonerPrinter";
     readonly TonerPrice: "TonerPrice";
+    readonly TonerOffer: "TonerOffer";
+    readonly TonerOfferModel: "TonerOfferModel";
     readonly TonerStock: "TonerStock";
     readonly TonerEntry: "TonerEntry";
     readonly TonerOrder: "TonerOrder";
@@ -40,10 +42,13 @@ export declare const TonerScalarFieldEnum: {
     readonly id: "id";
     readonly name: "name";
     readonly color: "color";
+    readonly part: "part";
     readonly recycled: "recycled";
     readonly alertThreshold: "alertThreshold";
     readonly disabledAt: "disabledAt";
     readonly yieldPages: "yieldPages";
+    readonly hidden: "hidden";
+    readonly genuineId: "genuineId";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
@@ -63,6 +68,44 @@ export declare const TonerPriceScalarFieldEnum: {
     readonly createdAt: "createdAt";
 };
 export type TonerPriceScalarFieldEnum = (typeof TonerPriceScalarFieldEnum)[keyof typeof TonerPriceScalarFieldEnum];
+export declare const TonerOfferScalarFieldEnum: {
+    readonly id: "id";
+    readonly code: "code";
+    readonly name: "name";
+    readonly brand: "brand";
+    readonly kind: "kind";
+    readonly part: "part";
+    readonly color: "color";
+    readonly yieldPages: "yieldPages";
+    readonly packQuantity: "packQuantity";
+    readonly seller: "seller";
+    readonly purchaseType: "purchaseType";
+    readonly price: "price";
+    readonly pagePrice: "pagePrice";
+    readonly monthlyFee: "monthlyFee";
+    readonly shippingFee: "shippingFee";
+    readonly minOrder: "minOrder";
+    readonly leadTime: "leadTime";
+    readonly warranty: "warranty";
+    readonly takesBack: "takesBack";
+    readonly payment: "payment";
+    readonly quotedOn: "quotedOn";
+    readonly validUntil: "validUntil";
+    readonly reference: "reference";
+    readonly url: "url";
+    readonly contact: "contact";
+    readonly note: "note";
+    readonly createdAt: "createdAt";
+    readonly updatedAt: "updatedAt";
+};
+export type TonerOfferScalarFieldEnum = (typeof TonerOfferScalarFieldEnum)[keyof typeof TonerOfferScalarFieldEnum];
+export declare const TonerOfferModelScalarFieldEnum: {
+    readonly id: "id";
+    readonly offerId: "offerId";
+    readonly maker: "maker";
+    readonly model: "model";
+};
+export type TonerOfferModelScalarFieldEnum = (typeof TonerOfferModelScalarFieldEnum)[keyof typeof TonerOfferModelScalarFieldEnum];
 export declare const TonerStockScalarFieldEnum: {
     readonly tonerId: "tonerId";
     readonly companyId: "companyId";

@@ -2,6 +2,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTonerPriceDto } from './dto/create-toner-price.dto';
 import { CreateTonerDto } from './dto/create-toner.dto';
 import { UpdateTonerDto } from './dto/update-toner.dto';
+export declare const VOLUME_DAYS = 90;
+export declare function monthlyPagesOf(rows: {
+    pages: number | null;
+}[]): number | null;
 export declare class TonersService {
     private readonly prisma;
     constructor(prisma: PrismaService);
@@ -9,7 +13,11 @@ export declare class TonersService {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -33,7 +41,11 @@ export declare class TonersService {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -57,7 +69,11 @@ export declare class TonersService {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -77,11 +93,62 @@ export declare class TonersService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    findHiddenIds(): Promise<string[]>;
+    findPriceCompare(): Promise<{
+        models: {
+            key: string;
+            label: string;
+            assetCount: number;
+        }[];
+        volumeDays: number;
+        assets: {
+            id: number;
+            no: string | null;
+            department: string | null;
+            maker: string | null;
+            model: string | null;
+            companyName: string;
+            modelKey: string;
+            monthlyPages: number | null;
+        }[];
+        toners: {
+            id: string;
+            name: string | null;
+            color: string | null;
+            part: import("../generated/prisma/enums").SupplyPart;
+            recycled: boolean;
+            genuineId: string | null;
+            hidden: boolean;
+            disabledAt: Date | null;
+            yieldPages: number | null;
+            price: number | null;
+            priceFrom: string | null;
+            costPerPage: number | null;
+            prices: {
+                effectiveFrom: string;
+                price: number;
+                note: string | null;
+            }[];
+            printers: {
+                id: number;
+                no: string | null;
+                department: string | null;
+                maker: string | null;
+                model: string | null;
+                companyName: string;
+            }[];
+            modelKeys: string[];
+        }[];
+    }>;
     update(id: string, dto: UpdateTonerDto): Promise<{
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -105,7 +172,11 @@ export declare class TonersService {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -129,7 +200,11 @@ export declare class TonersService {
         id: string;
         name: string | null;
         color: string | null;
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         recycled: boolean;
+        genuineId: string | null;
+        alternativeIds: string[];
+        hidden: boolean;
         alertThreshold: number | null;
         yieldPages: number | null;
         price: number | null;
@@ -155,6 +230,7 @@ export declare class TonersService {
         removed: {
             prices: number;
             printers: number;
+            alternatives: number;
         };
     }>;
     findPrices(id: string): Promise<{
@@ -165,6 +241,7 @@ export declare class TonersService {
         createdAt: Date;
     }[]>;
     priceAt(id: string, date: string): Promise<number | null>;
+    private resolveGenuine;
     private assertAssetsExist;
     private currentPrice;
     private toResponse;

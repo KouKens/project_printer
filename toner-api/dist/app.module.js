@@ -21,6 +21,7 @@ const prisma_module_1 = require("./prisma/prisma.module");
 const repairs_module_1 = require("./repairs/repairs.module");
 const toner_entries_module_1 = require("./toner-entries/toner-entries.module");
 const toner_invoices_module_1 = require("./toner-invoices/toner-invoices.module");
+const toner_offers_module_1 = require("./toner-offers/toner-offers.module");
 const toner_orders_module_1 = require("./toner-orders/toner-orders.module");
 const toners_module_1 = require("./toners/toners.module");
 let AppModule = class AppModule {
@@ -37,6 +38,7 @@ exports.AppModule = AppModule = __decorate([
             toner_invoices_module_1.TonerInvoicesModule,
             toner_orders_module_1.TonerOrdersModule,
             toners_module_1.TonersModule,
+            toner_offers_module_1.TonerOffersModule,
             printers_module_1.PrintersModule,
             printer_assets_module_1.PrinterAssetsModule,
             maint_vendors_module_1.MaintVendorsModule,

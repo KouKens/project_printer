@@ -7,6 +7,8 @@ import TableBox from '../components/TableBox';
 import type { CsvValue } from '../lib/csv';
 import { todayIso } from '../lib/date';
 import { num, orNull } from '../lib/format';
+import { guessPart, PART_HINTS, PART_LABELS, PART_ORDER } from '../lib/offer';
+import type { SupplyPart } from '../lib/offer';
 import { hits, searchWords } from '../lib/search';
 import { suggestions } from '../lib/suggest';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
@@ -19,7 +21,19 @@ type Form = {
   id: string;
   name: string;
   color: string;
+  /** 種類（トナー・ドラム・廃トナーボトル…）。トナー価格比較が同じ種類どうしで比べる */
+  part: SupplyPart;
   recycled: boolean;
+  /**
+   * 比較の基準にする純正品の品番。空なら組を作らない。
+   * リサイクル品のときだけ送る（純正に戻したら null を送って外す）
+   */
+  genuineId: string;
+  /**
+   * 他の画面（受付・注文の候補、トナー個数状況、トナー入出状況など）に出さない。
+   * 価格を比べるためだけに登録する純正用
+   */
+  hidden: boolean;
   price: string;
   /** 在庫がこの本数以下になったら一覧で警告する。空欄なら警告しない */
   alertThreshold: string;
@@ -35,7 +49,14 @@ type SavedToner = {
   id: string;
   name: string | null;
   color: string | null;
+  part: SupplyPart;
   recycled: boolean;
+  /** 比較の基準にする純正品。リサイクル品だけが持つ */
+  genuineId: string | null;
+  /** この品番を純正に選んでいるリサイクル品 */
+  alternativeIds: string[];
+  /** 他の画面に出さないか。一覧のチェックで切り替える */
+  hidden: boolean;
   /** 在庫がこの本数以下なら警告する。未設定なら null */
   alertThreshold: number | null;
   /** 1 本で刷れる枚数（カタログ値）。未設定なら null */
@@ -77,13 +98,17 @@ type Printer = {
 
 /**
  * 一覧の列。並べ替えの鍵も兼ねる。
- * printers は台数、recycled は純正を先にしたいので、どちらも数として比べる
+ * printers は台数、recycled は純正を先にしたいので、どちらも数として比べる。
+ * shown は出す品番を先に、pair は組の軸（純正の品番）で並べて組を隣り合わせる
  */
 type SortKey =
+  | 'shown'
   | 'id'
   | 'name'
   | 'color'
+  | 'part'
   | 'recycled'
+  | 'pair'
   | 'price'
   | 'priceFrom'
   | 'priceCount'
@@ -94,10 +119,13 @@ type SortKey =
   | 'stock';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
+  { key: 'shown', label: '表示', kind: 'number' },
   { key: 'id', label: 'トナーID', kind: 'text' },
   { key: 'name', label: 'トナー名', kind: 'text' },
   { key: 'color', label: '色', kind: 'text' },
+  { key: 'part', label: '種類', kind: 'number' },
   { key: 'recycled', label: 'リサイクル', kind: 'number' },
+  { key: 'pair', label: '純正品（組）', kind: 'text' },
   { key: 'price', label: '価格（税別）', kind: 'number', numeric: true },
   { key: 'yieldPages', label: '印刷可能枚数', kind: 'number', numeric: true },
   { key: 'costPerPage', label: '1 枚あたり', kind: 'number', numeric: true },
@@ -111,9 +139,22 @@ const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean 
 /** 並べ替えの鍵。入れ子になっている値はここで平らにする */
 function pick(toner: SavedToner, key: SortKey): unknown {
   switch (key) {
+    case 'shown':
+      // 他の画面に出す品番を先に
+      return toner.hidden ? 1 : 0;
+    case 'pair':
+      // 組を作っていない品番は後ろへ。組は純正の品番でまとまり、純正が先に来る
+      return toner.genuineId !== null
+        ? `${toner.genuineId} 2`
+        : toner.alternativeIds.length > 0
+          ? `${toner.id} 1`
+          : null;
     case 'recycled':
       // 純正（false）を先に集める
       return toner.recycled ? 1 : 0;
+    case 'part':
+      // トナー・インクを先に、部品を後ろに
+      return PART_ORDER.indexOf(toner.part);
     case 'printers':
       return toner.printers.length;
     default:
@@ -142,13 +183,24 @@ const emptyForm = (): Form => ({
   id: '',
   name: '',
   color: '',
+  part: 'TONER',
   recycled: false,
+  genuineId: '',
+  hidden: false,
   price: '',
   alertThreshold: '',
   yieldPages: '',
   effectiveFrom: todayIso(),
   printerAssetIds: [],
 });
+
+/**
+ * 送る純正品。**リサイクル品のときだけ。**純正に戻したら null を送って組から外す
+ * （欄を隠しても下書きには前の値が残っているので、ここで落とす）
+ */
+function genuineToSend(form: Form): string | null {
+  return form.recycled && form.genuineId !== '' ? form.genuineId : null;
+}
 
 /** 空欄は「警告しない」なので null で送る。0 は「在庫 0 で警告」の意味で残す */
 function toCount(value: string): number | null {
@@ -207,10 +259,17 @@ const csvPrinterLabel = (printer: Printer) =>
 
 /** CSV に出す列。画面の COLUMNS に、台数と機器の中身を足したもの */
 const CSV_COLUMNS: { label: string; value: (toner: SavedToner) => CsvValue }[] = [
+  { label: '他の画面に表示', value: (toner) => (toner.hidden ? '' : '○') },
   { label: 'トナーID', value: (toner) => toner.id },
   { label: 'トナー名', value: (toner) => toner.name },
   { label: '色', value: (toner) => toner.color },
+  { label: '種類', value: (toner) => PART_LABELS[toner.part] },
   { label: 'リサイクル', value: (toner) => (toner.recycled ? '○' : '') },
+  { label: '純正品', value: (toner) => toner.genuineId },
+  {
+    label: 'この純正を選んでいるリサイクル品',
+    value: (toner) => toner.alternativeIds.join(' / '),
+  },
   { label: '価格（税別）', value: (toner) => toner.price },
   { label: '印刷可能枚数', value: (toner) => toner.yieldPages },
   {
@@ -262,7 +321,45 @@ type Editing = {
    * 見えず、1 台ずつ外すこともできない
    */
   retired: Printer[];
+  /**
+   * 選んである純正品が無効になっていれば、その品番。開いた時点で決める。
+   * 純正品の選択肢は有効な純正だけなので、足さないと選択欄が空に見え、
+   * 別のものを選んだ途端に元へ戻せなくなる
+   */
+  retiredGenuine: SavedToner | null;
+  /** 価格の改定に添える覚書（値上げの理由・見積の番号など）。改定するたびに空へ戻す */
+  priceNote: string;
 };
+
+/**
+ * 一覧の「純正品（組）」のセル。
+ * リサイクル品は相手の純正の品番を、純正は自分を選んでいるリサイクル品の数を出す
+ */
+function PairCell({ toner, toners }: { toner: SavedToner; toners: SavedToner[] }) {
+  if (toner.genuineId !== null) {
+    const genuine = toners.find((candidate) => candidate.id === toner.genuineId);
+    return (
+      <span title={genuine ? genuineLabel(genuine) : undefined}>
+        {toner.genuineId}
+        {genuine?.disabledAt && <span className="tn-pair-retired">無効</span>}
+      </span>
+    );
+  }
+  if (toner.alternativeIds.length > 0) {
+    return (
+      <span className="tn-chip" title={toner.alternativeIds.join('\n')}>
+        リサイクル {toner.alternativeIds.length} 件
+      </span>
+    );
+  }
+  return <span className="tn-muted">—</span>;
+}
+
+/** 純正品の選択肢 1 つ。無効にした純正は印を付けて並べる */
+type GenuineChoice = { toner: SavedToner; retired: boolean };
+
+const genuineLabel = (toner: SavedToner) =>
+  [toner.id, toner.name, toner.color].filter(Boolean).join(' ／ ');
 
 const NO_PRINTERS: Printer[] = [];
 
@@ -393,15 +490,21 @@ function TonerFields({
   onChange,
   printers,
   retired,
+  genuines,
   nameHints,
   head,
   price,
+  onPartTouched,
 }: {
   form: Form;
   onChange: <K extends keyof Form>(key: K, value: Form[K]) => void;
+  /** 種類を手で選んだ。新規の欄の親は、以後トナーID・トナー名から推し量らない */
+  onPartTouched?: () => void;
   printers: Printer[];
   /** 紐づいている無効の台（編集の小窓だけ）。`Editing.retired` を参照 */
   retired?: Printer[];
+  /** 純正品の選択肢。有効な純正に、選んである無効の純正を足したもの */
+  genuines: GenuineChoice[];
   nameHints: string[];
   /** 先頭の欄。新規はトナーID の入力、編集は変えられない ID の表示 */
   head: ReactNode;
@@ -453,6 +556,24 @@ function TonerFields({
       </label>
 
       <label>
+        <span>種類</span>
+        <select
+          value={form.part}
+          onChange={(e) => {
+            onPartTouched?.();
+            onChange('part', e.target.value as SupplyPart);
+          }}
+          title={`${PART_HINTS[form.part]}。トナー価格比較は種類と色が同じものどうしで比べます（黒のドラムを黒のトナーと比べないため）`}
+        >
+          {PART_ORDER.map((part) => (
+            <option key={part} value={part} title={PART_HINTS[part]}>
+              {PART_LABELS[part]}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
         <span>この本数以下で警告</span>
         <input
           type="number"
@@ -489,6 +610,37 @@ function TonerFields({
         <span>リサイクル品・互換品</span>
       </label>
 
+      {/*
+        純正とリサイクル品の組は、リサイクル品の側から純正を 1 つ選んで作る。
+        純正の側には何も持たせない（両側から結ぶと食い違いが起きるため）
+      */}
+      {form.recycled && (
+        <label>
+          <span>純正品（価格を比べる相手）</span>
+          <select value={form.genuineId} onChange={(e) => onChange('genuineId', e.target.value)}>
+            <option value="">選ばない</option>
+            {genuines.map(({ toner, retired: gone }) => (
+              <option key={toner.id} value={toner.id}>
+                {genuineLabel(toner)}
+                {gone ? '（無効）' : ''}
+              </option>
+            ))}
+          </select>
+          <span className="tn-field-note">
+            選ぶと、トナー価格比較で純正と並べて比べられます
+          </span>
+        </label>
+      )}
+
+      <label className="tn-check" title="外すと、受付・注文の候補やトナー個数状況などに出なくなります">
+        <input
+          type="checkbox"
+          checked={!form.hidden}
+          onChange={(e) => onChange('hidden', !e.target.checked)}
+        />
+        <span>他の画面に表示する</span>
+      </label>
+
       <PrinterPicker
         printers={printers}
         retired={retired}
@@ -517,6 +669,8 @@ export default function TonerScreen() {
   const [query, setQuery] = useState('');
   /** 無効にした品番の別枠を絞る文字。上の一覧とは別に持つ（表が別なので） */
   const [disabledQuery, setDisabledQuery] = useState('');
+  /** 一覧を「他の画面に出すか」で絞る。チェックを外した品番だけを見直せるように */
+  const [shownFilter, setShownFilter] = useState<'all' | 'shown' | 'hidden'>('all');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -546,8 +700,21 @@ export default function TonerScreen() {
     void load();
   }, [load]);
 
+  /** 新規の欄の種類を手で選んだか。選ぶまではトナーID・トナー名から推し量って入れる */
+  const [partTouched, setPartTouched] = useState(false);
+
+  /**
+   * 新規の欄の書き換え。**種類を手で選ぶまでは、トナーID・トナー名を打つたびに種類を選び直す**
+   * （「ドラムユニット …」と打てばドラムに）。編集の小窓は保存済みの値を動かさない（setDraft）
+   */
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (!partTouched && (key === 'id' || key === 'name')) {
+        next.part = guessPart(next.id, next.name || null);
+      }
+      return next;
+    });
 
   const setDraft = <K extends keyof Form>(key: K, value: Form[K]) =>
     setEditing((prev) => prev && { ...prev, form: { ...prev.form, [key]: value } });
@@ -601,11 +768,34 @@ export default function TonerScreen() {
     [toners],
   );
 
+  /**
+   * 新規の欄の純正品の選択肢。**有効な純正だけ。**
+   * 組の軸は純正なので、リサイクル品は並べない（API も断る）
+   */
+  const genuineChoices = useMemo<GenuineChoice[]>(
+    () =>
+      active
+        .filter((toner) => !toner.recycled)
+        .sort((a, b) => a.id.localeCompare(b.id, 'ja', { numeric: true }))
+        .map((toner) => ({ toner, retired: false })),
+    [active],
+  );
+
+  /** 小窓の純正品の選択肢。自分は外し、選んである無効の純正は開いた時点の分を足す */
+  const editGenuineChoices = useMemo<GenuineChoice[]>(() => {
+    if (editing === null) return [];
+    const choices = genuineChoices.filter(({ toner }) => toner.id !== editing.id);
+    return editing.retiredGenuine
+      ? [...choices, { toner: editing.retiredGenuine, retired: true }]
+      : choices;
+  }, [editing, genuineChoices]);
+
   /** 凡例に出す件数。一覧の色分けと同じ判定を使う。無効の品番は数えない */
   const counts = useMemo(
     () => ({
       out: active.filter((toner) => stockState(toner) === 'out').length,
       low: active.filter((toner) => stockState(toner) === 'low').length,
+      hidden: active.filter((toner) => toner.hidden).length,
     }),
     [active],
   );
@@ -615,11 +805,16 @@ export default function TonerScreen() {
     const words = searchWords(query);
     // 対応プリンターでも引けるようにする（「予約外来のトナー」を探せるように）
     const found = active.filter((toner) =>
+      (shownFilter === 'all' || toner.hidden === (shownFilter === 'hidden')) &&
       hits(
         [
           toner.id,
           toner.name,
           toner.color,
+          PART_LABELS[toner.part],
+          // 組の相手の品番でも引ける（「P500H」で純正とリサイクル品の両方が出る）
+          toner.genuineId,
+          ...toner.alternativeIds,
           ...toner.printers.flatMap((printer) => [
             printer.department,
             printer.no,
@@ -641,7 +836,7 @@ export default function TonerScreen() {
       // 値が並んだときは API が返した順（トナー名 → 品番）で安定させる
       (toner) => active.indexOf(toner),
     );
-  }, [active, sort, query]);
+  }, [active, sort, query, shownFilter]);
 
   /** マスタ登録。対応機器と初回価格も一緒に送る */
   const create = async () => {
@@ -655,7 +850,10 @@ export default function TonerScreen() {
           id: form.id.trim(),
           name: orNull(form.name),
           color: orNull(form.color),
+          part: form.part,
           recycled: form.recycled,
+          genuineId: genuineToSend(form),
+          hidden: form.hidden,
           alertThreshold: toCount(form.alertThreshold),
           yieldPages: toCount(form.yieldPages),
           printerAssetIds: form.printerAssetIds,
@@ -666,6 +864,7 @@ export default function TonerScreen() {
       setNotice(`${saved.name ?? saved.id} を登録しました`);
       // 上の欄は新規専用。空に戻して、続けて押しても二重に登録しないようにする
       setForm(emptyForm());
+      setPartTouched(false);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -675,7 +874,8 @@ export default function TonerScreen() {
   };
 
   /**
-   * 小窓の保存。名前・色・リサイクル区分・対応機器。**価格はここでは変えない**（改定の欄で足す）。
+   * 小窓の保存。名前・色・リサイクル区分・純正品・他の画面に出すか・対応機器。
+   * **価格はここでは変えない**（改定の欄で足す）。
    * 失敗したら小窓を開いたまま、中に文面を出す（閉じると直した値が消える）
    */
   const update = async () => {
@@ -690,7 +890,10 @@ export default function TonerScreen() {
         body: JSON.stringify({
           name: orNull(draft.name),
           color: orNull(draft.color),
+          part: draft.part,
           recycled: draft.recycled,
+          genuineId: genuineToSend(draft),
+          hidden: draft.hidden,
           alertThreshold: toCount(draft.alertThreshold),
           yieldPages: toCount(draft.yieldPages),
           printerAssetIds: draft.printerAssetIds,
@@ -716,7 +919,7 @@ export default function TonerScreen() {
    */
   const addPrice = async () => {
     if (editing === null) return;
-    const { id, form: draft } = editing;
+    const { id, form: draft, priceNote } = editing;
     if (draft.price.trim() === '') {
       setEditError('価格を入力してください');
       return;
@@ -731,10 +934,14 @@ export default function TonerScreen() {
         body: JSON.stringify({
           price: Number(draft.price),
           effectiveFrom: draft.effectiveFrom,
+          note: orNull(priceNote),
         }),
       });
       const history = await request<PriceRow[]>(`/toners/${encodeURIComponent(id)}/prices`);
-      setEditing((prev) => (prev && prev.id === id ? { ...prev, prices: history } : prev));
+      // 覚書はその改定の分だけ。次の改定に同じ文が付かないよう空へ戻す
+      setEditing((prev) =>
+        prev && prev.id === id ? { ...prev, prices: history, priceNote: '' } : prev,
+      );
       setEditNotice(
         `${draft.effectiveFrom} から ${num.format(Number(draft.price))} 円（税別）にしました`,
       );
@@ -766,7 +973,10 @@ export default function TonerScreen() {
           id: toner.id,
           name: toner.name ?? '',
           color: toner.color ?? '',
+          part: toner.part,
           recycled: toner.recycled,
+          genuineId: toner.genuineId ?? '',
+          hidden: toner.hidden,
           alertThreshold:
             toner.alertThreshold === null ? '' : String(toner.alertThreshold),
           yieldPages: toner.yieldPages === null ? '' : String(toner.yieldPages),
@@ -778,6 +988,12 @@ export default function TonerScreen() {
         retired: toner.printers.filter(
           (linked) => !printers.some((printer) => printer.id === linked.id),
         ),
+        retiredGenuine:
+          toners.find(
+            (candidate) =>
+              candidate.id === toner.genuineId && candidate.disabledAt !== null,
+          ) ?? null,
+        priceNote: '',
       });
       setEditError(null);
       setEditNotice(null);
@@ -835,6 +1051,39 @@ export default function TonerScreen() {
   };
 
   /**
+   * 一覧の「表示」。**押した時点で保存する**（他の列は送らない）。
+   *
+   * 外した品番は受付・注文・請求書の候補、トナー個数状況、トナー入出状況、
+   * 運用コストから外れる。トナー登録とトナー価格比較には残る。
+   * 価格を比べるためだけに登録した純正を、日々の画面に出さないための印
+   */
+  const toggleHidden = async (toner: SavedToner) => {
+    const label = toner.name ?? toner.id;
+    const hide = !toner.hidden;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await request<SavedToner>(`/toners/${encodeURIComponent(toner.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ hidden: hide }),
+      });
+      setNotice(
+        hide
+          ? `${label} を他の画面に出さないようにしました` +
+              '（受付・注文の候補、トナー個数状況、トナー入出状況などから外れます。' +
+              'トナー登録とトナー価格比較には残ります）'
+          : `${label} を他の画面にも出すようにしました`,
+      );
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
    * 無効にした品番を完全に消す。**登録し間違えたものの後始末。**
    *
    * 普段は無効のままにしておけばよく、これは戻す必要が無いと分かっている行だけ。
@@ -846,6 +1095,9 @@ export default function TonerScreen() {
     const alsoGone = [
       toner.printers.length > 0 ? `対応プリンター ${toner.printers.length} 台の紐づけ` : null,
       toner.priceCount > 0 ? `価格の履歴 ${toner.priceCount} 件` : null,
+      toner.alternativeIds.length > 0
+        ? `この品番を純正に選んでいるリサイクル品 ${toner.alternativeIds.length} 件の組`
+        : null,
     ].filter(Boolean);
 
     if (
@@ -876,6 +1128,7 @@ export default function TonerScreen() {
 
   const clear = () => {
     setForm(emptyForm());
+    setPartTouched(false);
     setError(null);
     setNotice(null);
   };
@@ -896,7 +1149,8 @@ export default function TonerScreen() {
           トナーの品番ごとに、対応する機器・色・リサイクル品かどうか・税別価格を登録します。
           対応する機器は端末情報の台帳から選ぶので、1 種類のトナーを複数台で共用していても
           登録は 1 件で済みます。価格は上書きせず履歴として積み、統計はその日に有効だった
-          価格で計算できます。
+          価格で計算できます。リサイクル品は「純正品」を選んでおくと、トナー価格比較で
+          純正と並べて比べられます。
         </p>
       </header>
 
@@ -905,7 +1159,9 @@ export default function TonerScreen() {
         <TonerFields
           form={form}
           onChange={set}
+          onPartTouched={() => setPartTouched(true)}
           printers={printers}
+          genuines={genuineChoices}
           nameHints={nameHints}
           head={
             <label>
@@ -982,6 +1238,14 @@ export default function TonerScreen() {
             警告する本数は品番ごとに設定します。空欄なら在庫 0 のときだけ赤にします。
           </span>
         </p>
+        <p className="tn-hint">
+          <strong>「表示」の印を外すと、その品番は他の画面に出なくなります</strong>
+          （押した時点で保存します。いま {counts.hidden} 件）。外れるのは受付・注文・請求書の候補、
+          トナー個数状況、トナー入出状況、運用コストで、トナー登録とトナー価格比較には残ります。
+          棚卸しには在庫が残っている拠点でだけ出ます。使わなくなった品番を止めるときは、これまでどおり「無効」です。
+          <strong>使っていないトナーの値段を比べたいだけなら、ここではなく「トナー情報登録」に入れてください</strong>
+          （販売店・購入形態ごとに入れられ、トナー価格比較にだけ出ます）。
+        </p>
 
         <div className="sbx-row">
           <SearchBox
@@ -991,13 +1255,25 @@ export default function TonerScreen() {
             count={shown.length}
             total={active.length}
           />
+          <label className="tn-shown-filter">
+            <span>表示</span>
+            <select
+              value={shownFilter}
+              onChange={(e) => setShownFilter(e.target.value as typeof shownFilter)}
+            >
+              <option value="all">すべて</option>
+              <option value="shown">他の画面に出す品番</option>
+              <option value="hidden">出さない品番（{counts.hidden} 件）</option>
+            </select>
+          </label>
         </div>
 
         {toners.length === 0 ? (
           <p className="tn-empty">まだ登録がありません。上の欄を入力して登録してください。</p>
-        ) : shown.length === 0 && query.trim() !== '' ? (
+        ) : shown.length === 0 && (query.trim() !== '' || shownFilter !== 'all') ? (
           <p className="tn-empty">
-            「{query}」に当てはまる品番がありません（登録は {active.length} 件）。
+            {query.trim() !== '' ? `「${query}」に` : '絞り込みに'}
+            当てはまる品番がありません（登録は {active.length} 件）。
           </p>
         ) : (
           <TableBox className="tn-table-wrap" memoryKey="toners.list">
@@ -1029,11 +1305,41 @@ export default function TonerScreen() {
               </thead>
               <tbody>
                 {shown.map((toner) => (
-                  <tr key={toner.id} className={toner.id === editing?.id ? 'tn-row-on' : undefined}>
+                  <tr
+                    key={toner.id}
+                    className={
+                      [
+                        toner.id === editing?.id ? 'tn-row-on' : '',
+                        toner.hidden ? 'tn-row-hidden' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ') || undefined
+                    }
+                  >
+                    <td className="tn-show-cell">
+                      <input
+                        type="checkbox"
+                        checked={!toner.hidden}
+                        onChange={() => void toggleHidden(toner)}
+                        disabled={busy}
+                        aria-label={`${toner.id} を他の画面に表示する`}
+                        title={
+                          toner.hidden
+                            ? '他の画面に出していません。印を付けると受付・注文の候補などに出ます'
+                            : '外すと、受付・注文の候補やトナー個数状況などに出なくなります（押した時点で保存）'
+                        }
+                      />
+                    </td>
                     <td className="tn-mono">{toner.id}</td>
                     <td>{toner.name ?? '—'}</td>
                     <td>{toner.color ?? '—'}</td>
+                    <td className={toner.part === 'TONER' ? undefined : 'tn-part'}>
+                      {PART_LABELS[toner.part]}
+                    </td>
                     <td>{toner.recycled ? '○' : '—'}</td>
+                    <td className="tn-pair">
+                      <PairCell toner={toner} toners={toners} />
+                    </td>
                     <td className="tn-num">
                       {toner.price === null ? '—' : `${num.format(toner.price)} 円`}
                     </td>
@@ -1250,6 +1556,7 @@ export default function TonerScreen() {
               onChange={setDraft}
               printers={printers}
               retired={editing.retired}
+              genuines={editGenuineChoices}
               nameHints={nameHints}
               head={
                 <label>
@@ -1294,6 +1601,19 @@ export default function TonerScreen() {
                   type="date"
                   value={editing.form.effectiveFrom}
                   onChange={(e) => setDraft('effectiveFrom', e.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>覚書（任意）</span>
+                <input
+                  type="text"
+                  value={editing.priceNote}
+                  onChange={(e) =>
+                    setEditing((prev) => prev && { ...prev, priceNote: e.target.value })
+                  }
+                  placeholder="値上げの理由・見積の番号など"
+                  maxLength={200}
                 />
               </label>
 

@@ -29,6 +29,16 @@ function statusOf(
   return received < ordered ? 'short' : 'over';
 }
 
+/**
+ * 注文に添えるもの。拠点名は、全拠点を並べるトナー入出状況が列に出す。
+ * 画面が持っている拠点の一覧は有効なものだけなので、名前はこちらで引いて渡す
+ * （無効にした拠点の注文だと、画面では名前が引けない）
+ */
+const ORDER_INCLUDE = {
+  toner: { select: { name: true } },
+  company: { select: { name: true } },
+} as const;
+
 /** 注文 1 件を画面が使う形に */
 function toResponse(order: {
   id: number;
@@ -40,12 +50,14 @@ function toResponse(order: {
   deliveryOn: Date | null;
   status: string;
   toner: { name: string | null };
+  company: { name: string };
 }) {
   return {
     id: order.id,
     tonerId: order.tonerId,
-    /** どの拠点の注文か。注文・搬入は拠点ごとに見る */
+    /** どの拠点の注文か */
     companyId: order.companyId,
+    companyName: order.company.name,
     /** 注文した人。この列を足す前の注文は null */
     userId: order.userId,
     name: order.toner.name,
@@ -97,7 +109,7 @@ export class TonerOrdersService {
         orderedAt,
         deliveryOn: toDate(dto.deliveryOn),
       },
-      include: { toner: { select: { name: true } } },
+      include: ORDER_INCLUDE,
     });
 
     return toResponse(order);
@@ -108,7 +120,7 @@ export class TonerOrdersService {
     const orders = await this.prisma.tonerOrder.findMany({
       where: { status: 'PENDING', ...(companyId ? { companyId } : {}) },
       orderBy: { orderedAt: 'asc' },
-      include: { toner: { select: { name: true } } },
+      include: ORDER_INCLUDE,
     });
     return orders.map(toResponse);
   }
@@ -147,7 +159,7 @@ export class TonerOrdersService {
             orderedAt,
             deliveryOn,
           },
-          include: { toner: { select: { name: true } } },
+          include: ORDER_INCLUDE,
         });
         saved.push(toResponse(order));
       }
@@ -165,29 +177,43 @@ export class TonerOrdersService {
    * 搬入だけなら「注文の記録が無い」で、どちらも見落としたくないため。
    * 次回搬入日を入れていない注文は突き合わせられないので、日付なしの行にまとめる。
    *
-   * **拠点ごと。`companyId` は必須。** 鍵が「品番 ＋ 日付」だけなので、
-   * 拠点で絞らないと同じ品番を同じ日に受け取った別の拠点の搬入が
-   * 1 行にまとまり、こちらの注文が埋まったように見えて差が消える
+   * **拠点も鍵に入れる（拠点 ＋ 品番 ＋ 日付）。** 入れないと、同じ品番を同じ日に
+   * 受け取った別の拠点の搬入が 1 行にまとまり、こちらの注文が埋まったように見えて
+   * 差が消える。鍵に入っているので、`companyId` を省いて全拠点を返しても混ざらない
+   * （トナー入出状況は全拠点を並べ、拠点を列に出す）。渡せばその拠点の分だけ
    */
-  async findDeliveryCheck(companyId: number, days = 180) {
+  async findDeliveryCheck(companyId?: number, days = 180) {
     const from = new Date();
     from.setDate(from.getDate() - days);
 
+    const include = {
+      toner: { select: { name: true, color: true } },
+      company: { select: { name: true, sortOrder: true } },
+    } as const;
     const [orders, entries] = await Promise.all([
       this.prisma.tonerOrder.findMany({
-        where: { companyId, orderedAt: { gte: from } },
+        where: {
+          ...(companyId ? { companyId } : {}),
+          orderedAt: { gte: from },
+        },
         orderBy: { orderedAt: 'desc' },
-        include: { toner: { select: { name: true, color: true } } },
+        include,
       }),
       this.prisma.tonerEntry.findMany({
-        where: { companyId, action: 'RECEIVE', createdAt: { gte: from } },
+        where: {
+          ...(companyId ? { companyId } : {}),
+          action: 'RECEIVE',
+          createdAt: { gte: from },
+        },
         orderBy: { createdAt: 'desc' },
-        include: { toner: { select: { name: true, color: true } } },
+        include,
       }),
     ]);
 
     type Row = {
       key: string;
+      companyId: number;
+      companyName: string;
       tonerId: string;
       name: string | null;
       color: string | null;
@@ -210,15 +236,25 @@ export class TonerOrdersService {
     };
 
     const rows = new Map<string, Row>();
+    /** 拠点の並び順。同じ日付の行を拠点登録の順に並べる */
+    const companyOrder = new Map<number, number>();
     const rowFor = (
-      tonerId: string,
-      toner: { name: string | null; color: string | null },
+      source: {
+        companyId: number;
+        company: { name: string; sortOrder: number };
+        tonerId: string;
+        toner: { name: string | null; color: string | null };
+      },
       date: string | null,
     ) => {
-      // 区切りは \0。品番に現れない文字なので、日付との境目が動かない
-      const key = `${tonerId}\0${date ?? ''}`;
+      const { companyId: company, tonerId, toner } = source;
+      companyOrder.set(company, source.company.sortOrder);
+      // 区切りは \0。品番に現れない文字なので、拠点・日付との境目が動かない
+      const key = `${company}\0${tonerId}\0${date ?? ''}`;
       const row = rows.get(key) ?? {
         key,
+        companyId: company,
+        companyName: source.company.name,
         tonerId,
         name: toner.name,
         color: toner.color,
@@ -233,11 +269,7 @@ export class TonerOrdersService {
     };
 
     for (const order of orders) {
-      const row = rowFor(
-        order.tonerId,
-        order.toner,
-        fromDate(order.deliveryOn),
-      );
+      const row = rowFor(order, fromDate(order.deliveryOn));
       // 取り消した注文は本数に数えない。行には残して経緯が分かるようにする
       if (order.status !== 'CANCELED') row.ordered += order.quantity;
       row.orders.push({
@@ -249,11 +281,7 @@ export class TonerOrdersService {
     }
 
     for (const entry of entries) {
-      const row = rowFor(
-        entry.tonerId,
-        entry.toner,
-        fromDate(entry.receivedOn),
-      );
+      const row = rowFor(entry, fromDate(entry.receivedOn));
       row.received += entry.quantity;
       row.entries.push({
         id: entry.id,
@@ -280,8 +308,15 @@ export class TonerOrdersService {
         status: statusOf(row.ordered, row.received, row.date, todayKey),
       }))
       .sort((a, b) => {
-        // 日付の新しい順。日付なしは末尾
-        if (a.date === b.date) return a.tonerId.localeCompare(b.tonerId, 'ja');
+        // 日付の新しい順。日付なしは末尾。同じ日付は拠点登録の並び順 → 品番
+        if (a.date === b.date) {
+          return (
+            (companyOrder.get(a.companyId) ?? 0) -
+              (companyOrder.get(b.companyId) ?? 0) ||
+            a.companyId - b.companyId ||
+            a.tonerId.localeCompare(b.tonerId, 'ja')
+          );
+        }
         if (a.date === null) return 1;
         if (b.date === null) return -1;
         return a.date < b.date ? 1 : -1;
@@ -309,7 +344,7 @@ export class TonerOrdersService {
       ...(companyId ? { where: { companyId } } : {}),
       orderBy: { orderedAt: 'desc' },
       take: 50,
-      include: { toner: { select: { name: true } } },
+      include: ORDER_INCLUDE,
     });
     return orders.map(toResponse);
   }

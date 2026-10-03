@@ -238,10 +238,11 @@ let TonerEntriesService = class TonerEntriesService {
         });
     }
     async findStock(companyId) {
-        const toners = await this.prisma.toner.findMany({
+        const found = await this.prisma.toner.findMany({
             include: { stocks: { where: { companyId } } },
             orderBy: { id: 'asc' },
         });
+        const toners = found.filter((t) => !t.hidden || (t.stocks[0]?.quantity ?? 0) > 0);
         return toners.map((t) => {
             const stock = t.stocks[0] ?? null;
             return {
@@ -344,7 +345,10 @@ let TonerEntriesService = class TonerEntriesService {
             },
             orderBy: { createdAt: 'desc' },
             take: exports.HISTORY_LIMIT + 1,
-            include: { toner: { select: { name: true, color: true } } },
+            include: {
+                toner: { select: { name: true, color: true } },
+                company: { select: { name: true } },
+            },
         });
         const truncated = found.length > exports.HISTORY_LIMIT;
         const rows = truncated ? found.slice(0, exports.HISTORY_LIMIT) : found;
@@ -356,6 +360,7 @@ let TonerEntriesService = class TonerEntriesService {
                 userId: row.userId,
                 tonerId: row.tonerId,
                 companyId: row.companyId,
+                companyName: row.company.name,
                 name: row.toner.name,
                 color: row.toner.color,
                 action: row.action,

@@ -1,0 +1,212 @@
+/* トナー情報登録。枠と表は DataTable.css（dt-）を使い、ここは入力欄と札だけ */
+
+/* --- 新規登録の枠 --- */
+.to-form {
+  max-width: 1100px;
+  padding: 18px 20px 16px;
+  margin-bottom: 26px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.to h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.to .dt-section h2 { font-size: 14px; margin-bottom: 4px; }
+
+/* --- 入力欄 --- */
+.to-fields { display: flex; flex-direction: column; gap: 14px; }
+
+/* 項目が多いので、トナー・購入先・価格・条件・機種のまとまりに分ける */
+.to-set {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.to-set legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.to-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+.to-span2 { grid-column: span 2; }
+@media (max-width: 900px) {
+  .to-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .to-grid { grid-template-columns: minmax(0, 1fr); }
+  .to-span2 { grid-column: auto; }
+}
+
+.to-grid label,
+.to-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.to-fields input,
+.to-fields select,
+.to-fields textarea {
+  min-width: 0;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.to-fields textarea { resize: vertical; line-height: 1.5; }
+.to :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.to-req {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--danger);
+  background: #fdf1f1;
+  border-radius: 3px;
+}
+
+/* 入力中の 1 本あたり・1 枚あたり。保存前に桁の打ち間違いに気づけるように */
+.to-preview {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.to-muted { color: var(--muted); font-size: 12px; }
+.to-preview-note { margin: 4px 0 0; color: #8a5a00; }
+.to-preview + .to-hint,
+.to-preview-note + .to-hint { margin-top: 6px; margin-bottom: 0; }
+.to-hint { margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.to-copy-hint { margin-bottom: 12px; }
+
+/* --- 使える機種 --- */
+.to-model-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.to-model-tools input { flex: 1 1 220px; max-width: 320px; }
+.to-model-tools button,
+.to-sub-button {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.to-model-tools button:hover:enabled,
+.to-sub-button:hover:enabled { background: #eef3f7; }
+.to-model-tools button:disabled,
+.to-sub-button:disabled { color: #a7b3bd; cursor: not-allowed; }
+
+/* 機種は 20 を超えるので、箱の中でスクロールさせて欄が縦に伸びすぎないようにする */
+.to-models {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 4px 14px;
+  max-height: 210px;
+  overflow: auto;
+  padding: 8px 10px;
+  background: #fbfcfd;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.to-models label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.to-models label > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.to-models input { flex: none; padding: 0; }
+
+/* --- 登録ボタン --- */
+.to-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.to-actions > button:first-child {
+  padding: 9px 22px;
+  font: inherit;
+  font-size: 13px;
+  color: #ffffff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.to-actions > button:first-child:disabled {
+  background: #a7b3bd;
+  border-color: #a7b3bd;
+  cursor: not-allowed;
+}
+.to-msg { margin: 14px 0 0; }
+
+/* --- 一覧 --- */
+.to-table td { vertical-align: top; }
+/* 品番の下の商品名、価格の下の入数など。2 行目は控えめに */
+.to-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.to-kind {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.to-kind-recycled { color: #1d6b48; background: #eef8f2; border-color: #b9dcc8; }
+.to-kind-compatible { color: #1f4f8b; background: #e9f0f9; border-color: #c3d4ea; }
+.to-flag {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  background: #f2f4f7;
+  border-radius: 3px;
+}
+.to-flag-master { color: var(--accent); background: #eef3f7; }
+.to-flag-expired { color: #8a5a00; background: #fdf6e7; }
+/* 種類がトナー・インク以外。トナーの行と見分けやすくする */
+.to-part { color: #1f4f8b; }
+.to-row-on td { background: #f2f8fb; }
+.to-row-expired td { color: #7d8a96; }
+
+.to-ops { display: flex; gap: 6px; }
+.to-ops button.to-del { color: var(--danger); }
