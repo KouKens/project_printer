@@ -1924,6 +1924,8 @@ export const TonerOrderScalarFieldEnum = {
   orderedAt: 'orderedAt',
   deliveryOn: 'deliveryOn',
   status: 'status',
+  receivedAt: 'receivedAt',
+  receiveMode: 'receiveMode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2019,6 +2021,7 @@ export const PrinterAssetScalarFieldEnum = {
   note: 'note',
   disabledAt: 'disabledAt',
   countLayout: 'countLayout',
+  dailyCheck: 'dailyCheck',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2276,6 +2279,20 @@ export type EnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Pris
  * Reference to a field of type 'OrderStatus[]'
  */
 export type ListEnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OrderStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ReceiveMode'
+ */
+export type EnumReceiveModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReceiveMode'>
+    
+
+
+/**
+ * Reference to a field of type 'ReceiveMode[]'
+ */
+export type ListEnumReceiveModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReceiveMode[]'>
     
 
 

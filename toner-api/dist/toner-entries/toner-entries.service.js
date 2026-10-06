@@ -13,6 +13,7 @@ exports.TonerEntriesService = exports.HISTORY_LIMIT = exports.GUEST_USER = void 
 const common_1 = require("@nestjs/common");
 const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
+const reconcile_1 = require("../toner-orders/reconcile");
 exports.GUEST_USER = 'ゲスト';
 exports.HISTORY_LIMIT = 1000;
 function increments(delta) {
@@ -103,6 +104,7 @@ let TonerEntriesService = class TonerEntriesService {
             quantity: count,
             received: count,
         });
+        const receivedOn = (0, date_1.toDate)(dto.receivedOn) ?? (0, date_1.today)();
         await tx.tonerEntry.create({
             data: {
                 userId: dto.userId,
@@ -111,10 +113,18 @@ let TonerEntriesService = class TonerEntriesService {
                 action: 'RECEIVE',
                 quantity: count,
                 balance: stock.quantity,
-                receivedOn: (0, date_1.toDate)(dto.receivedOn) ?? (0, date_1.today)(),
+                receivedOn,
             },
         });
-        return this.toResult(toner.id, toner.name, 'RECEIVE', count, stock);
+        const settled = await (0, reconcile_1.reconcileOrders)(tx, {
+            companyId: dto.companyId,
+            tonerId: dto.tonerId,
+            date: receivedOn,
+        });
+        return {
+            ...this.toResult(toner.id, toner.name, 'RECEIVE', count, stock),
+            ordersReceived: settled.received,
+        };
     }
     async issue(tx, dto) {
         const count = dto.quantity ?? 1;
@@ -312,6 +322,13 @@ let TonerEntriesService = class TonerEntriesService {
                 });
             }
             await tx.tonerEntry.delete({ where: { id } });
+            const reopened = entry.action === 'RECEIVE'
+                ? (await (0, reconcile_1.reconcileOrders)(tx, {
+                    companyId: entry.companyId,
+                    tonerId: entry.tonerId,
+                    date: entry.receivedOn,
+                })).reopened
+                : 0;
             const after = await tx.tonerStock.findUnique({ where: stockKey });
             return {
                 id,
@@ -322,6 +339,7 @@ let TonerEntriesService = class TonerEntriesService {
                 stock: after?.quantity ?? 0,
                 received: after?.received ?? 0,
                 disposed: after?.disposed ?? 0,
+                ordersReopened: reopened,
             };
         });
     }

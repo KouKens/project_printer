@@ -392,6 +392,179 @@
 .dt-table tbody tr.dt-row-due:hover td { background: #fbe7e7; }
 .dt-table tbody tr.dt-row-soon:hover td { background: #fbf1dc; }
 
+/*
+ * トナー・インクの残りが少ない札。**注文するかをここで決めるので、文字の色だけでなく札ごと塗る。**
+ * 赤 = すぐ交換、黄 = 注文の目安。交換部品の行の色（赤・黄）と同じ並びにして、
+ * 「赤はすぐ・黄はそろそろ」で読めるようにする
+ */
+.dt-supply-empty {
+  color: #8f2323;
+  background: #fde3e3;
+  border-color: #e3a3a3;
+  font-weight: 600;
+}
+.dt-supply-low {
+  color: #7a4d00;
+  background: #fdefcc;
+  border-color: #e3c070;
+  font-weight: 600;
+}
+/* 色だけに頼らないための短い印（交換・少） */
+.dt-supply-flag {
+  padding: 0 4px;
+  font-size: 9.5px;
+  color: #fff;
+  border-radius: 3px;
+}
+.dt-supply-empty .dt-supply-flag { background: #b23a3a; }
+.dt-supply-low .dt-supply-flag { background: #b07a10; }
+
+/* --- 毎日チェック --- */
+/* 一覧の上に置く、トナー・インクを自分で発注する機器だけの表 */
+.dt-daily {
+  margin: 0 0 24px;
+  padding: 14px 16px 16px;
+  background: #fffdf6;
+  border: 1px solid #ecd9a8;
+  border-radius: 8px;
+}
+.dt-daily-head {
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.dt-daily-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.dt-daily-star { color: #e0a100; }
+.dt-daily-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.dt-daily-tag {
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+.dt-daily-tag-empty { color: #8f2323; background: #fde3e3; border-color: #e3a3a3; }
+.dt-daily-tag-low { color: #7a4d00; background: #fdefcc; border-color: #e3c070; }
+.dt-daily-tag-ok { color: #1d6b48; background: #eef8f2; border-color: #cfe6da; }
+.dt-daily-tag-nostock { color: var(--danger); background: #fff; border-color: var(--danger); }
+.dt-daily-tag-unread { color: var(--muted); background: #eef2f5; border-color: var(--line); }
+.dt-daily-tools { display: flex; gap: 8px; margin-left: auto; }
+.dt-daily-tools button {
+  height: 34px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dt-daily-tools button:disabled { color: #a7b3bd; cursor: not-allowed; }
+.dt-daily-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.dt-daily-legend .dt-legend-note { flex-basis: 100%; }
+.dt-daily-empty {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px dashed #ecd9a8;
+  border-radius: 6px;
+}
+/*
+ * この表の主役なので、残量の札を一回り大きく、**折り返さず 1 行に並べる**
+ * （狭い列で K C M Y が縦に積まれると、行が伸びて台を見比べられない）
+ */
+.dt-daily-toner .dt-supplies { flex-wrap: nowrap; }
+.dt-daily-toner .dt-supply { padding: 2px 9px; font-size: 12px; white-space: nowrap; }
+.dt-daily-toner .dt-dot { width: 10px; height: 10px; }
+.dt-daily-when { white-space: nowrap; }
+
+/*
+ * 品番・在庫。紐づけた品番を並べ、その台の拠点の在庫を添える。
+ * カラー機は 5 つほど並ぶので、幅を決めて折り返す。1 行に 2 つ入る幅にしておく
+ * （1 つずつ縦に積むと、カラー機の行だけ 3 倍の高さになる）
+ */
+.dt-daily-stock { min-width: 250px; max-width: 360px; }
+.dt-stocks { display: flex; gap: 4px 6px; flex-wrap: wrap; }
+.dt-stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+/* 残りの少ない色に使う品番。横の残量の札と結べるよう、濃く出して枠を付ける */
+.dt-stock-need {
+  color: var(--ink);
+  font-weight: 600;
+  background: #fff;
+  border: 1.5px solid #b07a10;
+}
+.dt-stock-qty { font-variant-numeric: tabular-nums; }
+/* 在庫の色。トナー個数状況と同じ判定（0 本は赤、警告本数以下はオレンジ） */
+.dt-stock-out .dt-stock-qty { color: var(--danger); font-weight: 600; }
+.dt-stock-low .dt-stock-qty { color: #b4610a; font-weight: 600; }
+/* 少ない色の品番が在庫 0 本で、注文中も無い。注文が要る */
+.dt-stock-need.dt-stock-out { background: #fde3e3; border-color: var(--danger); }
+/*
+ * 注文中（まだ入荷していない注文がある）。在庫 0 でも届くのを待てばよいので、
+ * 赤（要注文）を打ち消して青にする。.dt-stock-need.dt-stock-out より後に書いて勝たせる
+ */
+.dt-stock-onorder {
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1f4f8b;
+  background: #e9f0f9;
+  border-radius: 3px;
+}
+.dt-stock-need.dt-stock-ordered { background: #f3f7fc; border-color: #1f4f8b; }
+.dt-stock-ordered.dt-stock-out .dt-stock-qty { color: var(--muted); font-weight: 400; }
+.dt-stock-part {
+  padding: 0 4px;
+  font-size: 9.5px;
+  color: var(--muted);
+  background: #eef2f5;
+  border-radius: 3px;
+}
+.dt-stock-none { font-size: 11.5px; color: var(--muted); }
+/* 残りが少ないのに品番が分からない。何を頼むか決められないので目に留まるようにする */
+.dt-stock-none-need { color: #8a5a00; font-weight: 600; }
+/* 今日の値でない取得時刻（朝は前の日の 12:30 の値が並ぶ） */
+.dt-daily-stale { color: #a86a12; }
+/* 警告は文が長いので、幅を決めて折り返させる。右端に置いてあるので伸びても読む邪魔をしない */
+.dt-daily-alerts { min-width: 200px; max-width: 320px; }
+
+/* 毎日チェックの表の行。トナー・インクの残りで色を付ける（交換部品の色とは別の表） */
+.dt-row-toner-empty td { background: #fdf1f1; }
+.dt-row-toner-empty td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+.dt-row-toner-low td { background: #fdf7ea; }
+.dt-row-toner-low td:first-child { box-shadow: inset 3px 0 0 #d99a2b; }
+.dt-table tbody tr.dt-row-toner-empty:hover td { background: #fbe7e7; }
+.dt-table tbody tr.dt-row-toner-low:hover td { background: #fbf1dc; }
+
 /* 完了していない修理が残っている行。消耗品の色より優先して付ける */
 .dt-row-repair td { background: #eaf1fa; }
 .dt-row-repair td:first-child { box-shadow: inset 3px 0 0 #1f4f8b; }

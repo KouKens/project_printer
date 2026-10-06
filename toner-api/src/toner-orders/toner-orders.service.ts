@@ -7,6 +7,7 @@ import { fromDate, toDate, today } from '../common/date';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkTonerOrderDto } from './dto/bulk-toner-order.dto';
 import { CreateTonerOrderDto } from './dto/create-toner-order.dto';
+import { reconcileOrders } from './reconcile';
 
 /** 未来の日付をどこまで許すか（時計ずれの吸収用に 1 日だけ見る） */
 const FUTURE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
@@ -49,6 +50,8 @@ function toResponse(order: {
   orderedAt: Date;
   deliveryOn: Date | null;
   status: string;
+  receivedAt: Date | null;
+  receiveMode: 'AUTO' | 'MANUAL' | null;
   toner: { name: string | null };
   company: { name: string };
 }) {
@@ -66,6 +69,10 @@ function toResponse(order: {
     /** 次回搬入日。未定なら null */
     deliveryOn: fromDate(order.deliveryOn),
     status: order.status,
+    /** 入荷済みにした日時。未入荷なら null */
+    receivedAt: order.receivedAt,
+    /** 入荷済みにした方法（AUTO = 搬入と一致 / MANUAL = 手動）。未入荷なら null */
+    receiveMode: order.receiveMode,
   };
 }
 
@@ -100,19 +107,35 @@ export class TonerOrdersService {
       );
     }
 
-    const order = await this.prisma.tonerOrder.create({
-      data: {
-        tonerId: dto.tonerId,
-        companyId: dto.companyId,
-        userId: dto.userId ?? null,
-        quantity: dto.quantity,
-        orderedAt,
-        deliveryOn: toDate(dto.deliveryOn),
-      },
-      include: ORDER_INCLUDE,
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.tonerOrder.create({
+        data: {
+          tonerId: dto.tonerId,
+          companyId: dto.companyId,
+          userId: dto.userId ?? null,
+          quantity: dto.quantity,
+          orderedAt,
+          deliveryOn: toDate(dto.deliveryOn),
+        },
+      });
 
-    return toResponse(order);
+      /*
+       * 搬入を先に受け付けてから注文を入れることもある（届いてから記録を起こす）。
+       * そのときは入れた時点で本数が合うので、ここで入荷済みにする
+       */
+      await reconcileOrders(tx, {
+        companyId: order.companyId,
+        tonerId: order.tonerId,
+        date: order.deliveryOn,
+      });
+
+      return toResponse(
+        await tx.tonerOrder.findUniqueOrThrow({
+          where: { id: order.id },
+          include: ORDER_INCLUDE,
+        }),
+      );
+    });
   }
 
   /** 未入荷の注文。古いものから並べる */
@@ -148,7 +171,7 @@ export class TonerOrdersService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const saved: ReturnType<typeof toResponse>[] = [];
+      const ids: number[] = [];
       for (const item of dto.items) {
         const order = await tx.tonerOrder.create({
           data: {
@@ -159,11 +182,123 @@ export class TonerOrdersService {
             orderedAt,
             deliveryOn,
           },
-          include: ORDER_INCLUDE,
         });
-        saved.push(toResponse(order));
+        ids.push(order.id);
       }
-      return saved;
+
+      // 全部入れてから品番ごとに 1 回。途中で決めると、同じ品番の 2 行目で数が変わる
+      for (const tonerId of new Set(dto.items.map((item) => item.tonerId))) {
+        await reconcileOrders(tx, {
+          companyId: dto.companyId,
+          tonerId,
+          date: deliveryOn,
+        });
+      }
+
+      const saved = await tx.tonerOrder.findMany({
+        where: { id: { in: ids } },
+        orderBy: { id: 'asc' },
+        include: ORDER_INCLUDE,
+      });
+      return saved.map(toResponse);
+    });
+  }
+
+  /**
+   * 注文を手動で入荷済みにする。**トナー入出状況で一致しなかった行のためのもの。**
+   *
+   * 搬入の記録と本数が合わないまま届いたことにする（業者が分けて送ってきて
+   * 残りは取り消した、搬入日を違う日で受け付けた、次回搬入日を入れずに注文した、など）。
+   * 一致した行は搬入を受け付けた時点で自動で入荷済みになっているので、ここには来ない。
+   *
+   * 未入荷のものだけを受け付ける。1 件でも未入荷でなければ全体を断る
+   * （画面が古い状態のまま押したときに、何が起きたか分からなくなるため）
+   */
+  async receive(ids: number[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const orders = await tx.tonerOrder.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, tonerId: true, status: true },
+      });
+
+      const found = new Set(orders.map((order) => order.id));
+      const missing = ids.filter((id) => !found.has(id));
+      if (missing.length > 0) {
+        throw new NotFoundException(
+          `ID ${missing.join(', ')} の注文はありません`,
+        );
+      }
+
+      const notPending = orders.filter((order) => order.status !== 'PENDING');
+      if (notPending.length > 0) {
+        throw new BadRequestException(
+          `${notPending.map((order) => order.tonerId).join(', ')} の注文は` +
+            'すでに入荷済みか取り消し済みです。画面を開き直してください',
+        );
+      }
+
+      await tx.tonerOrder.updateMany({
+        where: { id: { in: ids } },
+        data: {
+          status: 'RECEIVED',
+          receiveMode: 'MANUAL',
+          receivedAt: new Date(),
+        },
+      });
+
+      const saved = await tx.tonerOrder.findMany({
+        where: { id: { in: ids } },
+        orderBy: { id: 'asc' },
+        include: ORDER_INCLUDE,
+      });
+      return saved.map(toResponse);
+    });
+  }
+
+  /**
+   * 手動で入荷済みにした注文を未入荷に戻す。押し間違えの後始末。
+   *
+   * **自動で入荷済みになったものは戻せない。** 搬入の記録と本数が合っているので、
+   * 戻してもすぐ入荷済みに決め直される。戻したいなら搬入の記録を取り消す
+   * （取り消せば自動で未入荷に戻る）。
+   *
+   * 戻したあとに突き合わせを決め直すので、その後に搬入が揃っていれば
+   * 自動の入荷済みになる。戻り値の status でそれが分かる
+   */
+  async unreceive(id: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.tonerOrder.findUnique({ where: { id } });
+      if (!order) {
+        throw new NotFoundException(`ID ${id} の注文はありません`);
+      }
+      if (order.status !== 'RECEIVED') {
+        throw new BadRequestException(
+          `${order.tonerId} の注文は入荷済みではありません`,
+        );
+      }
+      if (order.receiveMode !== 'MANUAL') {
+        throw new BadRequestException(
+          `${order.tonerId} の注文は搬入の記録と本数が一致して入荷済みになっているので、` +
+            '未入荷に戻せません。戻すには搬入の記録を取り消してください',
+        );
+      }
+
+      await tx.tonerOrder.update({
+        where: { id },
+        data: { status: 'PENDING', receiveMode: null, receivedAt: null },
+      });
+      await reconcileOrders(tx, {
+        companyId: order.companyId,
+        tonerId: order.tonerId,
+        date: order.deliveryOn,
+      });
+
+      return toResponse(
+        await tx.tonerOrder.findUniqueOrThrow({
+          where: { id },
+          include: ORDER_INCLUDE,
+        }),
+      );
     });
   }
 
@@ -226,6 +361,8 @@ export class TonerOrdersService {
         quantity: number;
         orderedAt: Date;
         status: string;
+        receivedAt: Date | null;
+        receiveMode: 'AUTO' | 'MANUAL' | null;
       }[];
       entries: {
         id: number;
@@ -277,6 +414,8 @@ export class TonerOrdersService {
         quantity: order.quantity,
         orderedAt: order.orderedAt,
         status: order.status,
+        receivedAt: order.receivedAt,
+        receiveMode: order.receiveMode,
       });
     }
 
@@ -296,6 +435,18 @@ export class TonerOrdersService {
     return [...rows.values()]
       .map((row) => ({
         ...row,
+        /** まだ未入荷の注文。画面の「入荷済みにする」が送る先 */
+        pendingOrderIds: row.orders
+          .filter((order) => order.status === 'PENDING')
+          .map((order) => order.id),
+        /**
+         * 片付いた行か。注文があり、どれも未入荷でない（入荷済みか取消）。
+         * 数が合わないまま手動で入荷済みにした行は、人が確かめたものとして
+         * 「数の合わない行」に数えない
+         */
+        settled:
+          row.orders.some((order) => order.status === 'RECEIVED') &&
+          row.orders.every((order) => order.status !== 'PENDING'),
         diff: row.received - row.ordered,
         /**
          * match  = 本数が合っている
@@ -329,13 +480,23 @@ export class TonerOrdersService {
    * 搬入の記録とは独立しているため、突き合わせの「注文」側だけが減る
    */
   async remove(id: number) {
-    const order = await this.prisma.tonerOrder.findUnique({ where: { id } });
-    if (!order) {
-      throw new NotFoundException(`ID ${id} の注文はありません`);
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.tonerOrder.findUnique({ where: { id } });
+      if (!order) {
+        throw new NotFoundException(`ID ${id} の注文はありません`);
+      }
 
-    await this.prisma.tonerOrder.delete({ where: { id } });
-    return { id, tonerId: order.tonerId, quantity: order.quantity };
+      await tx.tonerOrder.delete({ where: { id } });
+
+      // 同じ日の残りの注文が、この 1 件が抜けたことで搬入と合う（または合わなくなる）
+      await reconcileOrders(tx, {
+        companyId: order.companyId,
+        tonerId: order.tonerId,
+        date: order.deliveryOn,
+      });
+
+      return { id, tonerId: order.tonerId, quantity: order.quantity };
+    });
   }
 
   /** 注文履歴（直近 50 件） */

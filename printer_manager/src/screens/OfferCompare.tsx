@@ -32,7 +32,7 @@ import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 
 /**
- * トナー価格比較の上半分。**トナー登録（今使っているトナー）とトナー情報（比較用）を
+ * トナー価格比較の上半分。**トナー登録（今使っているトナー）と比較用トナーを
  * 1 つの表に並べる。**
  *
  * - プリンターを選ばなければ全部を 1 つの表で（並べ替え・絞り込みはこの場で）
@@ -40,7 +40,7 @@ import type { CellKind, SortDir } from '../lib/table';
  *   その台が今使っているトナー（トナー登録で紐づけたもの）との差を出す
  *
  * 「使える」の決め方: トナー登録は台帳の台への紐づけ（その台の機種も使える機種に数える）、
- * トナー情報は機種への紐づけ。機種はどちらも `modelKey` で畳んだ鍵で突き合わせる
+ * 比較用トナーは機種への紐づけ。機種はどちらも `modelKey` で畳んだ鍵で突き合わせる
  */
 
 /** 価格比較の API が返す台帳の 1 台 */
@@ -75,7 +75,7 @@ export type MasterToner = {
 
 export type CompareModel = { key: string; label: string; assetCount: number };
 
-/** 1 行。トナー登録の品番とトナー情報を同じ形にそろえる */
+/** 1 行。トナー登録の品番と比較用トナーを同じ形にそろえる */
 type Row = {
   key: string;
   source: 'master' | 'offer';
@@ -83,7 +83,7 @@ type Row = {
   name: string | null;
   kind: OfferKind;
   color: string | null;
-  /** 種類（トナー・ドラム…）。トナー登録・トナー情報で選んだ値。比べる相手を揃えるのに使う */
+  /** 種類（トナー・ドラム…）。トナー登録・比較用トナーで選んだ値。比べる相手を揃えるのに使う */
   part: SupplyPart;
   seller: string | null;
   purchaseType: PurchaseType | null;
@@ -102,7 +102,7 @@ type Row = {
   leadTime: string | null;
   takesBack: boolean | null;
   warranty: string | null;
-  /** 価格の日付。トナー登録は今の価格の適用開始日、トナー情報は確かめた日 */
+  /** 価格の日付。トナー登録は今の価格の適用開始日、比較用トナーは確かめた日 */
   priceDate: string | null;
   validUntil: string | null;
   url: string | null;
@@ -110,7 +110,7 @@ type Row = {
   modelKeys: string[];
   /** トナー登録の品番だけ。紐づけている有効な台 */
   assetIds: number[];
-  /** トナー情報で、トナー登録にも同じ品番があるもの */
+  /** 比較用トナーで、トナー登録にも同じ品番があるもの */
   masterId: string | null;
   hidden: boolean;
   expired: boolean;
@@ -274,7 +274,7 @@ const groupLabel = (part: SupplyPart, color: string | null) =>
 /**
  * **種類 × 色**ごとにまとめ、1 枚あたりの安い順に並べる。
  * 種類（トナー・ドラム・廃トナーボトル…）でも分けるのは、黒のドラムを黒のトナーと
- * 比べないため（種類はトナー登録・トナー情報の登録で選んだ値）。
+ * 比べないため（種類はトナー登録・比較用トナーの登録で選んだ値）。
  *
  * 比べる基準は**使用中のうち 1 枚あたりがいちばん安いもの。** 純正とリサイクル品の
  * 両方を紐づけている台では、安いほうと比べて「これだけ下がる」を控えめに出す
@@ -367,7 +367,7 @@ export default function OfferCompare({
   models: CompareModel[];
   assets: CompareAsset[];
   toners: MasterToner[];
-  /** トナー情報。まだ届いていなければ null */
+  /** 比較用トナー。まだ届いていなければ null */
   offers: Offer[] | null;
   offersError: string | null;
   today: string;
@@ -463,7 +463,7 @@ export default function OfferCompare({
   );
   const inUse = useCallback((row: Row) => standingOf(row) === 'inUse', [standingOf]);
 
-  /** 選んだ台で使えるか。トナー登録は台の紐づけ、トナー情報は機種で見る */
+  /** 選んだ台で使えるか。トナー登録は台の紐づけ、比較用トナーは機種で見る */
   const fitting = useMemo(
     () =>
       target === null
@@ -522,7 +522,7 @@ export default function OfferCompare({
           PART_LABELS[row.part],
           row.seller,
           row.purchaseType ? PURCHASE_LABELS[row.purchaseType] : null,
-          row.source === 'master' ? 'トナー登録' : 'トナー情報',
+          row.source === 'master' ? 'トナー登録' : '比較用トナー',
           row.note,
           ...modelsOf(row),
         ],
@@ -534,7 +534,7 @@ export default function OfferCompare({
   // ── プリンターを選んだとき: 色ごとに 1 枚あたりの安い順 ──
   /**
    * 絞り込む前のまとまり。**比べる基準（使用中）はここから決める。**
-   * 絞った表から決めると、「出どころ: トナー情報」や「区分: リサイクル」で使用中の行が
+   * 絞った表から決めると、「出どころ: 比較用トナー」や「区分: リサイクル」で使用中の行が
    * 隠れたとたんに基準が無くなり、比べたい候補だけを出したときに差が全部消える
    */
   const fullGroups = useMemo(
@@ -619,8 +619,8 @@ export default function OfferCompare({
         {row.hidden && <span className="pc-flag">非表示</span>}
       </span>
     ) : (
-      <span className="pcx-source" title="トナー情報登録で入れた比較用の情報">
-        トナー情報
+      <span className="pcx-source" title="比較用トナー登録で入れた、値段を比べるためだけのトナー">
+        比較用トナー
       </span>
     );
 
@@ -733,7 +733,7 @@ export default function OfferCompare({
     '備考',
   ];
   const baseCsv = (row: Row): CsvValue[] => [
-    row.source === 'master' ? 'トナー登録' : 'トナー情報',
+    row.source === 'master' ? 'トナー登録' : '比較用トナー',
     row.code,
     row.name,
     KIND_LABELS[row.kind],
@@ -871,7 +871,7 @@ export default function OfferCompare({
           <select value={source} onChange={(e) => setSource(e.target.value as typeof source)}>
             <option value="">すべて</option>
             <option value="master">トナー登録（使っているトナー）</option>
-            <option value="offer">トナー情報（比較用）</option>
+            <option value="offer">比較用トナー（比べるだけ）</option>
           </select>
         </label>
 
@@ -887,7 +887,7 @@ export default function OfferCompare({
 
       {offersError && (
         <p className="dt-msg dt-msg-error">
-          トナー情報を読み込めませんでした（{offersError}）。トナー登録の品番だけを出しています。
+          比較用トナーを読み込めませんでした（{offersError}）。トナー登録の品番だけを出しています。
         </p>
       )}
 
@@ -931,7 +931,7 @@ export default function OfferCompare({
 
       <p className="dt-hint">
         {target === null
-          ? '「トナー登録」は実際に使っているトナー（受付・注文で使う品番）、「トナー情報」はトナー情報登録で入れた比較用の値段です。1 枚あたりは本体と送料の合計で、月額の基本料金は台の枚数が要るため、プリンターを選ぶとその台の枚数で割って足します。プリンターを選ぶと、その台に使えるものだけを色ごとに並べて、今使っているトナーと比べます。'
+          ? '「トナー登録」は実際に使っているトナー（受付・注文で使う品番）、「比較用トナー」は比較用トナー登録で入れた、値段を比べるためだけのトナーです。1 枚あたりは本体と送料の合計で、月額の基本料金は台の枚数が要るため、プリンターを選ぶとその台の枚数で割って足します。プリンターを選ぶと、その台に使えるものだけを色ごとに並べて、今使っているトナーと比べます。'
           : '色ごとに 1 枚あたりの安い順です。差は同じ色の「使用中」に対してで、使用中が 2 つあるときは安いほうと比べます（マイナスが安い）。1 枚あたり = 本体（価格 ÷ 入数 ÷ 印刷可能枚数。カウンター料金ならその料金）＋ 送料（1 回に最小注文数、空欄なら 1 箱を頼むとして割る）＋ 月額（台の月の印刷枚数で割る）。月額は台ごとにかかるので、色ごとに分けた比較ではそれぞれの色に同じ額が乗ります。'}
       </p>
 
@@ -943,7 +943,7 @@ export default function OfferCompare({
             ? '絞り込みに当てはまるトナーがありません。'
             : target === null
               ? '登録されているトナーがありません。'
-              : 'この台に使えるトナーが登録されていません。トナー登録の対応プリンターか、トナー情報登録の「使える機種」で付けてください。'}
+              : 'この台に使えるトナーが登録されていません。トナー登録の対応プリンターか、比較用トナー登録の「使える機種」で付けてください。'}
         </p>
       ) : target === null ? (
         <TableBox className="dt-wrap" memoryKey="priceCompare.all">

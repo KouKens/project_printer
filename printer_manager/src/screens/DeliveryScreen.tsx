@@ -10,6 +10,9 @@ import {
   fetchEntryHistory,
   fetchHiddenTonerIds,
   fetchOrders,
+  orderStatusLabel,
+  receiveOrders,
+  unreceiveOrder,
 } from '../api';
 import { num } from '../lib/format';
 import { hits, searchWords } from '../lib/search';
@@ -151,9 +154,23 @@ const CHECK_CSV_HEADER = [
   '搬入',
   '差',
   '状態',
+  '入荷',
   '注文の件数',
   '搬入の件数',
 ];
+
+/**
+ * 突き合わせの行の入荷の状態。表では札、CSV では文字にする。
+ * 注文の無い行（搬入だけ）は注文が無いので出さない
+ */
+function rowReceipt(row: DeliveryCheckRow): string | null {
+  if (row.orders.length === 0) return null;
+  if (row.pendingOrderIds.length > 0) return '未入荷あり';
+  if (!row.settled) return null;
+  return row.orders.some((order) => order.receiveMode === 'MANUAL')
+    ? '入荷済み（手動）'
+    : '入荷済み';
+}
 
 /** 受付の履歴の CSV */
 const ENTRY_CSV_HEADER = [
@@ -301,6 +318,96 @@ export default function DeliveryScreen() {
     }
   };
 
+  /**
+   * 一致しなかった行の注文を、手動で入荷済みにする。
+   *
+   * 一致した行は搬入を受け付けた時点で自動で入荷済みになっているので、ここは
+   * 数が合わないまま「届いた」とするとき（残りを業者が取り消した、搬入日を違う日で
+   * 受け付けた、次回搬入日を入れずに注文した、など）。在庫は動かない
+   */
+  const receiveRow = async (row: DeliveryCheckRow) => {
+    const pending = row.orders.filter((order) => order.status === 'PENDING');
+    const bottles = pending.reduce((sum, order) => sum + order.quantity, 0);
+    const label =
+      `${row.companyName}の ${row.tonerId}（搬入日 ${row.date ?? '未定'}）の注文 ` +
+      `${pending.length} 件・${bottles} 本`;
+    if (
+      !window.confirm(
+        `${label}を入荷済みにします。\n\n` +
+          `注文 ${row.ordered} 本に対して、搬入の記録は ${row.received} 本です` +
+          `（${STATUS[row.status].label}）。数が合わないまま手動で入荷済みにします。\n` +
+          '在庫は動きません。間違えたときは注文の一覧の「未入荷に戻す」で戻せます。',
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await receiveOrders(row.pendingOrderIds);
+      setNotice(`${label}を入荷済み（手動）にしました`);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 注文の一覧から 1 件だけ手動で入荷済みにする */
+  const receiveOne = async (row: OrderRow) => {
+    const label = `${row.companyName}の ${row.tonerId} ${row.quantity} 本の注文`;
+    if (
+      !window.confirm(
+        `${label}を入荷済み（手動）にします。在庫は動きません。\n` +
+          '搬入の記録と本数が合っていれば、搬入を受け付けた時点で自動で入荷済みになります。',
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await receiveOrders([row.id]);
+      setNotice(`${label}を入荷済み（手動）にしました`);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * 手動で入荷済みにした注文を未入荷に戻す。押し間違えの後始末。
+   * 戻したあとで搬入と本数が合っていれば、API が自動の入荷済みに決め直すので、
+   * 戻り値の状態をそのまま知らせる
+   */
+  const unreceive = async (row: OrderRow) => {
+    const label = `${row.companyName}の ${row.tonerId} ${row.quantity} 本の注文`;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await unreceiveOrder(row.id);
+      setNotice(
+        result.status === 'PENDING'
+          ? `${label}を未入荷に戻しました`
+          : `${label}は搬入の記録と本数が一致しているので、入荷済み（自動）になりました`,
+      );
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /** 注文を取り消す。在庫は動いていないので、消えるのは注文の記録だけ */
   const removeOrder = async (row: OrderRow) => {
     const label = `${row.companyName}の ${row.tonerId} ${row.quantity} 本の注文`;
@@ -322,8 +429,9 @@ export default function DeliveryScreen() {
 
   const counts = useMemo(
     () => ({
+      // 手動で入荷済みにした行は、人が確かめたものとして数えない
       mismatch: checks.filter(
-        (row) => row.status === 'short' || row.status === 'over',
+        (row) => (row.status === 'short' || row.status === 'over') && !row.settled,
       ).length,
       waiting: checks.filter((row) => row.status === 'waiting').length,
       noOrder: checks.filter((row) => row.status === 'no-order').length,
@@ -352,8 +460,8 @@ export default function DeliveryScreen() {
       checks.filter(
         (row) =>
           !onlyIssues ||
-          row.status === 'short' ||
-          row.status === 'over' ||
+          // 手動で入荷済みにした行は片付いたものとして外す
+          ((row.status === 'short' || row.status === 'over') && !row.settled) ||
           row.status === 'no-order',
       ),
     [checks, onlyIssues],
@@ -423,7 +531,7 @@ export default function DeliveryScreen() {
           row.tonerId,
           row.name,
           row.userId,
-          row.status,
+          orderStatusLabel(row),
           row.deliveryOn,
           row.orderedAt.slice(0, 10),
         ],
@@ -553,6 +661,10 @@ export default function DeliveryScreen() {
           注文を取り消した行（CANCELED）は本数に数えません。次回搬入日を入れていない注文は
           突き合わせられないので「日付なし」にまとめます（{counts.undated} 件）。
           行を押すと、その注文と搬入の明細が出ます。
+          <strong>「一致」した注文は、搬入を受け付けた時点で自動で入荷済みになります。</strong>
+          一致しない行は「入荷済みにする」で手動で入荷済みにでき、「数が合わない」からも外れます。
+          搬入の記録を取り消して一致しなくなると、自動で入荷済みにした注文は未入荷に戻ります
+          （手動のものは戻りません）。未入荷の注文は、プリンター状況の毎日チェックに「注文中」として出ます。
         </span>
       </p>
 
@@ -573,6 +685,7 @@ export default function DeliveryScreen() {
                 // 注文が無い行の差は画面でもハイフン。数として意味を持たない
                 row.ordered === 0 ? null : row.diff,
                 STATUS[row.status].label,
+                rowReceipt(row),
                 row.orders.length,
                 row.entries.length,
               ])
@@ -633,6 +746,7 @@ export default function DeliveryScreen() {
                       </button>
                     </th>
                   ))}
+                  <th className="dt-plain">入荷</th>
                   <th className="dt-plain">トナー名</th>
                 </tr>
               </thead>
@@ -643,7 +757,16 @@ export default function DeliveryScreen() {
 
                   return (
                     <Fragment key={row.key}>
-                      <tr className={`dl-row-${row.status}${expanded ? ' dl-row-open' : ''}`}>
+                      <tr
+                        className={[
+                          `dl-row-${row.status}`,
+                          // 一致以外で片付いた行（手動で入荷済み）は色を弱める
+                          row.settled && row.status !== 'match' ? 'dl-row-settled' : '',
+                          expanded ? 'dl-row-open' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
                         <td className="dl-toggle">
                           <button
                             type="button"
@@ -673,12 +796,46 @@ export default function DeliveryScreen() {
                             {state.label}
                           </span>
                         </td>
+                        <td className="dl-receipt">
+                          {/*
+                            * 一致した行は自動で入荷済みになっているので、ボタンが出るのは
+                            * 一致しないまま未入荷の注文が残っている行だけ
+                            */}
+                          {row.pendingOrderIds.length > 0 && row.status !== 'match' ? (
+                            <button
+                              className="dl-receive"
+                              disabled={busy}
+                              onClick={() => void receiveRow(row)}
+                              title="数が合わないまま、この行の未入荷の注文を入荷済みにします（在庫は動きません）"
+                              type="button"
+                            >
+                              入荷済みにする
+                            </button>
+                          ) : rowReceipt(row) ? (
+                            <span
+                              className={
+                                rowReceipt(row) === '入荷済み（手動）'
+                                  ? 'dl-badge dl-received-manual'
+                                  : 'dl-badge dl-received'
+                              }
+                              title={
+                                rowReceipt(row) === '入荷済み（手動）'
+                                  ? '数が合わないまま、手動で入荷済みにしました'
+                                  : '搬入の記録と本数が一致したので、自動で入荷済みにしました'
+                              }
+                            >
+                              {rowReceipt(row)}
+                            </span>
+                          ) : (
+                            <span className="dt-muted">—</span>
+                          )}
+                        </td>
                         <td>{row.name ?? <span className="dt-muted">—</span>}</td>
                       </tr>
 
                       {expanded && (
                         <tr className="dl-detail">
-                          <td colSpan={CHECK_COLUMNS.length + 2}>
+                          <td colSpan={CHECK_COLUMNS.length + 3}>
                             <div className="dl-detail-grid">
                               <div>
                                 <h3>注文（{row.orders.length} 件）</h3>
@@ -692,7 +849,12 @@ export default function DeliveryScreen() {
                                           {stamp.format(new Date(order.orderedAt))}
                                         </span>
                                         <span className="dl-qty">{order.quantity} 本</span>
-                                        <span className="dt-muted">{order.status}</span>
+                                        <span className="dt-muted">
+                                          {orderStatusLabel(order)}
+                                          {order.receivedAt
+                                            ? `（${stamp.format(new Date(order.receivedAt))}）`
+                                            : ''}
+                                        </span>
                                       </li>
                                     ))}
                                   </ul>
@@ -869,7 +1031,7 @@ export default function DeliveryScreen() {
                 order.tonerId,
                 order.name,
                 order.quantity,
-                order.status,
+                orderStatusLabel(order),
                 order.userId,
               ])
             }
@@ -919,9 +1081,49 @@ export default function DeliveryScreen() {
                     <td>{order.companyName}</td>
                     <td className="dt-mono">{order.tonerId}</td>
                     <td className="dt-num">{num.format(order.quantity)}</td>
-                    <td>{order.status}</td>
+                    <td>
+                      <span
+                        className={
+                          order.status === 'PENDING'
+                            ? 'dl-badge dl-pending'
+                            : order.status === 'RECEIVED'
+                              ? order.receiveMode === 'MANUAL'
+                                ? 'dl-badge dl-received-manual'
+                                : 'dl-badge dl-received'
+                              : 'dt-muted'
+                        }
+                        title={
+                          order.receivedAt
+                            ? `${new Date(order.receivedAt).toLocaleString('ja-JP')} に入荷済みにしました`
+                            : undefined
+                        }
+                      >
+                        {orderStatusLabel(order)}
+                      </span>
+                    </td>
                     <td>{order.name ?? <span className="dt-muted">—</span>}</td>
                     <td className="dt-ops">
+                      {order.status === 'PENDING' && (
+                        <button
+                          disabled={busy}
+                          onClick={() => void receiveOne(order)}
+                          title="この注文を手動で入荷済みにします。在庫は動きません"
+                          type="button"
+                        >
+                          入荷済み
+                        </button>
+                      )}
+                      {/* 自動のものは搬入と合っているので戻せない（搬入を取り消せば戻る） */}
+                      {order.status === 'RECEIVED' && order.receiveMode === 'MANUAL' && (
+                        <button
+                          disabled={busy}
+                          onClick={() => void unreceive(order)}
+                          title="手動で入荷済みにしたものを未入荷に戻します"
+                          type="button"
+                        >
+                          未入荷に戻す
+                        </button>
+                      )}
                       <button
                         className="dl-danger"
                         disabled={busy}

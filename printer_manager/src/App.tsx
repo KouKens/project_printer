@@ -84,7 +84,7 @@ const GROUPS: {
       { value: 'asset', label: 'プリンター登録', wide: true },
       { value: 'toner', label: 'トナー登録', wide: true },
       // 価格を比べるためだけのトナー。トナー価格比較にだけ出る（他の画面はトナー登録を使う）
-      { value: 'tonerOffer', label: 'トナー情報登録', wide: true },
+      { value: 'tonerOffer', label: '比較用トナー登録', wide: true },
       { value: 'vendor', label: '保守登録', wide: true },
       { value: 'company', label: '拠点登録', wide: true },
     ],

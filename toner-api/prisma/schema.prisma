@@ -113,6 +113,14 @@ enum CountLayout {
   @@map("count_layout")
 }
 
+/// 注文を入荷済みにした方法
+enum ReceiveMode {
+  AUTO // 搬入の記録と本数が一致した（トナー入出状況の「一致」）
+  MANUAL // 一致しないまま、トナー入出状況で人が入荷済みにした
+
+  @@map("receive_mode")
+}
+
 /// 注文の状態
 enum OrderStatus {
   PENDING // 発注済み・未入荷
@@ -488,11 +496,23 @@ model TonerOrder {
 
   status OrderStatus @default(PENDING)
 
+  /// 入荷済みにした日時。未入荷（PENDING）の間は null
+  receivedAt DateTime? @map("received_at")
+
+  /// 入荷済みにした方法。未入荷の間は null。
+  ///
+  /// **自動のものは、一致しなくなれば未入荷に戻る**（搬入の記録を取り消した、
+  /// 同じ日の注文を足した、など）。手動のものは人が確かめた結果なので戻さない。
+  /// 戻すかどうかを決めるために、どちらで入荷済みになったかを持つ
+  receiveMode ReceiveMode? @map("receive_mode")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   toner Toner @relation(fields: [tonerId], references: [id])
 
+  /// 突き合わせの鍵（拠点 ＋ 品番 ＋ 次回搬入日）で注文を引くため
+  @@index([companyId, tonerId, deliveryOn])
   @@index([status, orderedAt])
   @@index([tonerId, orderedAt])
   @@index([deliveryOn])
@@ -741,6 +761,14 @@ model PrinterAsset {
   /// エクセルへ貼ったとき以降の行が全部ずれる。
   /// 2 行の機器で上下どちらがモノクロかも表ごとに違うため、順序まで持つ
   countLayout CountLayout @default(TOTAL) @map("count_layout")
+
+  /// 毎日チェックする機器か。プリンター状況の上の「毎日チェック」の表に並ぶ。
+  ///
+  /// **トナー・インクを自分で発注する機器に付ける印。** 保守契約で業者が
+  /// 送ってくる機器は見張る必要が無いので、残量だけでは対象を決められない。
+  /// 実機の情報からは分からないので台帳に持つ。
+  /// 一覧の ★ で切り替えたときは更新日を動かさない（`setDailyCheck`）
+  dailyCheck Boolean @default(false) @map("daily_check")
 
   repairs RepairRecord[]
 

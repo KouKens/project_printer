@@ -16,6 +16,8 @@ export declare class TonerOrdersService {
         orderedAt: Date;
         deliveryOn: string | null;
         status: string;
+        receivedAt: Date | null;
+        receiveMode: "AUTO" | "MANUAL" | null;
     }>;
     findPending(companyId?: number): Promise<{
         id: number;
@@ -28,6 +30,8 @@ export declare class TonerOrdersService {
         orderedAt: Date;
         deliveryOn: string | null;
         status: string;
+        receivedAt: Date | null;
+        receiveMode: "AUTO" | "MANUAL" | null;
     }[]>;
     bulk(dto: BulkTonerOrderDto): Promise<{
         id: number;
@@ -40,8 +44,40 @@ export declare class TonerOrdersService {
         orderedAt: Date;
         deliveryOn: string | null;
         status: string;
+        receivedAt: Date | null;
+        receiveMode: "AUTO" | "MANUAL" | null;
     }[]>;
+    receive(ids: number[]): Promise<{
+        id: number;
+        tonerId: string;
+        companyId: number;
+        companyName: string;
+        userId: string | null;
+        name: string | null;
+        quantity: number;
+        orderedAt: Date;
+        deliveryOn: string | null;
+        status: string;
+        receivedAt: Date | null;
+        receiveMode: "AUTO" | "MANUAL" | null;
+    }[]>;
+    unreceive(id: number): Promise<{
+        id: number;
+        tonerId: string;
+        companyId: number;
+        companyName: string;
+        userId: string | null;
+        name: string | null;
+        quantity: number;
+        orderedAt: Date;
+        deliveryOn: string | null;
+        status: string;
+        receivedAt: Date | null;
+        receiveMode: "AUTO" | "MANUAL" | null;
+    }>;
     findDeliveryCheck(companyId?: number, days?: number): Promise<{
+        pendingOrderIds: number[];
+        settled: boolean;
         diff: number;
         status: "match" | "short" | "over" | "no-order" | "waiting" | "undated";
         key: string;
@@ -58,6 +94,8 @@ export declare class TonerOrdersService {
             quantity: number;
             orderedAt: Date;
             status: string;
+            receivedAt: Date | null;
+            receiveMode: "AUTO" | "MANUAL" | null;
         }[];
         entries: {
             id: number;
@@ -82,5 +120,7 @@ export declare class TonerOrdersService {
         orderedAt: Date;
         deliveryOn: string | null;
         status: string;
+        receivedAt: Date | null;
+        receiveMode: "AUTO" | "MANUAL" | null;
     }[]>;
 }

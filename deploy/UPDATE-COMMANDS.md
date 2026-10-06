@@ -62,12 +62,23 @@ cd $APP
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`N migrations found` の N を控える。**配布物は 42 本。**本番の N で今回の中身が決まる。
+`N migrations found` の N を控える。**配布物は 47 本（2026-10-06）。**本番の N で今回の中身が決まる。
 
 | 本番の N | 今回入る migration | 後で流す SQL |
 | --- | --- | --- |
-| 41 | `20260907000000_toner_stock_non_negative` の 1 本 | §5-3 |
-| 40 | 上に `20260903020000_add_company` が加わり 2 本 | §5-2 → §5-3 |
+| 42（9-14 の配布物を当て済み） | 10 月の 5 本（下） | §5-3（済んでいれば飛ばす） |
+| 41 | `20260907000000_toner_stock_non_negative` ＋ 10 月の 5 本 = 6 本 | §5-3 |
+| 40 | 上に `20260903020000_add_company` が加わり 7 本 | §5-2 → §5-3 |
+
+10 月の 5 本は**どれも足すだけで、消すもの（DROP）は無い。**うち 2 本は既存の行を書き換える。
+
+| migration | 中身 |
+| --- | --- |
+| `20261002001637_toner_genuine_hidden` | 品番に「純正の相手」と「表示しない」の列 |
+| `20261003024310_toner_offers` | 比較用トナー登録の表 2 つ |
+| `20261003052231_supply_part` | 品番に「種類」の列。**既存の品番に品番・名前から初期値を入れる（UPDATE）** |
+| `20261006004059_printer_asset_daily_check` | 台帳に「毎日チェック」の列 |
+| `20261006013109_toner_order_receive` | 注文に入荷済みの記録。**搬入と本数が合う未入荷の注文を入荷済みにする（UPDATE）** |
 
 **`migrate deploy` が止まるとしたら `toner_stock_non_negative`。**在庫の数に CHECK を
 足すので、既存の行が引っかかると `ALTER TABLE` が落ちる。**先に見ておく**
@@ -154,7 +165,7 @@ Copy-Item "$SRC\package.json", "$SRC\prisma.config.ts" "$APP\" -Force
 (Get-ChildItem "$APP\prisma\migrations" -Directory).Count
 ```
 
-**42 と出ること**（配布物の本数）。DB 側に何本入るかは §1 の表のとおり。
+**47 と出ること**（配布物の本数）。DB 側に何本入るかは §1 の表のとおり。
 
 ---
 
@@ -173,7 +184,7 @@ node node_modules\prisma\build\index.js migrate deploy
 node node_modules\prisma\build\index.js migrate status
 ```
 
-`42 migrations found` と `Database schema is up to date!` を確認する。
+`47 migrations found` と `Database schema is up to date!` を確認する。
 
 ### `20260907000000_toner_stock_non_negative` で止まったとき
 

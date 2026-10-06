@@ -1655,6 +1655,8 @@ export declare const TonerOrderScalarFieldEnum: {
     readonly orderedAt: "orderedAt";
     readonly deliveryOn: "deliveryOn";
     readonly status: "status";
+    readonly receivedAt: "receivedAt";
+    readonly receiveMode: "receiveMode";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
@@ -1735,6 +1737,7 @@ export declare const PrinterAssetScalarFieldEnum: {
     readonly note: "note";
     readonly disabledAt: "disabledAt";
     readonly countLayout: "countLayout";
+    readonly dailyCheck: "dailyCheck";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
@@ -1848,6 +1851,8 @@ export type EnumTonerActionFieldRefInput<$PrismaModel> = FieldRefInputType<$Pris
 export type ListEnumTonerActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TonerAction[]'>;
 export type EnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OrderStatus'>;
 export type ListEnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OrderStatus[]'>;
+export type EnumReceiveModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReceiveMode'>;
+export type ListEnumReceiveModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReceiveMode[]'>;
 export type EnumSnmpVersionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SnmpVersion'>;
 export type ListEnumSnmpVersionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'SnmpVersion[]'>;
 export type EnumPrinterProtocolFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PrinterProtocol'>;

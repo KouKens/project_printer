@@ -176,6 +176,8 @@ exports.TonerOrderScalarFieldEnum = {
     orderedAt: 'orderedAt',
     deliveryOn: 'deliveryOn',
     status: 'status',
+    receivedAt: 'receivedAt',
+    receiveMode: 'receiveMode',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
@@ -251,6 +253,7 @@ exports.PrinterAssetScalarFieldEnum = {
     note: 'note',
     disabledAt: 'disabledAt',
     countLayout: 'countLayout',
+    dailyCheck: 'dailyCheck',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };

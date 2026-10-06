@@ -10,7 +10,7 @@ export declare class TonerOffersController {
             name: string | null;
             brand: string | null;
             kind: "GENUINE" | "RECYCLED" | "COMPATIBLE";
-            part: "TONER" | "DRUM" | "WASTE" | "MAINTENANCE" | "OTHER";
+            part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
             color: string | null;
             yieldPages: number | null;
             packQuantity: number;
@@ -56,7 +56,7 @@ export declare class TonerOffersController {
         name: string | null;
         brand: string | null;
         kind: "GENUINE" | "RECYCLED" | "COMPATIBLE";
-        part: "TONER" | "DRUM" | "WASTE" | "MAINTENANCE" | "OTHER";
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         color: string | null;
         yieldPages: number | null;
         packQuantity: number;
@@ -99,7 +99,7 @@ export declare class TonerOffersController {
         name: string | null;
         brand: string | null;
         kind: "GENUINE" | "RECYCLED" | "COMPATIBLE";
-        part: "TONER" | "DRUM" | "WASTE" | "MAINTENANCE" | "OTHER";
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         color: string | null;
         yieldPages: number | null;
         packQuantity: number;
@@ -142,7 +142,7 @@ export declare class TonerOffersController {
         name: string | null;
         brand: string | null;
         kind: "GENUINE" | "RECYCLED" | "COMPATIBLE";
-        part: "TONER" | "DRUM" | "WASTE" | "MAINTENANCE" | "OTHER";
+        part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
         color: string | null;
         yieldPages: number | null;
         packQuantity: number;

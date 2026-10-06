@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreatePrinterAssetDto = void 0;
+exports.DailyCheckDto = exports.CreatePrinterAssetDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,6 +33,7 @@ class CreatePrinterAssetDto {
     maintDealOn;
     maintFee;
     note;
+    dailyCheck;
 }
 exports.CreatePrinterAssetDto = CreatePrinterAssetDto;
 __decorate([
@@ -141,4 +142,17 @@ __decorate([
     (0, class_validator_1.MaxLength)(500),
     __metadata("design:type", Object)
 ], CreatePrinterAssetDto.prototype, "note", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)({ message: '毎日チェックは true / false で指定してください' }),
+    __metadata("design:type", Boolean)
+], CreatePrinterAssetDto.prototype, "dailyCheck", void 0);
+class DailyCheckDto {
+    dailyCheck;
+}
+exports.DailyCheckDto = DailyCheckDto;
+__decorate([
+    (0, class_validator_1.IsBoolean)({ message: '毎日チェックは true / false で指定してください' }),
+    __metadata("design:type", Boolean)
+], DailyCheckDto.prototype, "dailyCheck", void 0);
 //# sourceMappingURL=create-printer-asset.dto.js.map

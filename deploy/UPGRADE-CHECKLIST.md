@@ -23,13 +23,15 @@
 | 適用済み migration | **40 本・up to date**（`prisma\` は運べている） |
 | データ | 台帳 80 / 在庫 140 / 品番 140 / 受付 44 / 注文 13 / 修理 4 / 枚数 758 |
 
-## 前提（開発端末側で確認済み・2026-09-14）
+## 前提（開発端末側で確認済み・2026-10-06）
 
 - `schema.prisma` / `migrations/` / 開発 DB の 3 つは一致（`migrate status` が
-  `42 migrations found` ＋ `Database schema is up to date!`）
-- 開発側の migration は **42 本**。型チェックは API `tsc --noEmit` /
-  フロント `tsc -b` ともに通っている
-- **入る本数は本番の現在地で変わる。**A-2 の N を見てから決める
+  `47 migrations found` ＋ `Database schema is up to date!`）
+- 開発側の migration は **47 本**。型チェックは API `tsc --noEmit` /
+  フロント `tsc -b` ともに通り、API のテスト 150 件も通っている
+- **入る本数は本番の現在地で変わる。**A-2 の N を見てから決める。
+  N ごとの中身と 10 月の 5 本の説明は [UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) の §1 の表
+  （10 月の 5 本は足すだけで DROP は無い）。以下は 9-14 時点の表
 
   | 本番の N | 入る migration |
   | --- | --- |
@@ -98,7 +100,7 @@ node node_modules\prisma\build\index.js migrate status
 
 控えること。
 
-- [ ] `N migrations found` の **N** = ______ 本（配布物は 42 本。**40 か 41 のはず**）
+- [ ] `N migrations found` の **N** = ______ 本（配布物は 47 本。**40・41・42 のどれかのはず**）
 - [ ] 未適用として並んだ migration 名（または `up to date`）
 
 `node` の場所が違う・上が動かない場合はこちらでも分かる。
@@ -181,14 +183,14 @@ powershell -ExecutionPolicy Bypass -File deploy\bundle-offline.ps1
       ＋ `check-prod.ps1` がある。**本番機にリポジトリは無いので、ここに無いものは
       現地で開けない・流せない**（スクリプトの最終確認でも見ている）
 - [ ] `deploy\out\data\` が **無い**（= データを含んでいない）
-- [ ] `deploy\out\app\prisma\migrations` が **42 本**
+- [ ] `deploy\out\app\prisma\migrations` が **47 本**
 - [ ] USB へコピーした
 
 ---
 
 ## C. 本番へ適用する前の最終確認
 
-- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（42）の差＝今回入る変更の数を把握した
+- [ ] A-2 の本数と、B-2 の `prisma\migrations` の本数（47）の差＝今回入る変更の数を把握した
 - [ ] A-3 の分岐を判断した（退避の要否）
 - [ ] `20260903020000_add_company` が今回入るなら、適用後に `assign-sites.sql` を
       流すことを手順に入れた（[UPDATE-COMMANDS.md](UPDATE-COMMANDS.md) の 5-2）。

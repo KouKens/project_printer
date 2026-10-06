@@ -1,4 +1,4 @@
-import { CreatePrinterAssetDto } from './dto/create-printer-asset.dto';
+import { CreatePrinterAssetDto, DailyCheckDto } from './dto/create-printer-asset.dto';
 import { PrinterAssetsService } from './printer-assets.service';
 export declare class PrinterAssetsController {
     private readonly service;
@@ -44,6 +44,7 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -88,11 +89,23 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
     findOverview(): Promise<{
+        toners: {
+            id: string;
+            name: string | null;
+            color: string | null;
+            colors: string[];
+            part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
+            recycled: boolean;
+            alertThreshold: number | null;
+            stock: number;
+            onOrder: number;
+        }[];
         repairs: {
             hasMaint: boolean;
             inHouse: number;
@@ -189,6 +202,7 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -273,6 +287,7 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -317,6 +332,7 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -419,6 +435,7 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -463,6 +480,7 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -507,6 +525,52 @@ export declare class PrinterAssetsController {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
+        disabledAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    setDailyCheck(id: number, dto: DailyCheckDto): Promise<{
+        id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
+        department: string | null;
+        no: string | null;
+        ipAddress: string | null;
+        maker: string | null;
+        model: string | null;
+        serialNumber: string | null;
+        purchasedOn: string | null;
+        purchasePrice: number | null;
+        contractNo: string | null;
+        maintVendorId: number | null;
+        maintVendor: {
+            id: number;
+            name: string;
+            phones: string[];
+        } | null;
+        effectiveVendor: {
+            source: "asset";
+            id: number;
+            name: string;
+            phones: string[];
+        } | {
+            source: "maker";
+            id: number;
+            name: string;
+            phones: string[];
+        } | null;
+        maintContract: string | null;
+        maintStartOn: string | null;
+        maintEndOn: string | null;
+        maintDealOn: string | null;
+        maintFee: number | null;
+        note: string | null;
+        countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;

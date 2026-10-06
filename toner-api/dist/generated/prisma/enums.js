@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PurchaseType = exports.OfferKind = exports.SupplyPart = exports.OrderStatus = exports.CountLayout = exports.RepairStatus = exports.RepairHandler = exports.RepairCategory = exports.PrinterProtocol = exports.SnmpVersion = exports.TonerAction = void 0;
+exports.PurchaseType = exports.OfferKind = exports.SupplyPart = exports.OrderStatus = exports.ReceiveMode = exports.CountLayout = exports.RepairStatus = exports.RepairHandler = exports.RepairCategory = exports.PrinterProtocol = exports.SnmpVersion = exports.TonerAction = void 0;
 exports.TonerAction = {
     REGISTER: 'REGISTER',
     RECEIVE: 'RECEIVE',
@@ -47,6 +47,10 @@ exports.CountLayout = {
     TOTAL: 'TOTAL',
     MONO_COLOR: 'MONO_COLOR',
     COLOR_MONO: 'COLOR_MONO'
+};
+exports.ReceiveMode = {
+    AUTO: 'AUTO',
+    MANUAL: 'MANUAL'
 };
 exports.OrderStatus = {
     PENDING: 'PENDING',

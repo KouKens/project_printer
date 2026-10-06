@@ -1,0 +1,19 @@
+/*
+ * 毎日チェックの ★。DailyCheckStar.tsx から使う。
+ * 付いていない ☆ は控えめにして、付いている ★ だけが目に入るようにする
+ */
+.dcs {
+  padding: 0 4px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  color: #b8c3cc;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dcs:hover:enabled { color: #c98a00; background: #fdf6e3; }
+.dcs-on { color: #e0a100; }
+.dcs:disabled { cursor: not-allowed; opacity: 0.5; }
+.dcs:focus-visible { outline: 2px solid #1f6f8b; outline-offset: 1px; }

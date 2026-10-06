@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { callArg, dataArg } from '../common/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrintersService } from '../printers/printers.service';
-import { PrinterAssetsService } from './printer-assets.service';
+import {
+  linkedToners,
+  pendingByToner,
+  PrinterAssetsService,
+} from './printer-assets.service';
 
 /** update に渡された data だけ見たいので、保存結果は使い回しの 1 件で足りる */
 const SAVED = {
@@ -27,6 +31,7 @@ const SAVED = {
   maintFee: null,
   note: null,
   countLayout: 'MONO_COLOR' as const,
+  dailyCheck: true,
   disabledAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -59,6 +64,7 @@ describe('PrinterAssetsService', () => {
   let create: jest.Mock;
   let findMany: jest.Mock;
   let linkToners: jest.Mock;
+  let findUnique: jest.Mock;
 
   beforeEach(async () => {
     update = jest.fn().mockResolvedValue(SAVED);
@@ -66,10 +72,11 @@ describe('PrinterAssetsService', () => {
     // 引き継ぎ元の候補。既定は「同じ機種の登録がまだ無い」
     findMany = jest.fn().mockResolvedValue([]);
     linkToners = jest.fn().mockResolvedValue({ count: 0 });
+    findUnique = jest.fn().mockResolvedValue({ id: 1 });
 
     const prisma = {
       printerAsset: {
-        findUnique: jest.fn().mockResolvedValue({ id: 1 }),
+        findUnique,
         findMany,
         update,
         create,
@@ -154,6 +161,15 @@ describe('PrinterAssetsService', () => {
 
       expect(dataOf(update).note).toBeNull();
     });
+
+    /** 小窓の保存で毎日チェックが外れないこと。送られたときだけ変える */
+    it('毎日チェックは送られたときだけ変える', async () => {
+      await service.update(1, { companyId: 1 });
+      expect(dataOf(update).dailyCheck).toBeUndefined();
+
+      await service.update(1, { companyId: 1, dailyCheck: false });
+      expect(dataOf(update, 1).dailyCheck).toBe(false);
+    });
   });
 
   describe('create', () => {
@@ -166,6 +182,35 @@ describe('PrinterAssetsService', () => {
       expect(data.maker).toBeNull();
       expect(data.note).toBeNull();
       expect(data.maintFee).toBeNull();
+      expect(data.dailyCheck).toBe(false);
+    });
+  });
+
+  describe('setDailyCheck', () => {
+    /**
+     * 更新日は「実機を見て確かめた」記録。★ を押しただけで進めない。
+     * Prisma は @updatedAt を update のたび今にするので、読んだ値を明示して戻す
+     */
+    it('印だけを変え、更新日は読んだ値のまま書き戻す', async () => {
+      const checkedAt = new Date('2026-09-01T03:00:00Z');
+      findUnique.mockResolvedValue({ updatedAt: checkedAt });
+
+      const result = await service.setDailyCheck(1, true);
+
+      expect(dataOf(update)).toEqual({
+        dailyCheck: true,
+        updatedAt: checkedAt,
+      });
+      expect(result.dailyCheck).toBe(true);
+    });
+
+    it('無い台帳は 404 にする', async () => {
+      findUnique.mockResolvedValue(null);
+
+      await expect(service.setDailyCheck(99, true)).rejects.toThrow(
+        'ID 99 の端末情報は登録されていません',
+      );
+      expect(update).not.toHaveBeenCalled();
     });
   });
 
@@ -374,5 +419,91 @@ describe('PrinterAssetsService', () => {
       expect(saved.inheritedToners.toners.map((t) => t.id)).toEqual(['C310H']);
       expect(saved.inheritedToners.fromAssets).toBe(1);
     });
+  });
+});
+
+/** 紐づけ 1 件。在庫は「拠点 ID → 本数」で渡す */
+function link(
+  id: string,
+  color: string | null,
+  stocks: Record<number, number> = {},
+  extra: Partial<{
+    part: 'TONER' | 'DRUM' | 'WASTE' | 'MAINTENANCE' | 'OTHER';
+    recycled: boolean;
+  }> = {},
+) {
+  return {
+    toner: {
+      id,
+      name: `${id} の品名`,
+      color,
+      part: extra.part ?? ('TONER' as const),
+      recycled: extra.recycled ?? false,
+      alertThreshold: null,
+      stocks: Object.entries(stocks).map(([companyId, quantity]) => ({
+        companyId: Number(companyId),
+        quantity,
+      })),
+    },
+  };
+}
+
+describe('linkedToners', () => {
+  /** 他の拠点の在庫は取りに行けるとは限らないので足さない */
+  it('在庫は台の拠点の行だけを見る。行が無ければ 0', () => {
+    const [toner] = linkedToners(
+      [link('IP04KA', 'ブラック', { 4: 2, 5: 9 })],
+      4,
+    );
+    expect(toner.stock).toBe(2);
+
+    const [other] = linkedToners([link('IP04KA', 'ブラック', { 5: 9 })], 4);
+    expect(other.stock).toBe(0);
+  });
+
+  /** 在庫と同じく、台の拠点の未入荷の注文だけを数える */
+  it('注文中は台の拠点の未入荷の本数。無ければ 0', () => {
+    const pending = pendingByToner([
+      { tonerId: 'IP04KA', companyId: 4, _sum: { quantity: 3 } },
+      { tonerId: 'IP04KA', companyId: 5, _sum: { quantity: 7 } },
+    ]);
+
+    const [here] = linkedToners([link('IP04KA', 'ブラック')], 4, pending);
+    expect(here.onOrder).toBe(3);
+
+    const [none] = linkedToners([link('PXMB8', null)], 4, pending);
+    expect(none.onOrder).toBe(0);
+  });
+
+  it('トナー・インクを先に K C M Y、部品はその後に並べる', () => {
+    const rows = linkedToners(
+      [
+        link('廃トナーボトル', null, {}, { part: 'WASTE' }),
+        link('C310H-Y', 'イエロー'),
+        link('C310H-C', 'シアン'),
+        link('C310H-BK', 'ブラック'),
+        link('C310H-M', 'マゼンタ'),
+      ],
+      4,
+    );
+    expect(rows.map((row) => row.id)).toEqual([
+      'C310H-BK',
+      'C310H-C',
+      'C310H-M',
+      'C310H-Y',
+      '廃トナーボトル',
+    ]);
+  });
+
+  it('同じ色は純正を先に置き、色欄を K C M Y の名前に畳んで返す', () => {
+    const rows = linkedToners(
+      [
+        link('R-BK', 'ブラック', {}, { recycled: true }),
+        link('G-BK', 'ブラック'),
+      ],
+      4,
+    );
+    expect(rows.map((row) => row.id)).toEqual(['G-BK', 'R-BK']);
+    expect(rows[0].colors).toEqual(['black']);
   });
 });

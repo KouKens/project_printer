@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIP,
   IsIn,
   IsInt,
@@ -127,4 +128,21 @@ export class CreatePrinterAssetDto {
   @IsString()
   @MaxLength(500)
   note?: string | null;
+
+  /**
+   * 毎日チェックする機器か（トナー・インクを自分で発注する機器）。
+   * 送られてこなければ、新規は false、更新は触らない
+   */
+  @IsOptional()
+  @IsBoolean({ message: '毎日チェックは true / false で指定してください' })
+  dailyCheck?: boolean;
+}
+
+/**
+ * 一覧の ★ で毎日チェックを切り替えるときの入力。
+ * 台帳の他の列は送らないので、拠点が必須の `CreatePrinterAssetDto` とは分ける
+ */
+export class DailyCheckDto {
+  @IsBoolean({ message: '毎日チェックは true / false で指定してください' })
+  dailyCheck!: boolean;
 }

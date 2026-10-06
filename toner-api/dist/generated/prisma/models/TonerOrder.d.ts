@@ -28,6 +28,8 @@ export type TonerOrderMinAggregateOutputType = {
     orderedAt: Date | null;
     deliveryOn: Date | null;
     status: $Enums.OrderStatus | null;
+    receivedAt: Date | null;
+    receiveMode: $Enums.ReceiveMode | null;
     createdAt: Date | null;
     updatedAt: Date | null;
 };
@@ -40,6 +42,8 @@ export type TonerOrderMaxAggregateOutputType = {
     orderedAt: Date | null;
     deliveryOn: Date | null;
     status: $Enums.OrderStatus | null;
+    receivedAt: Date | null;
+    receiveMode: $Enums.ReceiveMode | null;
     createdAt: Date | null;
     updatedAt: Date | null;
 };
@@ -52,6 +56,8 @@ export type TonerOrderCountAggregateOutputType = {
     orderedAt: number;
     deliveryOn: number;
     status: number;
+    receivedAt: number;
+    receiveMode: number;
     createdAt: number;
     updatedAt: number;
     _all: number;
@@ -75,6 +81,8 @@ export type TonerOrderMinAggregateInputType = {
     orderedAt?: true;
     deliveryOn?: true;
     status?: true;
+    receivedAt?: true;
+    receiveMode?: true;
     createdAt?: true;
     updatedAt?: true;
 };
@@ -87,6 +95,8 @@ export type TonerOrderMaxAggregateInputType = {
     orderedAt?: true;
     deliveryOn?: true;
     status?: true;
+    receivedAt?: true;
+    receiveMode?: true;
     createdAt?: true;
     updatedAt?: true;
 };
@@ -99,6 +109,8 @@ export type TonerOrderCountAggregateInputType = {
     orderedAt?: true;
     deliveryOn?: true;
     status?: true;
+    receivedAt?: true;
+    receiveMode?: true;
     createdAt?: true;
     updatedAt?: true;
     _all?: true;
@@ -140,6 +152,8 @@ export type TonerOrderGroupByOutputType = {
     orderedAt: Date;
     deliveryOn: Date | null;
     status: $Enums.OrderStatus;
+    receivedAt: Date | null;
+    receiveMode: $Enums.ReceiveMode | null;
     createdAt: Date;
     updatedAt: Date;
     _count: TonerOrderCountAggregateOutputType | null;
@@ -163,6 +177,8 @@ export type TonerOrderWhereInput = {
     orderedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     deliveryOn?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusFilter<"TonerOrder"> | $Enums.OrderStatus;
+    receivedAt?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
+    receiveMode?: Prisma.EnumReceiveModeNullableFilter<"TonerOrder"> | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>;
@@ -177,6 +193,8 @@ export type TonerOrderOrderByWithRelationInput = {
     orderedAt?: Prisma.SortOrder;
     deliveryOn?: Prisma.SortOrderInput | Prisma.SortOrder;
     status?: Prisma.SortOrder;
+    receivedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+    receiveMode?: Prisma.SortOrderInput | Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
     company?: Prisma.CompanyOrderByWithRelationInput;
@@ -194,6 +212,8 @@ export type TonerOrderWhereUniqueInput = Prisma.AtLeast<{
     orderedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     deliveryOn?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusFilter<"TonerOrder"> | $Enums.OrderStatus;
+    receivedAt?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
+    receiveMode?: Prisma.EnumReceiveModeNullableFilter<"TonerOrder"> | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>;
@@ -208,6 +228,8 @@ export type TonerOrderOrderByWithAggregationInput = {
     orderedAt?: Prisma.SortOrder;
     deliveryOn?: Prisma.SortOrderInput | Prisma.SortOrder;
     status?: Prisma.SortOrder;
+    receivedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+    receiveMode?: Prisma.SortOrderInput | Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
     _count?: Prisma.TonerOrderCountOrderByAggregateInput;
@@ -228,6 +250,8 @@ export type TonerOrderScalarWhereWithAggregatesInput = {
     orderedAt?: Prisma.DateTimeWithAggregatesFilter<"TonerOrder"> | Date | string;
     deliveryOn?: Prisma.DateTimeNullableWithAggregatesFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusWithAggregatesFilter<"TonerOrder"> | $Enums.OrderStatus;
+    receivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"TonerOrder"> | Date | string | null;
+    receiveMode?: Prisma.EnumReceiveModeNullableWithAggregatesFilter<"TonerOrder"> | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeWithAggregatesFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeWithAggregatesFilter<"TonerOrder"> | Date | string;
 };
@@ -237,6 +261,8 @@ export type TonerOrderCreateInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     company: Prisma.CompanyCreateNestedOneWithoutOrdersInput;
@@ -251,6 +277,8 @@ export type TonerOrderUncheckedCreateInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
@@ -260,6 +288,8 @@ export type TonerOrderUpdateInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     company?: Prisma.CompanyUpdateOneRequiredWithoutOrdersNestedInput;
@@ -274,6 +304,8 @@ export type TonerOrderUncheckedUpdateInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -286,6 +318,8 @@ export type TonerOrderCreateManyInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
@@ -295,6 +329,8 @@ export type TonerOrderUpdateManyMutationInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -307,6 +343,8 @@ export type TonerOrderUncheckedUpdateManyInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -327,6 +365,8 @@ export type TonerOrderCountOrderByAggregateInput = {
     orderedAt?: Prisma.SortOrder;
     deliveryOn?: Prisma.SortOrder;
     status?: Prisma.SortOrder;
+    receivedAt?: Prisma.SortOrder;
+    receiveMode?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
 };
@@ -344,6 +384,8 @@ export type TonerOrderMaxOrderByAggregateInput = {
     orderedAt?: Prisma.SortOrder;
     deliveryOn?: Prisma.SortOrder;
     status?: Prisma.SortOrder;
+    receivedAt?: Prisma.SortOrder;
+    receiveMode?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
 };
@@ -356,6 +398,8 @@ export type TonerOrderMinOrderByAggregateInput = {
     orderedAt?: Prisma.SortOrder;
     deliveryOn?: Prisma.SortOrder;
     status?: Prisma.SortOrder;
+    receivedAt?: Prisma.SortOrder;
+    receiveMode?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     updatedAt?: Prisma.SortOrder;
 };
@@ -405,6 +449,9 @@ export type TonerOrderUncheckedUpdateManyWithoutTonerNestedInput = {
 export type EnumOrderStatusFieldUpdateOperationsInput = {
     set?: $Enums.OrderStatus;
 };
+export type NullableEnumReceiveModeFieldUpdateOperationsInput = {
+    set?: $Enums.ReceiveMode | null;
+};
 export type TonerOrderCreateNestedManyWithoutCompanyInput = {
     create?: Prisma.XOR<Prisma.TonerOrderCreateWithoutCompanyInput, Prisma.TonerOrderUncheckedCreateWithoutCompanyInput> | Prisma.TonerOrderCreateWithoutCompanyInput[] | Prisma.TonerOrderUncheckedCreateWithoutCompanyInput[];
     connectOrCreate?: Prisma.TonerOrderCreateOrConnectWithoutCompanyInput | Prisma.TonerOrderCreateOrConnectWithoutCompanyInput[];
@@ -449,6 +496,8 @@ export type TonerOrderCreateWithoutTonerInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     company: Prisma.CompanyCreateNestedOneWithoutOrdersInput;
@@ -461,6 +510,8 @@ export type TonerOrderUncheckedCreateWithoutTonerInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
@@ -497,6 +548,8 @@ export type TonerOrderScalarWhereInput = {
     orderedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     deliveryOn?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
     status?: Prisma.EnumOrderStatusFilter<"TonerOrder"> | $Enums.OrderStatus;
+    receivedAt?: Prisma.DateTimeNullableFilter<"TonerOrder"> | Date | string | null;
+    receiveMode?: Prisma.EnumReceiveModeNullableFilter<"TonerOrder"> | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<"TonerOrder"> | Date | string;
 };
@@ -506,6 +559,8 @@ export type TonerOrderCreateWithoutCompanyInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
     toner: Prisma.TonerCreateNestedOneWithoutOrdersInput;
@@ -518,6 +573,8 @@ export type TonerOrderUncheckedCreateWithoutCompanyInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
@@ -550,6 +607,8 @@ export type TonerOrderCreateManyTonerInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
@@ -559,6 +618,8 @@ export type TonerOrderUpdateWithoutTonerInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     company?: Prisma.CompanyUpdateOneRequiredWithoutOrdersNestedInput;
@@ -571,6 +632,8 @@ export type TonerOrderUncheckedUpdateWithoutTonerInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -582,6 +645,8 @@ export type TonerOrderUncheckedUpdateManyWithoutTonerInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -593,6 +658,8 @@ export type TonerOrderCreateManyCompanyInput = {
     orderedAt: Date | string;
     deliveryOn?: Date | string | null;
     status?: $Enums.OrderStatus;
+    receivedAt?: Date | string | null;
+    receiveMode?: $Enums.ReceiveMode | null;
     createdAt?: Date | string;
     updatedAt?: Date | string;
 };
@@ -602,6 +669,8 @@ export type TonerOrderUpdateWithoutCompanyInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     toner?: Prisma.TonerUpdateOneRequiredWithoutOrdersNestedInput;
@@ -614,6 +683,8 @@ export type TonerOrderUncheckedUpdateWithoutCompanyInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -625,6 +696,8 @@ export type TonerOrderUncheckedUpdateManyWithoutCompanyInput = {
     orderedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     deliveryOn?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus;
+    receivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    receiveMode?: Prisma.NullableEnumReceiveModeFieldUpdateOperationsInput | $Enums.ReceiveMode | null;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -637,6 +710,8 @@ export type TonerOrderSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
     orderedAt?: boolean;
     deliveryOn?: boolean;
     status?: boolean;
+    receivedAt?: boolean;
+    receiveMode?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
     company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>;
@@ -651,6 +726,8 @@ export type TonerOrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
     orderedAt?: boolean;
     deliveryOn?: boolean;
     status?: boolean;
+    receivedAt?: boolean;
+    receiveMode?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
     company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>;
@@ -665,6 +742,8 @@ export type TonerOrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
     orderedAt?: boolean;
     deliveryOn?: boolean;
     status?: boolean;
+    receivedAt?: boolean;
+    receiveMode?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
     company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>;
@@ -679,10 +758,12 @@ export type TonerOrderSelectScalar = {
     orderedAt?: boolean;
     deliveryOn?: boolean;
     status?: boolean;
+    receivedAt?: boolean;
+    receiveMode?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
 };
-export type TonerOrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tonerId" | "companyId" | "userId" | "quantity" | "orderedAt" | "deliveryOn" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["tonerOrder"]>;
+export type TonerOrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tonerId" | "companyId" | "userId" | "quantity" | "orderedAt" | "deliveryOn" | "status" | "receivedAt" | "receiveMode" | "createdAt" | "updatedAt", ExtArgs["result"]["tonerOrder"]>;
 export type TonerOrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>;
     toner?: boolean | Prisma.TonerDefaultArgs<ExtArgs>;
@@ -710,6 +791,8 @@ export type $TonerOrderPayload<ExtArgs extends runtime.Types.Extensions.Internal
         orderedAt: Date;
         deliveryOn: Date | null;
         status: $Enums.OrderStatus;
+        receivedAt: Date | null;
+        receiveMode: $Enums.ReceiveMode | null;
         createdAt: Date;
         updatedAt: Date;
     }, ExtArgs["result"]["tonerOrder"]>;
@@ -779,6 +862,8 @@ export interface TonerOrderFieldRefs {
     readonly orderedAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
     readonly deliveryOn: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
     readonly status: Prisma.FieldRef<"TonerOrder", 'OrderStatus'>;
+    readonly receivedAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
+    readonly receiveMode: Prisma.FieldRef<"TonerOrder", 'ReceiveMode'>;
     readonly createdAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
     readonly updatedAt: Prisma.FieldRef<"TonerOrder", 'DateTime'>;
 }

@@ -84,6 +84,14 @@ export const CountLayout = {
 export type CountLayout = (typeof CountLayout)[keyof typeof CountLayout]
 
 
+export const ReceiveMode = {
+  AUTO: 'AUTO',
+  MANUAL: 'MANUAL'
+} as const
+
+export type ReceiveMode = (typeof ReceiveMode)[keyof typeof ReceiveMode]
+
+
 export const OrderStatus = {
   PENDING: 'PENDING',
   RECEIVED: 'RECEIVED',

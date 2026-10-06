@@ -13,6 +13,7 @@ exports.TonerOrdersService = void 0;
 const common_1 = require("@nestjs/common");
 const date_1 = require("../common/date");
 const prisma_service_1 = require("../prisma/prisma.service");
+const reconcile_1 = require("./reconcile");
 const FUTURE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 function statusOf(ordered, received, date, todayKey) {
     if (ordered === 0)
@@ -41,6 +42,8 @@ function toResponse(order) {
         orderedAt: order.orderedAt,
         deliveryOn: (0, date_1.fromDate)(order.deliveryOn),
         status: order.status,
+        receivedAt: order.receivedAt,
+        receiveMode: order.receiveMode,
     };
 }
 let TonerOrdersService = class TonerOrdersService {
@@ -66,18 +69,27 @@ let TonerOrdersService = class TonerOrdersService {
         if (!toner) {
             throw new common_1.NotFoundException(`${dto.tonerId} は未登録です。先に登録を行ってください`);
         }
-        const order = await this.prisma.tonerOrder.create({
-            data: {
-                tonerId: dto.tonerId,
-                companyId: dto.companyId,
-                userId: dto.userId ?? null,
-                quantity: dto.quantity,
-                orderedAt,
-                deliveryOn: (0, date_1.toDate)(dto.deliveryOn),
-            },
-            include: ORDER_INCLUDE,
+        return this.prisma.$transaction(async (tx) => {
+            const order = await tx.tonerOrder.create({
+                data: {
+                    tonerId: dto.tonerId,
+                    companyId: dto.companyId,
+                    userId: dto.userId ?? null,
+                    quantity: dto.quantity,
+                    orderedAt,
+                    deliveryOn: (0, date_1.toDate)(dto.deliveryOn),
+                },
+            });
+            await (0, reconcile_1.reconcileOrders)(tx, {
+                companyId: order.companyId,
+                tonerId: order.tonerId,
+                date: order.deliveryOn,
+            });
+            return toResponse(await tx.tonerOrder.findUniqueOrThrow({
+                where: { id: order.id },
+                include: ORDER_INCLUDE,
+            }));
         });
-        return toResponse(order);
     }
     async findPending(companyId) {
         const orders = await this.prisma.tonerOrder.findMany({
@@ -101,7 +113,7 @@ let TonerOrdersService = class TonerOrdersService {
             throw new common_1.NotFoundException(`${missing.join(', ')} は未登録です。先に登録を行ってください`);
         }
         return this.prisma.$transaction(async (tx) => {
-            const saved = [];
+            const ids = [];
             for (const item of dto.items) {
                 const order = await tx.tonerOrder.create({
                     data: {
@@ -112,11 +124,82 @@ let TonerOrdersService = class TonerOrdersService {
                         orderedAt,
                         deliveryOn,
                     },
-                    include: ORDER_INCLUDE,
                 });
-                saved.push(toResponse(order));
+                ids.push(order.id);
             }
-            return saved;
+            for (const tonerId of new Set(dto.items.map((item) => item.tonerId))) {
+                await (0, reconcile_1.reconcileOrders)(tx, {
+                    companyId: dto.companyId,
+                    tonerId,
+                    date: deliveryOn,
+                });
+            }
+            const saved = await tx.tonerOrder.findMany({
+                where: { id: { in: ids } },
+                orderBy: { id: 'asc' },
+                include: ORDER_INCLUDE,
+            });
+            return saved.map(toResponse);
+        });
+    }
+    async receive(ids) {
+        return this.prisma.$transaction(async (tx) => {
+            const orders = await tx.tonerOrder.findMany({
+                where: { id: { in: ids } },
+                select: { id: true, tonerId: true, status: true },
+            });
+            const found = new Set(orders.map((order) => order.id));
+            const missing = ids.filter((id) => !found.has(id));
+            if (missing.length > 0) {
+                throw new common_1.NotFoundException(`ID ${missing.join(', ')} の注文はありません`);
+            }
+            const notPending = orders.filter((order) => order.status !== 'PENDING');
+            if (notPending.length > 0) {
+                throw new common_1.BadRequestException(`${notPending.map((order) => order.tonerId).join(', ')} の注文は` +
+                    'すでに入荷済みか取り消し済みです。画面を開き直してください');
+            }
+            await tx.tonerOrder.updateMany({
+                where: { id: { in: ids } },
+                data: {
+                    status: 'RECEIVED',
+                    receiveMode: 'MANUAL',
+                    receivedAt: new Date(),
+                },
+            });
+            const saved = await tx.tonerOrder.findMany({
+                where: { id: { in: ids } },
+                orderBy: { id: 'asc' },
+                include: ORDER_INCLUDE,
+            });
+            return saved.map(toResponse);
+        });
+    }
+    async unreceive(id) {
+        return this.prisma.$transaction(async (tx) => {
+            const order = await tx.tonerOrder.findUnique({ where: { id } });
+            if (!order) {
+                throw new common_1.NotFoundException(`ID ${id} の注文はありません`);
+            }
+            if (order.status !== 'RECEIVED') {
+                throw new common_1.BadRequestException(`${order.tonerId} の注文は入荷済みではありません`);
+            }
+            if (order.receiveMode !== 'MANUAL') {
+                throw new common_1.BadRequestException(`${order.tonerId} の注文は搬入の記録と本数が一致して入荷済みになっているので、` +
+                    '未入荷に戻せません。戻すには搬入の記録を取り消してください');
+            }
+            await tx.tonerOrder.update({
+                where: { id },
+                data: { status: 'PENDING', receiveMode: null, receivedAt: null },
+            });
+            await (0, reconcile_1.reconcileOrders)(tx, {
+                companyId: order.companyId,
+                tonerId: order.tonerId,
+                date: order.deliveryOn,
+            });
+            return toResponse(await tx.tonerOrder.findUniqueOrThrow({
+                where: { id },
+                include: ORDER_INCLUDE,
+            }));
         });
     }
     async findDeliveryCheck(companyId, days = 180) {
@@ -176,6 +259,8 @@ let TonerOrdersService = class TonerOrdersService {
                 quantity: order.quantity,
                 orderedAt: order.orderedAt,
                 status: order.status,
+                receivedAt: order.receivedAt,
+                receiveMode: order.receiveMode,
             });
         }
         for (const entry of entries) {
@@ -192,6 +277,11 @@ let TonerOrdersService = class TonerOrdersService {
         return [...rows.values()]
             .map((row) => ({
             ...row,
+            pendingOrderIds: row.orders
+                .filter((order) => order.status === 'PENDING')
+                .map((order) => order.id),
+            settled: row.orders.some((order) => order.status === 'RECEIVED') &&
+                row.orders.every((order) => order.status !== 'PENDING'),
             diff: row.received - row.ordered,
             status: statusOf(row.ordered, row.received, row.date, todayKey),
         }))
@@ -210,12 +300,19 @@ let TonerOrdersService = class TonerOrdersService {
         });
     }
     async remove(id) {
-        const order = await this.prisma.tonerOrder.findUnique({ where: { id } });
-        if (!order) {
-            throw new common_1.NotFoundException(`ID ${id} の注文はありません`);
-        }
-        await this.prisma.tonerOrder.delete({ where: { id } });
-        return { id, tonerId: order.tonerId, quantity: order.quantity };
+        return this.prisma.$transaction(async (tx) => {
+            const order = await tx.tonerOrder.findUnique({ where: { id } });
+            if (!order) {
+                throw new common_1.NotFoundException(`ID ${id} の注文はありません`);
+            }
+            await tx.tonerOrder.delete({ where: { id } });
+            await (0, reconcile_1.reconcileOrders)(tx, {
+                companyId: order.companyId,
+                tonerId: order.tonerId,
+                date: order.deliveryOn,
+            });
+            return { id, tonerId: order.tonerId, quantity: order.quantity };
+        });
     }
     async findAll(companyId) {
         const orders = await this.prisma.tonerOrder.findMany({

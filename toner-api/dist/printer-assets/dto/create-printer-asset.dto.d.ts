@@ -17,4 +17,8 @@ export declare class CreatePrinterAssetDto {
     maintDealOn?: string | null;
     maintFee?: number | null;
     note?: string | null;
+    dailyCheck?: boolean;
+}
+export declare class DailyCheckDto {
+    dailyCheck: boolean;
 }

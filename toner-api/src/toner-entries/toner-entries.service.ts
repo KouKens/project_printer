@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { fromDate, toDate, today } from '../common/date';
 import { PrismaService, Tx } from '../prisma/prisma.service';
+import { reconcileOrders } from '../toner-orders/reconcile';
 import { BulkTonerEntryDto } from './dto/bulk-toner-entry.dto';
 import { CreateTonerEntryDto } from './dto/create-toner-entry.dto';
 import { StockTakeDto } from './dto/stock-take.dto';
@@ -72,6 +73,11 @@ export type EntryResult = {
   received: number;
   /** 廃棄累計 */
   disposed: number;
+  /**
+   * 搬入で本数が一致して、入荷済み（自動）になった注文の件数。搬入のときだけ入る。
+   * 画面は知らせに添える（黙ると、注文が未入荷の一覧から消えた理由が分からない）
+   */
+  ordersReceived?: number;
 };
 
 @Injectable()
@@ -182,6 +188,8 @@ export class TonerEntriesService {
       received: count,
     });
 
+    // 入力が無ければ受け付けた日。注文の次回搬入日と突き合わせる鍵になる
+    const receivedOn = toDate(dto.receivedOn) ?? today();
     await tx.tonerEntry.create({
       data: {
         userId: dto.userId,
@@ -190,12 +198,21 @@ export class TonerEntriesService {
         action: 'RECEIVE',
         quantity: count,
         balance: stock.quantity,
-        // 入力が無ければ受け付けた日。注文の次回搬入日と突き合わせる鍵になる
-        receivedOn: toDate(dto.receivedOn) ?? today(),
+        receivedOn,
       },
     });
 
-    return this.toResult(toner.id, toner.name, 'RECEIVE', count, stock);
+    // 同じ拠点・品番・日付の注文と本数が合えば、その注文を入荷済み（自動）にする
+    const settled = await reconcileOrders(tx, {
+      companyId: dto.companyId,
+      tonerId: dto.tonerId,
+      date: receivedOn,
+    });
+
+    return {
+      ...this.toResult(toner.id, toner.name, 'RECEIVE', count, stock),
+      ordersReceived: settled.received,
+    };
   }
 
   /** 持ち出し：在庫を減らす。在庫を超える本数は受け付けない */
@@ -503,6 +520,21 @@ export class TonerEntriesService {
 
       await tx.tonerEntry.delete({ where: { id } });
 
+      /*
+       * 搬入を取り消すと、その日の注文と本数が合わなくなることがある。
+       * 自動で入荷済みにしていた注文はそのとき未入荷に戻す（手動のものは戻さない）
+       */
+      const reopened =
+        entry.action === 'RECEIVE'
+          ? (
+              await reconcileOrders(tx, {
+                companyId: entry.companyId,
+                tonerId: entry.tonerId,
+                date: entry.receivedOn,
+              })
+            ).reopened
+          : 0;
+
       const after = await tx.tonerStock.findUnique({ where: stockKey });
 
       return {
@@ -515,6 +547,8 @@ export class TonerEntriesService {
         stock: after?.quantity ?? 0,
         received: after?.received ?? 0,
         disposed: after?.disposed ?? 0,
+        /** 搬入を取り消したことで未入荷に戻った注文の件数 */
+        ordersReopened: reopened,
       };
     });
   }

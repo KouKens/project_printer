@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { BulkTonerOrderDto } from './dto/bulk-toner-order.dto';
 import { CreateTonerOrderDto } from './dto/create-toner-order.dto';
+import { ReceiveTonerOrdersDto } from './dto/receive-toner-orders.dto';
 import { TonerOrdersService } from './toner-orders.service';
 
 @Controller('toner-orders')
@@ -32,6 +33,21 @@ export class TonerOrdersController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
+  }
+
+  /**
+   * 注文を手動で入荷済みにする（トナー入出状況で一致しなかった行用）。
+   * 一致した行は搬入を受け付けた時点で自動で入荷済みになる
+   */
+  @Post('receive')
+  receive(@Body() dto: ReceiveTonerOrdersDto) {
+    return this.service.receive(dto.ids);
+  }
+
+  /** 手動で入荷済みにした注文を未入荷に戻す。自動のものは戻せない */
+  @Post(':id/unreceive')
+  unreceive(@Param('id', ParseIntPipe) id: number) {
+    return this.service.unreceive(id);
   }
 
   /**

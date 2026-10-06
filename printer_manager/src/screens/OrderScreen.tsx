@@ -200,6 +200,21 @@ const listFormat = new Intl.DateTimeFormat('ja-JP', {
   minute: '2-digit',
 })
 
+/**
+ * 搬入で注文と本数が合い、注文が入荷済み（自動）になったときの一言。
+ * **黙らない** —— 下の「未入荷の注文」から注文が消えた理由が分からなくなる
+ */
+function receivedOnEntry(count: number): string {
+  return count > 0 ? `。注文と本数が一致したので、注文 ${count} 件を入荷済みにしました` : ''
+}
+
+/** 先に搬入を受け付けてあり、入れた注文がその場で入荷済みになったときの一言 */
+function receivedOnOrder(count: number): string {
+  return count > 0
+    ? `。同じ日の搬入の記録と本数が一致したので、${count} 件は入荷済みにしました`
+    : ''
+}
+
 export default function OrderScreen() {
   // 注文も搬入も、見出しの横で選んでいる拠点の分だけを扱う
   const { companyId } = useCompany()
@@ -448,7 +463,7 @@ export default function OrderScreen() {
         const bottles = items.reduce((sum, item) => sum + Number(item.quantity), 0)
 
         if (mode === 'ORDER') {
-          await submitBulkOrder({
+          const saved = await submitBulkOrder({
             orderedAt: new Date(trimmed.orderedAt).toISOString(),
             userId: staffIdToSend(trimmed.userId),
             companyId,
@@ -460,10 +475,11 @@ export default function OrderScreen() {
           })
           setNotice(
             `${items.length} 件・合計 ${bottles} 本を注文しました` +
-              (trimmed.deliveryOn ? `（次回搬入日 ${trimmed.deliveryOn}）` : ''),
+              (trimmed.deliveryOn ? `（次回搬入日 ${trimmed.deliveryOn}）` : '') +
+              receivedOnOrder(saved.filter((order) => order.status === 'RECEIVED').length),
           )
         } else {
-          await submitBulkEntry({
+          const results = await submitBulkEntry({
             action: 'RECEIVE',
             userId: staffIdToSend(trimmed.userId),
             companyId,
@@ -474,7 +490,10 @@ export default function OrderScreen() {
             })),
           })
           setNotice(
-            `${items.length} 件・合計 ${bottles} 本を搬入しました（${trimmed.receivedOn}）`,
+            `${items.length} 件・合計 ${bottles} 本を搬入しました（${trimmed.receivedOn}）` +
+              receivedOnEntry(
+                results.reduce((sum, result) => sum + (result.ordersReceived ?? 0), 0),
+              ),
           )
         }
 
@@ -520,7 +539,8 @@ export default function OrderScreen() {
 
         setNotice(
           `${result.tonerId} を ${result.quantity} 本 注文しました` +
-            (result.deliveryOn ? `（次回搬入日 ${result.deliveryOn}）` : ''),
+            (result.deliveryOn ? `（次回搬入日 ${result.deliveryOn}）` : '') +
+            receivedOnOrder(result.status === 'RECEIVED' ? 1 : 0),
         )
       } else {
         const result = await submitEntry({
@@ -534,7 +554,8 @@ export default function OrderScreen() {
 
         setNotice(
           `${result.tonerId} を ${result.quantity} 本 搬入しました` +
-            `（${trimmed.receivedOn} / 在庫 ${result.stock}）`,
+            `（${trimmed.receivedOn} / 在庫 ${result.stock}）` +
+            receivedOnEntry(result.ordersReceived ?? 0),
         )
       }
 

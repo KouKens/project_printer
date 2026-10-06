@@ -65,6 +65,7 @@ export type PrinterAssetMinAggregateOutputType = {
   note: string | null
   disabledAt: Date | null
   countLayout: $Enums.CountLayout | null
+  dailyCheck: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -90,6 +91,7 @@ export type PrinterAssetMaxAggregateOutputType = {
   note: string | null
   disabledAt: Date | null
   countLayout: $Enums.CountLayout | null
+  dailyCheck: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -115,6 +117,7 @@ export type PrinterAssetCountAggregateOutputType = {
   note: number
   disabledAt: number
   countLayout: number
+  dailyCheck: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -158,6 +161,7 @@ export type PrinterAssetMinAggregateInputType = {
   note?: true
   disabledAt?: true
   countLayout?: true
+  dailyCheck?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -183,6 +187,7 @@ export type PrinterAssetMaxAggregateInputType = {
   note?: true
   disabledAt?: true
   countLayout?: true
+  dailyCheck?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -208,6 +213,7 @@ export type PrinterAssetCountAggregateInputType = {
   note?: true
   disabledAt?: true
   countLayout?: true
+  dailyCheck?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -320,6 +326,7 @@ export type PrinterAssetGroupByOutputType = {
   note: string | null
   disabledAt: Date | null
   countLayout: $Enums.CountLayout
+  dailyCheck: boolean
   createdAt: Date
   updatedAt: Date
   _count: PrinterAssetCountAggregateOutputType | null
@@ -368,6 +375,7 @@ export type PrinterAssetWhereInput = {
   note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFilter<"PrinterAsset"> | boolean
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
@@ -397,6 +405,7 @@ export type PrinterAssetOrderByWithRelationInput = {
   note?: Prisma.SortOrderInput | Prisma.SortOrder
   disabledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   countLayout?: Prisma.SortOrder
+  dailyCheck?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   company?: Prisma.CompanyOrderByWithRelationInput
@@ -429,6 +438,7 @@ export type PrinterAssetWhereUniqueInput = Prisma.AtLeast<{
   note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFilter<"PrinterAsset"> | boolean
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   company?: Prisma.XOR<Prisma.CompanyScalarRelationFilter, Prisma.CompanyWhereInput>
@@ -458,6 +468,7 @@ export type PrinterAssetOrderByWithAggregationInput = {
   note?: Prisma.SortOrderInput | Prisma.SortOrder
   disabledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   countLayout?: Prisma.SortOrder
+  dailyCheck?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.PrinterAssetCountOrderByAggregateInput
@@ -491,6 +502,7 @@ export type PrinterAssetScalarWhereWithAggregatesInput = {
   note?: Prisma.StringNullableWithAggregatesFilter<"PrinterAsset"> | string | null
   disabledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutWithAggregatesFilter<"PrinterAsset"> | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolWithAggregatesFilter<"PrinterAsset"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"PrinterAsset"> | Date | string
 }
@@ -513,6 +525,7 @@ export type PrinterAssetCreateInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
@@ -542,6 +555,7 @@ export type PrinterAssetUncheckedCreateInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   repairs?: Prisma.RepairRecordUncheckedCreateNestedManyWithoutAssetInput
@@ -566,6 +580,7 @@ export type PrinterAssetUpdateInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
@@ -595,6 +610,7 @@ export type PrinterAssetUncheckedUpdateInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput
@@ -622,6 +638,7 @@ export type PrinterAssetCreateManyInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -644,6 +661,7 @@ export type PrinterAssetUpdateManyMutationInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -669,6 +687,7 @@ export type PrinterAssetUncheckedUpdateManyInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -699,6 +718,7 @@ export type PrinterAssetCountOrderByAggregateInput = {
   note?: Prisma.SortOrder
   disabledAt?: Prisma.SortOrder
   countLayout?: Prisma.SortOrder
+  dailyCheck?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -732,6 +752,7 @@ export type PrinterAssetMaxOrderByAggregateInput = {
   note?: Prisma.SortOrder
   disabledAt?: Prisma.SortOrder
   countLayout?: Prisma.SortOrder
+  dailyCheck?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -757,6 +778,7 @@ export type PrinterAssetMinOrderByAggregateInput = {
   note?: Prisma.SortOrder
   disabledAt?: Prisma.SortOrder
   countLayout?: Prisma.SortOrder
+  dailyCheck?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -913,6 +935,7 @@ export type PrinterAssetCreateWithoutTonersInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
@@ -941,6 +964,7 @@ export type PrinterAssetUncheckedCreateWithoutTonersInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   repairs?: Prisma.RepairRecordUncheckedCreateNestedManyWithoutAssetInput
@@ -980,6 +1004,7 @@ export type PrinterAssetUpdateWithoutTonersInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
@@ -1008,6 +1033,7 @@ export type PrinterAssetUncheckedUpdateWithoutTonersInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput
@@ -1031,6 +1057,7 @@ export type PrinterAssetCreateWithoutCompanyInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   maintVendor?: Prisma.MaintVendorCreateNestedOneWithoutAssetsInput
@@ -1058,6 +1085,7 @@ export type PrinterAssetUncheckedCreateWithoutCompanyInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   repairs?: Prisma.RepairRecordUncheckedCreateNestedManyWithoutAssetInput
@@ -1114,6 +1142,7 @@ export type PrinterAssetScalarWhereInput = {
   note?: Prisma.StringNullableFilter<"PrinterAsset"> | string | null
   disabledAt?: Prisma.DateTimeNullableFilter<"PrinterAsset"> | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFilter<"PrinterAsset"> | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFilter<"PrinterAsset"> | boolean
   createdAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"PrinterAsset"> | Date | string
 }
@@ -1136,6 +1165,7 @@ export type PrinterAssetCreateWithoutMaintVendorInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
@@ -1163,6 +1193,7 @@ export type PrinterAssetUncheckedCreateWithoutMaintVendorInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   repairs?: Prisma.RepairRecordUncheckedCreateNestedManyWithoutAssetInput
@@ -1213,6 +1244,7 @@ export type PrinterAssetCreateWithoutRepairsInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   company: Prisma.CompanyCreateNestedOneWithoutAssetsInput
@@ -1241,6 +1273,7 @@ export type PrinterAssetUncheckedCreateWithoutRepairsInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   toners?: Prisma.TonerPrinterUncheckedCreateNestedManyWithoutAssetInput
@@ -1280,6 +1313,7 @@ export type PrinterAssetUpdateWithoutRepairsInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
@@ -1308,6 +1342,7 @@ export type PrinterAssetUncheckedUpdateWithoutRepairsInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   toners?: Prisma.TonerPrinterUncheckedUpdateManyWithoutAssetNestedInput
@@ -1333,6 +1368,7 @@ export type PrinterAssetCreateManyCompanyInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1355,6 +1391,7 @@ export type PrinterAssetUpdateWithoutCompanyInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   maintVendor?: Prisma.MaintVendorUpdateOneWithoutAssetsNestedInput
@@ -1382,6 +1419,7 @@ export type PrinterAssetUncheckedUpdateWithoutCompanyInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput
@@ -1408,6 +1446,7 @@ export type PrinterAssetUncheckedUpdateManyWithoutCompanyInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1432,6 +1471,7 @@ export type PrinterAssetCreateManyMaintVendorInput = {
   note?: string | null
   disabledAt?: Date | string | null
   countLayout?: $Enums.CountLayout
+  dailyCheck?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1454,6 +1494,7 @@ export type PrinterAssetUpdateWithoutMaintVendorInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   company?: Prisma.CompanyUpdateOneRequiredWithoutAssetsNestedInput
@@ -1481,6 +1522,7 @@ export type PrinterAssetUncheckedUpdateWithoutMaintVendorInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   repairs?: Prisma.RepairRecordUncheckedUpdateManyWithoutAssetNestedInput
@@ -1507,6 +1549,7 @@ export type PrinterAssetUncheckedUpdateManyWithoutMaintVendorInput = {
   note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   disabledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   countLayout?: Prisma.EnumCountLayoutFieldUpdateOperationsInput | $Enums.CountLayout
+  dailyCheck?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1572,6 +1615,7 @@ export type PrinterAssetSelect<ExtArgs extends runtime.Types.Extensions.Internal
   note?: boolean
   disabledAt?: boolean
   countLayout?: boolean
+  dailyCheck?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -1602,6 +1646,7 @@ export type PrinterAssetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   note?: boolean
   disabledAt?: boolean
   countLayout?: boolean
+  dailyCheck?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -1629,6 +1674,7 @@ export type PrinterAssetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   note?: boolean
   disabledAt?: boolean
   countLayout?: boolean
+  dailyCheck?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
@@ -1656,11 +1702,12 @@ export type PrinterAssetSelectScalar = {
   note?: boolean
   disabledAt?: boolean
   countLayout?: boolean
+  dailyCheck?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "disabledAt" | "countLayout" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>
+export type PrinterAssetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "companyId" | "department" | "no" | "ipAddress" | "maker" | "model" | "serialNumber" | "purchasedOn" | "purchasePrice" | "contractNo" | "maintVendorId" | "maintContract" | "maintStartOn" | "maintEndOn" | "maintDealOn" | "maintFee" | "note" | "disabledAt" | "countLayout" | "dailyCheck" | "createdAt" | "updatedAt", ExtArgs["result"]["printerAsset"]>
 export type PrinterAssetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.CompanyDefaultArgs<ExtArgs>
   maintVendor?: boolean | Prisma.PrinterAsset$maintVendorArgs<ExtArgs>
@@ -1765,6 +1812,15 @@ export type $PrinterAssetPayload<ExtArgs extends runtime.Types.Extensions.Intern
      * 2 行の機器で上下どちらがモノクロかも表ごとに違うため、順序まで持つ
      */
     countLayout: $Enums.CountLayout
+    /**
+     * 毎日チェックする機器か。プリンター状況の上の「毎日チェック」の表に並ぶ。
+     * 
+     * **トナー・インクを自分で発注する機器に付ける印。** 保守契約で業者が
+     * 送ってくる機器は見張る必要が無いので、残量だけでは対象を決められない。
+     * 実機の情報からは分からないので台帳に持つ。
+     * 一覧の ★ で切り替えたときは更新日を動かさない（`setDailyCheck`）
+     */
+    dailyCheck: boolean
     createdAt: Date
     /**
      * 更新日。一覧の「更新」ボタンでも現在時刻に進む
@@ -2217,6 +2273,7 @@ export interface PrinterAssetFieldRefs {
   readonly note: Prisma.FieldRef<"PrinterAsset", 'String'>
   readonly disabledAt: Prisma.FieldRef<"PrinterAsset", 'DateTime'>
   readonly countLayout: Prisma.FieldRef<"PrinterAsset", 'CountLayout'>
+  readonly dailyCheck: Prisma.FieldRef<"PrinterAsset", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"PrinterAsset", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"PrinterAsset", 'DateTime'>
 }

@@ -317,6 +317,13 @@ export type EnumOrderStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumOrderStatusFilter<$PrismaModel> | $Enums.OrderStatus
 }
 
+export type EnumReceiveModeNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReceiveMode | Prisma.EnumReceiveModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumReceiveModeNullableFilter<$PrismaModel> | $Enums.ReceiveMode | null
+}
+
 export type EnumOrderStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.OrderStatus | Prisma.EnumOrderStatusFieldRefInput<$PrismaModel>
   in?: $Enums.OrderStatus[] | Prisma.ListEnumOrderStatusFieldRefInput<$PrismaModel>
@@ -325,6 +332,16 @@ export type EnumOrderStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumOrderStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumOrderStatusFilter<$PrismaModel>
+}
+
+export type EnumReceiveModeNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReceiveMode | Prisma.EnumReceiveModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumReceiveModeNullableWithAggregatesFilter<$PrismaModel> | $Enums.ReceiveMode | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumReceiveModeNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumReceiveModeNullableFilter<$PrismaModel>
 }
 
 export type EnumSnmpVersionFilter<$PrismaModel = never> = {
@@ -734,6 +751,13 @@ export type NestedEnumOrderStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumOrderStatusFilter<$PrismaModel> | $Enums.OrderStatus
 }
 
+export type NestedEnumReceiveModeNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReceiveMode | Prisma.EnumReceiveModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumReceiveModeNullableFilter<$PrismaModel> | $Enums.ReceiveMode | null
+}
+
 export type NestedEnumOrderStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.OrderStatus | Prisma.EnumOrderStatusFieldRefInput<$PrismaModel>
   in?: $Enums.OrderStatus[] | Prisma.ListEnumOrderStatusFieldRefInput<$PrismaModel>
@@ -742,6 +766,16 @@ export type NestedEnumOrderStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumOrderStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumOrderStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumReceiveModeNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ReceiveMode | Prisma.EnumReceiveModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.ReceiveMode[] | Prisma.ListEnumReceiveModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumReceiveModeNullableWithAggregatesFilter<$PrismaModel> | $Enums.ReceiveMode | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumReceiveModeNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumReceiveModeNullableFilter<$PrismaModel>
 }
 
 export type NestedEnumSnmpVersionFilter<$PrismaModel = never> = {

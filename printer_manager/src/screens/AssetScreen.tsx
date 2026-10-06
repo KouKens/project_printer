@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import DailyCheckStar from '../components/DailyCheckStar';
 import Modal from '../components/Modal';
 import SearchBox from '../components/SearchBox';
 import TableBox from '../components/TableBox';
@@ -14,6 +15,7 @@ import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
 import { useCompany } from '../lib/company';
+import { saveDailyCheck } from '../lib/daily-check';
 import { refreshAsset } from '../lib/refresh';
 import './AssetScreen.css';
 
@@ -68,6 +70,11 @@ type Asset = {
    * 送らないと API が既定の TOTAL に戻してしまうので読み込んだ値を持ち回る
    */
   countLayout: CountLayout;
+  /**
+   * 毎日チェックする機器か（トナー・インクを自分で発注する機器）。
+   * プリンター状況の上の「毎日チェック」の表に並ぶ。一覧の ★ でも切り替えられる
+   */
+  dailyCheck: boolean;
 };
 
 /** API から返る台帳。保存済みの 1 件 */
@@ -105,6 +112,8 @@ type SavedAsset = {
   maintFee: number | null;
   note: string | null;
   countLayout: CountLayout;
+  /** 毎日チェックする機器か。一覧の ★ */
+  dailyCheck: boolean;
   /**
    * 無効にした日時。null なら有効。
    * **削除の代わり。** 無効にした台は下の別枠に移り、他の画面の選択肢からも外れる
@@ -146,6 +155,7 @@ const EMPTY: Asset = {
   maintFee: '',
   note: '',
   countLayout: 'TOTAL',
+  dailyCheck: false,
 };
 
 type Supply = {
@@ -179,6 +189,8 @@ type Probe = {
 type SortKey = Exclude<keyof SavedAsset, 'id' | 'effectiveVendor'> | 'maintStatus';
 
 const COLUMNS: { key: SortKey; label: string; kind: CellKind; numeric?: boolean }[] = [
+  // ★ の列。並べ替えると印の付いた台が上に集まる（並べる値は sorted を参照）
+  { key: 'dailyCheck', label: '毎日', kind: 'number' },
   // 全拠点をまとめて出す画面なので、どこの機器かが分かるよう拠点を先頭に置く
   { key: 'company', label: '拠点', kind: 'text' },
   { key: 'department', label: '部署', kind: 'text' },
@@ -239,6 +251,8 @@ const CSV_COLUMNS: { label: string; value: (row: SavedAsset) => CsvValue }[] = [
   { label: '保守取引', value: (row) => row.maintDealOn },
   { label: '保守金額', value: (row) => row.maintFee },
   { label: '備考', value: (row) => row.note },
+  // 表では ★ で出しているので、ファイルでは ○ にする
+  { label: '毎日チェック', value: (row) => (row.dailyCheck ? '○' : null) },
   {
     label: '更新日',
     value: (row) => new Date(row.updatedAt).toLocaleString('ja-JP'),
@@ -269,7 +283,7 @@ const DISABLED_CSV_COLUMNS: { label: string; value: (row: SavedAsset) => CsvValu
  * 保存のたび値が既定に戻る事故が起きたため、型で止めている
  * （API 側も送られてこなかった列には触らないようになっている）
  */
-type AssetPayload = Record<keyof Asset, string | number | null>;
+type AssetPayload = Record<keyof Asset, string | number | boolean | null>;
 
 function toPayload(asset: Asset): AssetPayload {
   return {
@@ -293,6 +307,7 @@ function toPayload(asset: Asset): AssetPayload {
     maintFee: asset.maintFee.trim() === '' ? null : Number(asset.maintFee),
     note: orNull(asset.note),
     countLayout: asset.countLayout,
+    dailyCheck: asset.dailyCheck,
   };
 }
 
@@ -343,6 +358,7 @@ function toForm(saved: SavedAsset): Asset {
     maintFee: saved.maintFee === null ? '' : String(saved.maintFee),
     note: saved.note ?? '',
     countLayout: saved.countLayout,
+    dailyCheck: saved.dailyCheck,
   };
 }
 
@@ -380,7 +396,7 @@ function AssetFields({
   onIpEnter,
 }: {
   asset: Asset;
-  onChange: (key: keyof Asset, value: string) => void;
+  onChange: <K extends keyof Asset>(key: K, value: Asset[K]) => void;
   companies: { id: number; name: string }[];
   vendors: Vendor[];
   hints: Hints;
@@ -639,6 +655,22 @@ function AssetFields({
           placeholder="リース / USB接続 など"
         />
       </label>
+
+      {/*
+        * トナー・インクを自分で発注する機器に付ける。保守契約で業者が送ってくる
+        * 機器は見張らなくてよいので、残量からは決めず人が選ぶ
+        */}
+      <label className="as-check">
+        <input
+          type="checkbox"
+          checked={asset.dailyCheck}
+          onChange={(e) => onChange('dailyCheck', e.target.checked)}
+        />
+        <span>
+          毎日チェックする
+          <small>プリンター状況の上の表に並び、トナー・インクの残量を毎日見ます</small>
+        </span>
+      </label>
     </>
   );
 }
@@ -782,7 +814,12 @@ export default function AssetScreen() {
     return sortRows(
       found,
       (row) =>
-        sort.key === 'maintStatus'
+        // 昇順で ★ の付いた台が上に来るよう、付いているほうを小さくする
+        sort.key === 'dailyCheck'
+          ? row.dailyCheck
+            ? 0
+            : 1
+          : sort.key === 'maintStatus'
           ? maintStatus(row.maintEndOn, row.maintStartOn, row.maintContract)
           : sort.key === 'maintVendor'
             ? (row.effectiveVendor?.name ?? null)
@@ -807,10 +844,10 @@ export default function AssetScreen() {
     return counts;
   }, [active]);
 
-  const set = (key: keyof Asset, value: string) =>
+  const set = <K extends keyof Asset>(key: K, value: Asset[K]) =>
     setAsset((prev) => ({ ...prev, [key]: value }));
 
-  const setDraft = (key: keyof Asset, value: string) =>
+  const setDraft = <K extends keyof Asset>(key: K, value: Asset[K]) =>
     setEditing((prev) => prev && { ...prev, form: { ...prev.form, [key]: value } });
 
   /** 実機に問い合わせて表示するだけ。DB には保存しない */
@@ -954,6 +991,34 @@ export default function AssetScreen() {
   };
 
   /**
+   * 一覧の ★。**押した時点で保存する**（他の列は送らず、更新日も動かない）。
+   * 読み直さずに手元の行だけ書き換える（並べ替えや探す欄の状態を崩さないため）
+   */
+  const toggleDailyCheck = async (row: SavedAsset) => {
+    const label = `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`;
+    const on = !row.dailyCheck;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await saveDailyCheck(row.id, on);
+      setSaved((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, dailyCheck: on } : item)),
+      );
+      setNotice(
+        on
+          ? `${label} を毎日チェックに入れました（プリンター状況の上の表に並びます）`
+          : `${label} を毎日チェックから外しました`,
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
    * 使わなくなった台を無効にする／元に戻す。**普段はこちらを使う。**
    *
    * 台帳を消すと、その機器の修理履歴まで道連れで消える。入れ替えた機器の履歴も
@@ -1065,6 +1130,16 @@ export default function AssetScreen() {
       : null;
 
   const cellOf = (row: SavedAsset, key: SortKey) => {
+    if (key === 'dailyCheck') {
+      return (
+        <DailyCheckStar
+          on={row.dailyCheck}
+          label={`${row.department ?? '部署未設定'} No.${row.no ?? '—'}`}
+          disabled={busy}
+          onToggle={() => void toggleDailyCheck(row)}
+        />
+      );
+    }
     if (key === 'company') return row.company?.name ?? '—';
     if (key === 'companyId') return row.company?.name ?? '—';
     if (key === 'maintStatus')

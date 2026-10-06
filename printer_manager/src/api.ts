@@ -54,6 +54,8 @@ export type EntryResult = {
   stock: number
   received: number
   disposed: number
+  /** 搬入で本数が一致して、入荷済み（自動）になった注文の件数。搬入のときだけ入る */
+  ordersReceived?: number
 }
 
 export type OrderRow = {
@@ -70,6 +72,25 @@ export type OrderRow = {
   /** 次回搬入日（YYYY-MM-DD）。未定なら null */
   deliveryOn: string | null
   status: 'PENDING' | 'RECEIVED' | 'CANCELED'
+  /** 入荷済みにした日時。未入荷なら null */
+  receivedAt: string | null
+  /**
+   * 入荷済みにした方法。AUTO = 搬入の記録と本数が一致して自動で、
+   * MANUAL = トナー入出状況で手動で。未入荷なら null
+   */
+  receiveMode: ReceiveMode | null
+}
+
+export type ReceiveMode = 'AUTO' | 'MANUAL'
+
+/** 注文の状態の呼び名。入荷済みは自動か手動かまで分ける */
+export function orderStatusLabel(order: {
+  status: string
+  receiveMode: ReceiveMode | null
+}): string {
+  if (order.status === 'PENDING') return '未入荷'
+  if (order.status === 'CANCELED') return '取消'
+  return order.receiveMode === 'MANUAL' ? '入荷済み（手動）' : '入荷済み（自動）'
 }
 
 export type OrderResult = {
@@ -79,7 +100,9 @@ export type OrderResult = {
   quantity: number
   orderedAt: string
   deliveryOn: string | null
+  /** 先に搬入を受け付けてあって本数が合えば、入れた時点で RECEIVED になっている */
   status: string
+  receiveMode: ReceiveMode | null
 }
 
 /** 受付の履歴 1 件 */
@@ -113,8 +136,22 @@ export type DeliveryCheckRow = {
   received: number
   diff: number
   status: 'match' | 'short' | 'over' | 'no-order' | 'waiting' | 'undated'
-  orders: { id: number; quantity: number; orderedAt: string; status: string }[]
+  orders: {
+    id: number
+    quantity: number
+    orderedAt: string
+    status: string
+    receivedAt: string | null
+    receiveMode: ReceiveMode | null
+  }[]
   entries: { id: number; quantity: number; userId: string; createdAt: string }[]
+  /** まだ未入荷の注文。「入荷済みにする」が送る先 */
+  pendingOrderIds: number[]
+  /**
+   * 片付いた行か（注文があり、どれも未入荷でない）。
+   * 数が合わないまま手動で入荷済みにした行は「数の合わない行」に数えない
+   */
+  settled: boolean
 }
 
 /** NestJS の ValidationPipe はエラーを配列で返すので、先頭を取り出す */
@@ -246,6 +283,22 @@ export function deleteEntry(id: number) {
 /** 注文を取り消す */
 export function deleteOrder(id: number) {
   return del<{ id: number }>(`${API}/toner-orders/${id}`, '取り消せませんでした')
+}
+
+/**
+ * 注文を手動で入荷済みにする（トナー入出状況で一致しなかった行用）。
+ * 1 件でも未入荷でなければ全体が断られる
+ */
+export function receiveOrders(ids: number[]) {
+  return post<OrderRow[]>(`${API}/toner-orders/receive`, { ids })
+}
+
+/**
+ * 手動で入荷済みにした注文を未入荷に戻す。自動のものは断られる。
+ * 戻したあとで搬入と本数が合っていれば、戻り値は入荷済み（自動）になっている
+ */
+export function unreceiveOrder(id: number) {
+  return post<OrderRow>(`${API}/toner-orders/${id}/unreceive`, {})
 }
 
 /**

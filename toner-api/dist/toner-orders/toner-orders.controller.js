@@ -16,6 +16,7 @@ exports.TonerOrdersController = void 0;
 const common_1 = require("@nestjs/common");
 const bulk_toner_order_dto_1 = require("./dto/bulk-toner-order.dto");
 const create_toner_order_dto_1 = require("./dto/create-toner-order.dto");
+const receive_toner_orders_dto_1 = require("./dto/receive-toner-orders.dto");
 const toner_orders_service_1 = require("./toner-orders.service");
 let TonerOrdersController = class TonerOrdersController {
     service;
@@ -30,6 +31,12 @@ let TonerOrdersController = class TonerOrdersController {
     }
     remove(id) {
         return this.service.remove(id);
+    }
+    receive(dto) {
+        return this.service.receive(dto.ids);
+    }
+    unreceive(id) {
+        return this.service.unreceive(id);
     }
     findAll(companyId) {
         return this.service.findAll(companyId);
@@ -63,6 +70,20 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Post)('receive'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [receive_toner_orders_dto_1.ReceiveTonerOrdersDto]),
+    __metadata("design:returntype", void 0)
+], TonerOrdersController.prototype, "receive", null);
+__decorate([
+    (0, common_1.Post)(':id/unreceive'),
+    __param(0, (0, common_1.Param)('id', common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], TonerOrdersController.prototype, "unreceive", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('companyId', new common_1.ParseIntPipe({ optional: true }))),

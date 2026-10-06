@@ -136,6 +136,8 @@ export declare const TonerOrderScalarFieldEnum: {
     readonly orderedAt: "orderedAt";
     readonly deliveryOn: "deliveryOn";
     readonly status: "status";
+    readonly receivedAt: "receivedAt";
+    readonly receiveMode: "receiveMode";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };
@@ -216,6 +218,7 @@ export declare const PrinterAssetScalarFieldEnum: {
     readonly note: "note";
     readonly disabledAt: "disabledAt";
     readonly countLayout: "countLayout";
+    readonly dailyCheck: "dailyCheck";
     readonly createdAt: "createdAt";
     readonly updatedAt: "updatedAt";
 };

@@ -12,7 +12,7 @@ import { CreateTonerOfferDto } from './dto/create-toner-offer.dto';
 import { TonerOffersService } from './toner-offers.service';
 
 /**
- * 価格を比べるためのトナー情報（販売店 × 買い方ごと）。
+ * 比較用トナー（販売店 × 買い方ごと。画面は「比較用トナー登録」）。
  * **トナー価格比較だけが読む。** 受付・注文・在庫などはトナー登録（/toners）を使う
  */
 @Controller('toner-offers')

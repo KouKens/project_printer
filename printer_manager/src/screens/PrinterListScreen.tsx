@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import DailyCheckStar from '../components/DailyCheckStar';
 import SearchBox from '../components/SearchBox';
 import TableBox from '../components/TableBox';
 import {
@@ -15,7 +16,9 @@ import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
+import { saveDailyCheck } from '../lib/daily-check';
 import { refreshAsset } from '../lib/refresh';
+import { stockState } from '../lib/stock';
 import './DataTable.css';
 
 type SupplyReading = {
@@ -40,6 +43,38 @@ type Alert = {
   groupIndex: number | null;
   code: number | null;
   description: string | null;
+};
+
+/**
+ * 台帳に紐づけた品番と、その台の拠点の在庫（API の `linkedToners`）。
+ * 無効にした品番と、他の画面に出さない品番（hidden）は API が外して返す
+ */
+type LinkedToner = {
+  id: string;
+  name: string | null;
+  /** トナー登録の色欄そのまま（「ブラック」「4色パック」など） */
+  color: string | null;
+  /** 色欄を black / cyan / magenta / yellow に畳んだもの。色欄が空なら空配列 */
+  colors: string[];
+  part: 'TONER' | 'DRUM' | 'WASTE' | 'MAINTENANCE' | 'OTHER';
+  recycled: boolean;
+  /** 在庫がこの本数以下なら少ない。null は 0 本のときだけ知らせる */
+  alertThreshold: number | null;
+  /** この台が置いてある拠点の在庫。他の拠点の分は足していない */
+  stock: number;
+  /**
+   * この拠点の未入荷の注文の本数。搬入で本数が合えば入荷済みに変わる
+   * （トナー入出状況の「一致」）ので、残っているのはまだ届いていない分
+   */
+  onOrder: number;
+};
+
+/** 品番・在庫の欄で、トナー・インク以外に添える短い呼び名 */
+const PART_SHORT: Record<Exclude<LinkedToner['part'], 'TONER'>, string> = {
+  DRUM: 'ドラム',
+  WASTE: '廃トナー',
+  MAINTENANCE: 'メンテ',
+  OTHER: '部品',
 };
 
 /** prtMarkerSuppliesType の呼び名 */
@@ -169,6 +204,199 @@ function partsOf(readings: SupplyReading[]): SupplyReading[] {
     .sort((a, b) => (a.percent ?? 999) - (b.percent ?? 999));
 }
 
+/**
+ * トナー・インクの残り具合。**自分で発注する機器の注文の目安にする。**
+ * empty = すぐ交換（ほぼ無い・機器が「無い」と言っている）
+ * low   = 注文の目安（少ない・機器が「残りわずか」と言っている）
+ */
+type TonerLevel = 'empty' | 'low';
+
+/** 注文の目安とみなす残量（%）。これ以下で色を付ける */
+const TONER_LOW_PERCENT = 20;
+/** すぐ交換とみなす残量（%） */
+const TONER_EMPTY_PERCENT = 5;
+
+const TONER_LEVEL_LABEL: Record<TonerLevel, string> = {
+  empty: 'すぐ交換',
+  low: '注文の目安',
+};
+
+/** 残量の札に添える短い印 */
+const TONER_LEVEL_SHORT: Record<TonerLevel, string> = {
+  empty: '交換',
+  low: '少',
+};
+
+/**
+ * Printer-MIB の prtAlertCode のうち、トナー・インクの残りを言うもの。
+ * 機器によっては番号を取り違えて送ってくる（ドラムの警告に 1111 を付ける機種がある）ので、
+ * 番号が合っていても文面が部品の話なら使わない（`NOT_TONER`）
+ */
+const TONER_ALERT_CODE: Record<number, TonerLevel> = {
+  1101: 'empty', // markerTonerEmpty
+  1102: 'low', // markerTonerAlmostEmpty
+  1104: 'empty', // markerInkEmpty
+  1105: 'low', // markerInkAlmostEmpty
+};
+
+/**
+ * 部品の警告の言葉。「廃トナー」のようにトナーの言葉を含んでいても、こちらが先。
+ * 「カートリッジ」はトナーの言葉に入れない（RICOH の「ｶｰﾄﾘｯｼﾞ交換時期：部品交換時期」は
+ * 部品の交換案内で、トナーの残りではない）
+ */
+const NOT_TONER =
+  /廃|ドラム|定着|転写|現像|クリーニング|メンテナンス|waste|drum|fuser|fixing|maintenance/i;
+const TONER_WORD = /トナー|インク|\btoner\b|\bink\b/i;
+const EMPTY_WORD = /交換|ありません|なくなり|切れ|空|\bempty\b|\bout\b/i;
+const LOW_WORD = /わずか|少な|ニアエンド|\blow\b|\bnear/i;
+
+/**
+ * 機器が出している警告から読むトナー・インクの残り。
+ *
+ * **Canon iR-ADV は残量を計測しておらず、入っている間は 100% を返す。**
+ * 残量だけを見ると切れるまで色が付かないので、機器自身の「残りわずか」を併せて見る。
+ * 番号（prtAlertCode）が標準どおりならそれで、無ければ文面で決める。
+ * RICOH の「黒ﾄﾅｰ残りわずか」は半角カナなので NFKC で揃えてから見る
+ */
+function tonerAlertLevel(alert: Alert): TonerLevel | null {
+  const text = (alert.description ?? '').normalize('NFKC');
+  if (NOT_TONER.test(text)) return null;
+
+  const byCode = alert.code === null ? undefined : TONER_ALERT_CODE[alert.code];
+  if (byCode) return byCode;
+
+  if (!TONER_WORD.test(text)) return null;
+  if (EMPTY_WORD.test(text)) return 'empty';
+  if (LOW_WORD.test(text)) return 'low';
+  return null;
+}
+
+/** 残量（%）から読む具合。量が分からない（あり・不明）ものは決めない */
+function percentLevel(supply: SupplyReading): TonerLevel | null {
+  if (supply.percent === null) return null;
+  if (supply.percent <= TONER_EMPTY_PERCENT) return 'empty';
+  if (supply.percent <= TONER_LOW_PERCENT) return 'low';
+  return null;
+}
+
+/** 2 つの具合の悪いほう */
+function worse(a: TonerLevel | null, b: TonerLevel | null): TonerLevel | null {
+  if (a === 'empty' || b === 'empty') return 'empty';
+  if (a === 'low' || b === 'low') return 'low';
+  return null;
+}
+
+/** 警告の文面が名指ししている色。書いていなければ null */
+function alertColor(alert: Alert): string | null {
+  const text = (alert.description ?? '').normalize('NFKC');
+  for (const [pattern, color] of NAME_COLOR) {
+    if (pattern.test(text)) return color;
+  }
+  return null;
+}
+
+/**
+ * 1 本のトナー・インクの具合と、そう決めた警告の文面。
+ * 警告がどの色の話かは、文面に色があれば色で、無ければ指している行（groupIndex）で見る
+ */
+function supplyLevel(
+  supply: SupplyReading,
+  alerts: Alert[],
+): { level: TonerLevel | null; reasons: string[] } {
+  let level = percentLevel(supply);
+  const reasons: string[] = [];
+
+  for (const alert of alerts) {
+    const found = tonerAlertLevel(alert);
+    if (!found) continue;
+    const color = alertColor(alert);
+    const targets =
+      color !== null ? color === colorantOf(supply) : alert.groupIndex === supply.supplyIndex;
+    if (!targets) continue;
+    level = worse(level, found);
+    if (alert.description) reasons.push(alert.description);
+  }
+  return { level, reasons };
+}
+
+/**
+ * 一覧に 1 つずつ出すトナー・インク。**表示（`SupplyCell`）と判定で同じものを見る。**
+ * 交換部品は隣の列で見るので外す。種別を返さない機種は色ごとの先頭だけ（`tonerRow`）
+ */
+const tonerSupplies = (readings: SupplyReading[]) =>
+  tonerRow(readings.filter((supply) => !isPart(supply))).shown;
+
+/**
+ * その機器のトナー・インクのいちばん悪い具合。
+ * 色まで決められない警告（色を書かず、指す行も合わない）も機器としては拾う
+ */
+function tonerLevel(readings: SupplyReading[], alerts: Alert[]): TonerLevel | null {
+  return [
+    ...tonerSupplies(readings).map(percentLevel),
+    ...alerts.map(tonerAlertLevel),
+  ].reduce<TonerLevel | null>(worse, null);
+}
+
+/** 行（台帳）のトナー・インクの具合。実機の情報が無ければ決めない */
+const rowTonerLevel = (row: Row) =>
+  row.printer ? tonerLevel(row.printer.readings, row.printer.alerts) : null;
+
+/** 色の分からないもの。どの品番の話か決められないので、トナー・インクを全部候補にする */
+const ANY_COLOR = 'any';
+
+/** K C M Y のどれかに畳む。RICOH の 'other' のような値は色が分からない扱い */
+const knownColor = (color: string | null) =>
+  color !== null && COLOR_ORDER.includes(color) ? color : ANY_COLOR;
+
+/**
+ * 残りの少ない色。品番・在庫の欄で「どれを頼むか」に印を付けるために使う。
+ *
+ * 残量の札（`supplyLevel`）で少ないものの色に加えて、機器の警告の色も拾う。
+ * Canon は 100% のまま警告だけを出すので、札には色が付かなくても警告から決まる。
+ * 色を名指ししない警告は、指している行の色、それも無ければ「色が分からない」
+ */
+function lowColors(readings: SupplyReading[], alerts: Alert[]): Set<string> {
+  const colors = new Set<string>();
+
+  for (const supply of tonerSupplies(readings)) {
+    if (supplyLevel(supply, alerts).level) colors.add(knownColor(colorantOf(supply)));
+  }
+
+  const byIndex = new Map(readings.map((supply) => [supply.supplyIndex, supply]));
+  for (const alert of alerts) {
+    if (!tonerAlertLevel(alert)) continue;
+    const target = alert.groupIndex === null ? undefined : byIndex.get(alert.groupIndex);
+    colors.add(knownColor(alertColor(alert) ?? (target ? colorantOf(target) : null)));
+  }
+  return colors;
+}
+
+/**
+ * その品番が、残りの少ない色に使うものか。**トナー・インクだけが対象。**
+ * 色の分からない品番（色欄が空）と、色の分からない「少ない」は、外すより候補に残す
+ * （印が付かないと、頼むべき品番を見落とす）
+ */
+function isNeeded(toner: LinkedToner, low: Set<string>): boolean {
+  if (low.size === 0 || toner.part !== 'TONER') return false;
+  if (low.has(ANY_COLOR) || toner.colors.length === 0) return true;
+  return toner.colors.some((color) => low.has(color));
+}
+
+/**
+ * **注文が要る台。** 頼む品番がどれも、この拠点に在庫 0 本で、注文中も無い。
+ * 在庫 0 でも注文中なら、届くのを待てばよいので数えない（二重に頼まないため）。
+ * 頼む品番が紐づいていない台は「分からない」なので数えない（欄に「品番が未登録」と出す）
+ */
+function needsOrder(row: Row): boolean {
+  if (!row.printer) return false;
+  const low = lowColors(row.printer.readings, row.printer.alerts);
+  const needed = row.toners.filter((toner) => isNeeded(toner, low));
+  return (
+    needed.length > 0 &&
+    needed.every((toner) => toner.stock <= 0 && toner.onOrder <= 0)
+  );
+}
+
 /** 台帳に実機と印刷枚数をぶら下げた 1 行。取れないものは null */
 type Row = {
   id: number;
@@ -187,6 +415,13 @@ type Row = {
   maintEndOn: string | null;
   /** 保守金額（円）。修理費用と並べて契約の損得を見る */
   maintFee: number | null;
+  /**
+   * 毎日チェックする機器か（トナー・インクを自分で発注する機器）。
+   * 付いている台は一覧の上の「毎日チェック」の表にも並ぶ
+   */
+  dailyCheck: boolean;
+  /** 紐づけた品番と、この台の拠点の在庫。毎日チェックの「品番・在庫」に出す */
+  toners: LinkedToner[];
   /**
    * 実際に頼む先。台帳で指定していればそれ、無ければメーカーの既定。
    * 保守が「有」の行にだけ出す（切れている機器の連絡先を出しても掛け直せない）
@@ -346,6 +581,33 @@ const show = (value: number | null | undefined) =>
   value === null || value === undefined ? '' : num.format(value);
 
 /**
+ * 毎日チェックの表に出す取得時刻。年と秒を落として「10/6 12:30」にする。
+ * **今日の値でなければ色を変える** —— 定期の取り直しは 12:30 なので、朝に見ると
+ * 前の日の残量が並んでいる。それと知らずに「まだある」と読まないため
+ */
+function shortWhen(iso: string | null | undefined) {
+  if (!iso) return <span className="dt-muted">—</span>;
+  const at = new Date(iso);
+  const today = at.toDateString() === new Date().toDateString();
+  return (
+    <span
+      className={today ? undefined : 'dt-daily-stale'}
+      title={
+        at.toLocaleString('ja-JP') +
+        (today ? '' : '\n今日はまだ取得していません。「取得し直す」で今の残量になります')
+      }
+    >
+      {at.toLocaleString('ja-JP', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+    </span>
+  );
+}
+
+/**
  * 一覧に出す消耗品を絞る。
  * 種別を返さない機種はトナーとドラムを分けられず、どちらも同じ色を名乗るので、
  * そのまま並べると「K 100%」と「K 0%」が混ざって読めない。
@@ -409,7 +671,14 @@ function levelTitle(supply: SupplyReading): string {
     : text;
 }
 
-function SupplyCell({ readings }: { readings: SupplyReading[] }) {
+function SupplyCell({
+  readings,
+  alerts,
+}: {
+  readings: SupplyReading[];
+  /** 機器の警告。残量を返さない機種（Canon は 100% のまま）の「残りわずか」をここから拾う */
+  alerts: Alert[];
+}) {
   // 交換部品は隣の列にまとめて出すので、ここではトナー・インクだけを見る。
   // 種別を返さない機種は分けられないため、そのときだけ全件が対象になる
   const { shown, rest } = tonerRow(readings.filter((supply) => !isPart(supply)));
@@ -421,30 +690,47 @@ function SupplyCell({ readings }: { readings: SupplyReading[] }) {
 
   return (
     <span className="dt-supplies">
-      {ordered.map((supply) => (
-        <span className="dt-supply" key={supply.id} title={levelTitle(supply)}>
+      {ordered.map((supply) => {
+        // 少ないものは札ごと色を付ける。注文するかどうかをここで決めるので、文字の色だけでは弱い
+        const { level, reasons } = supplyLevel(supply, alerts);
+        const title = [
+          levelTitle(supply),
+          level
+            ? `${TONER_LEVEL_LABEL[level]}（残り ${
+                level === 'empty' ? TONER_EMPTY_PERCENT : TONER_LOW_PERCENT
+              }% 以下、または機器の警告）`
+            : null,
+          ...reasons.map((reason) => `機器の警告: ${reason}`),
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        return (
           <span
-            className="dt-dot"
-            style={{
-              background: COLORANT_HEX[supply.colorant?.toLowerCase() ?? ''] ?? '#c3ccd4',
-            }}
-            aria-hidden
-          />
-          {shortName(supply)}
-          <span
-            className={
-              // 取れなかった項目は交換部品の欄と同じ扱いにする（値ではないので控えめに）
-              isUnknownLevel(supply)
-                ? 'dt-muted'
-                : supply.percent !== null && supply.percent <= 20
-                  ? 'dt-low'
-                  : undefined
-            }
+            className={level ? `dt-supply dt-supply-${level}` : 'dt-supply'}
+            key={supply.id}
+            title={title}
           >
-            {levelText(supply)}
+            <span
+              className="dt-dot"
+              style={{
+                background: COLORANT_HEX[supply.colorant?.toLowerCase() ?? ''] ?? '#c3ccd4',
+              }}
+              aria-hidden
+            />
+            {shortName(supply)}
+            {/* 取れなかった項目は交換部品の欄と同じ扱いにする（値ではないので控えめに） */}
+            <span className={isUnknownLevel(supply) ? 'dt-muted' : undefined}>
+              {levelText(supply)}
+            </span>
+            {/*
+              * 色が見分けにくい人にも分かるよう、少ないものには文字でも添える。
+              * 4 色並ぶカラー機で札が伸びないよう短くする（詳しくは title）
+              */}
+            {level && <span className="dt-supply-flag">{TONER_LEVEL_SHORT[level]}</span>}
           </span>
-        </span>
-      ))}
+        );
+      })}
 
       {rest.length > 0 && (
         <span className="dt-supply" title={rest.map(levelTitle).join('\n')}>
@@ -599,6 +885,84 @@ function AlertCell({
 }
 
 /**
+ * 毎日チェックの「品番・在庫」。紐づけた品番を並べ、**この台の拠点の在庫**を添える。
+ *
+ * 残りの少ない色に使う品番には印を付けて、横の残量の札と目で結べるようにする。
+ * 在庫の色はトナー個数状況と同じ（0 本は赤、警告本数以下はオレンジ）。
+ * 「少ない色の品番が在庫 0」なら注文が要る、在庫があれば替えればよい、と読める
+ */
+function StockCell({
+  toners,
+  low,
+  site,
+}: {
+  toners: LinkedToner[];
+  /** 残りの少ない色（`lowColors`） */
+  low: Set<string>;
+  /** 在庫を数えている拠点の名前。説明に出す */
+  site: string;
+}) {
+  if (toners.length === 0) {
+    return (
+      <span
+        className={low.size > 0 ? 'dt-stock-none dt-stock-none-need' : 'dt-stock-none'}
+        title="トナー登録でこの台に品番を紐づけると、ここに品番と在庫が出ます"
+      >
+        品番が未登録
+      </span>
+    );
+  }
+
+  return (
+    <span className="dt-stocks">
+      {toners.map((toner) => {
+        const need = isNeeded(toner, low);
+        const state = stockState(toner);
+        const dot = toner.colors.length === 1 ? COLORANT_HEX[toner.colors[0]] : undefined;
+        const ordered = toner.onOrder > 0;
+        const title = [
+          `${toner.name ?? toner.id}${toner.recycled ? '（リサイクル品）' : ''}`,
+          `${site}の在庫 ${toner.stock} 本` +
+            (toner.alertThreshold !== null ? `（${toner.alertThreshold} 本以下で警告）` : ''),
+          ordered ? `注文中 ${toner.onOrder} 本（まだ入荷していない注文）` : null,
+          need
+            ? toner.stock <= 0 && !ordered
+              ? '残りの少ない色に使う品番です。在庫も注文中も無いので、注文が要ります'
+              : '残りの少ない色に使う品番です'
+            : null,
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        return (
+          <span
+            key={toner.id}
+            className={[
+              'dt-stock',
+              need ? 'dt-stock-need' : '',
+              state ? `dt-stock-${state}` : '',
+              // 在庫 0 でも注文中なら、赤（要注文）にしない
+              ordered ? 'dt-stock-ordered' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            title={title}
+          >
+            {dot && <span className="dt-dot" style={{ background: dot }} aria-hidden />}
+            {toner.part !== 'TONER' && (
+              <span className="dt-stock-part">{PART_SHORT[toner.part]}</span>
+            )}
+            <span className="dt-mono">{toner.id}</span>
+            <span className="dt-stock-qty">在庫 {toner.stock}</span>
+            {ordered && <span className="dt-stock-onorder">注文中 {toner.onOrder}</span>}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
  * 一覧に出す保守業者。**保守が「有」の行にだけ出す。**
  * 切れている契約の連絡先を並べても掛ける先が違うため
  */
@@ -741,6 +1105,8 @@ const CSV_COLUMNS: { label: string; value: (row: Row) => CsvValue }[] = [
   { label: '拠点', value: (row) => row.company?.name ?? null },
   { label: '部署', value: (row) => row.department },
   { label: 'No.', value: (row) => row.no },
+  // 表では ★ で出しているので、ファイルでは ○ にする
+  { label: '毎日チェック', value: (row) => (row.dailyCheck ? '○' : null) },
   { label: 'IP アドレス', value: (row) => row.ipAddress },
   { label: 'メーカー', value: (row) => row.maker },
   { label: '型番', value: (row) => row.model },
@@ -793,10 +1159,40 @@ const CSV_COLUMNS: { label: string; value: (row: Row) => CsvValue }[] = [
   { label: '直近 1 日', value: (row) => row.latest?.pages ?? null },
   { label: 'モノクロ', value: (row) => row.latest?.monoPages ?? null },
   { label: 'カラー', value: (row) => row.latest?.colorPages ?? null },
+  // 表では札の色で示している。少なくなければ空欄
+  {
+    label: 'トナー・インクの残り',
+    value: (row) => {
+      const level = rowTonerLevel(row);
+      return level ? TONER_LEVEL_LABEL[level] : null;
+    },
+  },
   {
     label: 'トナー・インク',
     value: (row) =>
       row.printer ? suppliesText(row.printer.readings.filter((s) => !isPart(s))) : '',
+  },
+  // 在庫はその台の拠点の本数。表では色で示している「少ない色の品番」は印（*）にする
+  {
+    label: '品番・在庫（その拠点）',
+    value: (row) => {
+      if (row.toners.length === 0) return null;
+      const low = row.printer
+        ? lowColors(row.printer.readings, row.printer.alerts)
+        : new Set<string>();
+      return row.toners
+        .map(
+          (toner) =>
+            `${isNeeded(toner, low) ? '*' : ''}${toner.id} 在庫 ${toner.stock}` +
+            (toner.onOrder > 0 ? ` 注文中 ${toner.onOrder}` : ''),
+        )
+        .join(' / ');
+    },
+  },
+  // 少ない色の品番に在庫も注文中も無い台。表では見出しの札と赤い枠で示している
+  {
+    label: '要注文',
+    value: (row) => (needsOrder(row) ? '○' : null),
   },
   {
     label: '交換部品',
@@ -817,13 +1213,15 @@ const CSV_COLUMNS: { label: string; value: (row: Row) => CsvValue }[] = [
 
 export default function PrinterListScreen() {
   const [rows, setRows] = useState<Row[]>([]);
+  /** 台帳の IP が空で、一覧から外した台の数。黙って減らさないよう見出しに出す */
+  const [noIp, setNoIp] = useState(0);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: 'department',
     dir: 'asc',
   });
-  const [filter, setFilter] = useState<'all' | 'due' | 'maint' | 'live' | 'blank'>(
-    'all',
-  );
+  const [filter, setFilter] = useState<
+    'all' | 'toner' | 'due' | 'maint' | 'live' | 'blank'
+  >('all');
   /** 探す文字。**取ってある行をこの場で絞るだけで、API は叩かない** */
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
@@ -837,9 +1235,18 @@ export default function PrinterListScreen() {
    */
   const [fetching, setFetching] = useState<Record<number, boolean>>({});
 
+  /*
+   * **台帳の IP が空の台は出さない**（両方の表とも）。問い合わせる先が無く、
+   * 機器の状態がいつまでも空欄のまま並ぶだけなので。
+   * 落とすのは画面側で、API（overview）は全台を返す ——印刷状況の
+   * 「集計表用にコピー」が同じ口を全台・No. の順で読むため
+   */
   const load = useCallback(async () => {
     try {
-      setRows(await request<Row[]>('/printer-assets/overview'));
+      const all = await request<Row[]>('/printer-assets/overview');
+      const addressed = all.filter((row) => row.ipAddress !== null);
+      setRows(addressed);
+      setNoIp(all.length - addressed.length);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -874,6 +1281,8 @@ export default function PrinterListScreen() {
   const base = useMemo(
     () =>
       rows.filter((row) => {
+        // 毎日チェックの印が無い台も含めて、残りの少ない台を探すため
+        if (filter === 'toner') return rowTonerLevel(row) !== null;
         if (filter === 'due') {
           return (
             row.printer !== null && partState(row.printer.readings, row.printer.alerts) !== null
@@ -913,6 +1322,8 @@ export default function PrinterListScreen() {
           row.printer?.serialNumber,
           row.printer?.ipAddress,
           row.effectiveVendor?.name,
+          // 紐づけた品番。箱の品番から「この品番を使う台」を引けるように
+          ...row.toners.map((toner) => toner.id),
         ],
         words,
       ),
@@ -945,6 +1356,7 @@ export default function PrinterListScreen() {
       }).length,
       due: rows.filter((r) => r.printer && partState(r.printer.readings, r.printer.alerts) === 'due').length,
       soon: rows.filter((r) => r.printer && partState(r.printer.readings, r.printer.alerts) === 'soon').length,
+      toner: rows.filter((r) => rowTonerLevel(r) !== null).length,
       /*
        * 一括で問い合わせる先の数。ボタンに出すので、実際に投げる数と揃える。
        * 同じ IP の台帳が複数あるので重複を除き、ENQ でしか読めない機種は数えない
@@ -959,15 +1371,92 @@ export default function PrinterListScreen() {
   );
 
   /**
+   * 毎日チェックの台。**上の絞り込みと探す欄は当てない**（毎日同じ台を見るための表なので）。
+   *
+   * 並びは**トナー・インクの残りが少ない順**（すぐ交換 → 注文の目安 → それ以外）、
+   * 同じ具合の中は部署・No. の順。注文が要る台が上に来るので、上から見ていけばよい
+   */
+  const daily = useMemo(() => {
+    const rank = (level: TonerLevel | null) =>
+      level === 'empty' ? 0 : level === 'low' ? 1 : 2;
+
+    return rows
+      .filter((row) => row.dailyCheck)
+      .map((row) => ({ row, level: rowTonerLevel(row) }))
+      .sort(
+        (a, b) =>
+          rank(a.level) - rank(b.level) ||
+          (a.row.department ?? '').localeCompare(b.row.department ?? '', 'ja') ||
+          (a.row.no ?? '').localeCompare(b.row.no ?? '', 'ja', { numeric: true }) ||
+          a.row.id - b.row.id,
+      );
+  }, [rows]);
+
+  const dailyCounts = useMemo(
+    () => ({
+      empty: daily.filter((item) => item.level === 'empty').length,
+      low: daily.filter((item) => item.level === 'low').length,
+      /** 少ない色の品番に、その拠点の在庫も注文中も無い台。注文が要る */
+      needsOrder: daily.filter((item) => needsOrder(item.row)).length,
+      /*
+       * 残量を読めていない台。「少ないものはありません」と言い切らないために数える
+       * （一度も取れていない台と、最後の問い合わせで応答しなかった台）
+       */
+      unread: daily.filter((item) => item.row.printer === null || !item.row.printer.reachable)
+        .length,
+      /**
+       * まとめて取り直す先の数。ボタンに出すので、`fetchFromLedger` が実際に投げる数
+       * （IP あり・ENQ でしか読めない機種を除く・IP の重複なし）と揃える
+       */
+      pollable: new Set(
+        daily
+          .filter((item) => item.row.ipAddress !== null && !isEnqOnly(item.row))
+          .map((item) => item.row.ipAddress),
+      ).size,
+    }),
+    [daily],
+  );
+
+  /**
+   * ★ の付け外し。**押した時点で保存する**（他の列は送らず、台帳の更新日も動かない）。
+   * 読み直さずに手元の行だけ書き換える。一覧を取り直すと SATO の読んだ結果などが
+   * 入れ替わって見えるうえ、78 台ぶんの消耗品を読み直すほどのことではないため
+   */
+  const toggleDailyCheck = async (row: Row) => {
+    const label = `${row.department ?? '部署未設定'} No.${row.no ?? '—'}`;
+    const on = !row.dailyCheck;
+
+    setError(null);
+    setNotice(null);
+    try {
+      await saveDailyCheck(row.id, on);
+      setRows((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, dailyCheck: on } : item)),
+      );
+      setNotice(
+        on
+          ? `${label} を毎日チェックに入れました（上の表に並びます）`
+          : `${label} を毎日チェックから外しました`,
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  /**
    * 台帳の IP をまとめて問い合わせ、取れたものだけ機器として登録する。
    * 同じ IP を持つ台帳が複数あるので（No.041 と No.051）、重複は除いて 1 回にする。
    *
    * **ENQ でしか読めない機種はここに含めない**（下の ENQ_ONLY 参照）。
    * まとめて問い合わせるのは SNMP なので、持っていない機種に投げても
    * 待ち時間が伸びるだけで何も取れない。あちらは行ごとの「状態を読む」で読む。
+   *
+   * 毎日チェックの表の「取得し直す」も同じ入口を使い、その台だけを渡す
+   * （定期の取り直しは 12:30 なので、朝に見ると前の日の残量になっている）。
+   * `scope` は知らせに添える呼び名（「毎日チェック」）
    */
-  const fetchFromLedger = async () => {
-    const addressed = rows.filter(
+  const fetchFromLedger = async (source: Row[] = rows, scope = '') => {
+    const addressed = source.filter(
       (row): row is Row & { ipAddress: string } => row.ipAddress !== null,
     );
     const targets = [
@@ -980,7 +1469,11 @@ export default function PrinterListScreen() {
     );
 
     if (targets.length === 0) {
-      setError('IP アドレスを持つ台帳がありません');
+      setError(
+        scope
+          ? `${scope}の機器に、SNMP で問い合わせられる IP アドレスがありません`
+          : 'IP アドレスを持つ台帳がありません',
+      );
       return;
     }
 
@@ -998,7 +1491,7 @@ export default function PrinterListScreen() {
 
       const ok = results.filter((r) => r.status === 'registered').length;
       setNotice(
-        `${targets.length} 件の IP に問い合わせ、${ok} 台から取得できました` +
+        `${scope ? `${scope}の ` : ''}${targets.length} 件の IP に問い合わせ、${ok} 台から取得できました` +
           `（応答なし ${results.length - ok} 台）` +
           // 黙って外すと「いつまでも出てこない」と見えるので、外した数を必ず添える
           (skipped.size > 0
@@ -1345,18 +1838,216 @@ export default function PrinterListScreen() {
       <header className="dt-head">
         <h1>機器一覧</h1>
         <p>
-          端末台帳の全 {counts.total} 台に、その IP から取得した実機の情報と直近の印刷枚数を
-          突き合わせた一覧です。一度も取得できていない機器（IP が無い、応答がない）は、
+          端末台帳のうち IP アドレスのある {counts.total} 台に、その IP から取得した実機の情報と
+          直近の印刷枚数を突き合わせた一覧です。一度も取得できていない機器（応答がない）は、
           機器情報と枚数の欄が空欄になります。一度取得できた機器は、その後応答しなくなっても
           前回の情報を残します。いつ取れた情報かは「取得できた時刻」で分かります。
+          {noIp > 0 &&
+            `プリンター登録で IP アドレスが未入力の ${noIp} 台は、問い合わせる先が無いので` +
+              'ここには出していません（毎日チェックの表にも出ません）。IP を入れると並びます。'}
         </p>
       </header>
+
+      {/*
+        * 毎日チェックの表。トナー・インクを自分で発注する機器だけを、残りの少ない順に並べる。
+        * 下の一覧の絞り込み・探す欄は当てない（毎日同じ台を見るための表なので）
+        */}
+      <section className="dt-daily" aria-labelledby="dt-daily-title">
+        <div className="dt-daily-head">
+          <h2 id="dt-daily-title">
+            <span className="dt-daily-star" aria-hidden>
+              ★
+            </span>
+            毎日チェック（{daily.length} 台）
+          </h2>
+
+          {daily.length > 0 && (
+            <span className="dt-daily-tags">
+              {dailyCounts.empty > 0 && (
+                <span className="dt-daily-tag dt-daily-tag-empty">
+                  すぐ交換 {dailyCounts.empty} 台
+                </span>
+              )}
+              {dailyCounts.low > 0 && (
+                <span className="dt-daily-tag dt-daily-tag-low">
+                  注文の目安 {dailyCounts.low} 台
+                </span>
+              )}
+              {dailyCounts.needsOrder > 0 && (
+                <span
+                  className="dt-daily-tag dt-daily-tag-nostock"
+                  title="残りの少ない色に使う品番が、その台の拠点に在庫 0 本で、注文中もありません。注文が要ります"
+                >
+                  要注文 {dailyCounts.needsOrder} 台
+                </span>
+              )}
+              {dailyCounts.empty + dailyCounts.low === 0 && (
+                <span className="dt-daily-tag dt-daily-tag-ok">残りの少ないものはありません</span>
+              )}
+              {/* 読めていない台があるのに「ありません」とだけ言わないよう、並べて出す */}
+              {dailyCounts.unread > 0 && (
+                <span
+                  className="dt-daily-tag dt-daily-tag-unread"
+                  title="一度も取得できていない台と、最後の問い合わせで応答しなかった台です。残量は前回取れたときのものか、空欄です"
+                >
+                  応答なし・未取得 {dailyCounts.unread} 台
+                </span>
+              )}
+            </span>
+          )}
+
+          <span className="dt-daily-tools">
+            <button
+              onClick={() =>
+                void fetchFromLedger(
+                  daily.map((item) => item.row),
+                  '毎日チェック',
+                )
+              }
+              disabled={busy || dailyCounts.pollable === 0}
+              type="button"
+              title="毎日チェックの台だけに問い合わせて、残量を今の値にします。定期の取り直しは 12:30 なので、朝は前の日の値になっています"
+            >
+              {busy ? '取得中…' : `この ${dailyCounts.pollable} 台を取得し直す`}
+            </button>
+            <CsvButton
+              name="プリンター状況_毎日チェック"
+              label="CSV で保存（毎日チェック）"
+              header={CSV_COLUMNS.map((col) => col.label)}
+              rows={() => daily.map(({ row }) => CSV_COLUMNS.map((col) => col.value(row)))}
+              count={daily.length}
+              title="毎日チェックの台を、この表の並び（残りの少ない順）で CSV に保存します"
+            />
+          </span>
+        </div>
+
+        <p className="dt-daily-legend">
+          <span className="dt-supply dt-supply-empty">
+            <span className="dt-dot" style={{ background: COLORANT_HEX.black }} aria-hidden />K 3%
+            <span className="dt-supply-flag">{TONER_LEVEL_SHORT.empty}</span>
+          </span>
+          すぐ交換（残り {TONER_EMPTY_PERCENT}% 以下）
+          <span className="dt-supply dt-supply-low">
+            <span className="dt-dot" style={{ background: COLORANT_HEX.cyan }} aria-hidden />C 15%
+            <span className="dt-supply-flag">{TONER_LEVEL_SHORT.low}</span>
+          </span>
+          注文の目安（残り {TONER_LOW_PERCENT}% 以下）
+          <span className="dt-legend-note">
+            残量を数値で返さない機種（Canon iR-ADV は入っている間ずっと 100%）は、
+            機器が出す「残りわずか」「交換してください」の警告で色を付けます。
+            「あり」「不明」は量が分からないので色を付けません。
+            印は下の一覧の ☆ か、プリンター登録の「毎日チェックする」で付け外しします。
+          </span>
+        </p>
+
+        {daily.length === 0 ? (
+          <p className="dt-daily-empty">
+            毎日チェックする機器はまだありません。トナー・インクを自分で発注する機器に、
+            下の一覧の ☆ を押して印を付けると、ここに残りの少ない順で並びます。
+          </p>
+        ) : (
+          <TableBox className="dt-wrap dt-wrap-short" memoryKey="printers.daily">
+            <table className="dt-table">
+              {/*
+                * 列は「どの台か → 何を頼むか（機種）→ どれだけ残っているか」の順。
+                * 注文を決めるのに要る列を左に寄せ、窓が狭くても横に送らずに読めるようにする
+                */}
+              <thead>
+                <tr>
+                  <th className="dt-plain">毎日</th>
+                  <th className="dt-plain">拠点</th>
+                  <th className="dt-plain">部署</th>
+                  <th className="dt-plain">No.</th>
+                  <th className="dt-plain">機種</th>
+                  <th className="dt-plain">トナー・インク</th>
+                  <th className="dt-plain">品番・在庫（その拠点）</th>
+                  <th className="dt-plain">交換部品</th>
+                  <th className="dt-plain">取得できた時刻</th>
+                  <th className="dt-plain">状態</th>
+                  <th className="dt-plain">取得</th>
+                  <th className="dt-plain">警告</th>
+                </tr>
+              </thead>
+              <tbody>
+                {daily.map(({ row, level }) => (
+                  <tr
+                    key={row.id}
+                    className={
+                      level
+                        ? `dt-row-toner-${level}`
+                        : row.printer === null
+                          ? 'dt-down'
+                          : undefined
+                    }
+                  >
+                    <td>
+                      <DailyCheckStar
+                        on={row.dailyCheck}
+                        label={`${row.department ?? '部署未設定'} No.${row.no ?? '—'}`}
+                        onToggle={() => void toggleDailyCheck(row)}
+                      />
+                    </td>
+                    <td>{cellOf(row, 'company')}</td>
+                    <td>{row.department ?? ''}</td>
+                    <td>{row.no ?? ''}</td>
+                    <td>{[row.maker, row.model].filter(Boolean).join(' ')}</td>
+                    <td className="dt-daily-toner">
+                      {row.printer && row.printer.readings.length > 0 ? (
+                        <SupplyCell readings={row.printer.readings} alerts={row.printer.alerts} />
+                      ) : (
+                        <span className="dt-muted">—</span>
+                      )}
+                    </td>
+                    <td className="dt-daily-stock">
+                      <StockCell
+                        toners={row.toners}
+                        low={
+                          row.printer
+                            ? lowColors(row.printer.readings, row.printer.alerts)
+                            : new Set()
+                        }
+                        site={row.company?.name ?? 'この拠点'}
+                      />
+                    </td>
+                    <td>{row.printer ? <PartCell readings={row.printer.readings} /> : ''}</td>
+                    <td className="dt-daily-when">{shortWhen(row.printer?.lastSuccessAt)}</td>
+                    <td>{cellOf(row, 'state')}</td>
+                    <td className="pl-ops">
+                      <button
+                        onClick={() => void fetchOne(row)}
+                        disabled={busy || fetching[row.id] || !canPoll(row)}
+                        title={fetchTitle(row)}
+                        type="button"
+                      >
+                        {fetching[row.id] ? '取得中…' : '取得'}
+                      </button>
+                    </td>
+                    <td className="dt-daily-alerts">
+                      {row.printer ? (
+                        <AlertCell
+                          alerts={row.printer.alerts}
+                          consoleText={row.printer.consoleText}
+                        />
+                      ) : (
+                        ''
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableBox>
+        )}
+      </section>
 
       <div className="dt-tools">
         <label>
           <span>絞り込み</span>
           <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
             <option value="all">すべて（{counts.total} 台）</option>
+            <option value="toner">
+              トナー・インクが少ない（{counts.toner} 台）
+            </option>
             <option value="due">
               交換部品に注意（{counts.due + counts.soon} 台）
             </option>
@@ -1371,7 +2062,7 @@ export default function PrinterListScreen() {
         <SearchBox
           value={query}
           onChange={setQuery}
-          placeholder="部署・No.・IP・メーカー・型番・シリアル"
+          placeholder="部署・No.・IP・メーカー・型番・シリアル・品番"
           count={shown.length}
           total={base.length}
           unit="台"
@@ -1387,6 +2078,7 @@ export default function PrinterListScreen() {
 
         <CsvButton
           name="プリンター状況"
+          label="CSV で保存（下の一覧）"
           header={CSV_COLUMNS.map((col) => col.label)}
           rows={() => shown.map((row) => CSV_COLUMNS.map((col) => col.value(row)))}
           count={shown.length}
@@ -1433,6 +2125,8 @@ export default function PrinterListScreen() {
         トナーが入っている間は常に 100% を返すため、この 100% は「まだ十分ある」ではなく
         「入っている」という意味です。残りを枚数で持っている機種（富士ゼロックスなど）は実際の値です。
         ドラム・定着など交換部品の残量は、Canon も実際の値を返します。
+        残りの少ないトナー・インクは、上の毎日チェックと同じく札に色を付けます
+        （{TONER_EMPTY_PERCENT}% 以下は赤、{TONER_LOW_PERCENT}% 以下は黄。機器の「残りわずか」の警告も含む）。
       </p>
 
       <p className="dt-hint">
@@ -1446,6 +2140,10 @@ export default function PrinterListScreen() {
           <table className="dt-table">
             <thead>
               <tr className="dt-group-row">
+                {/* 毎日チェックの ★。押すと上の表に入る／外れる */}
+                <th className="dt-plain" rowSpan={2}>
+                  毎日
+                </th>
                 {/* 行ごとの取得。並べ替えの対象ではないので COLUMNS の外に置く */}
                 <th className="dt-plain" rowSpan={2}>
                   取得
@@ -1517,6 +2215,13 @@ export default function PrinterListScreen() {
                             : undefined
                   }
                 >
+                  <td>
+                    <DailyCheckStar
+                      on={row.dailyCheck}
+                      label={`${row.department ?? '部署未設定'} No.${row.no ?? '—'}`}
+                      onToggle={() => void toggleDailyCheck(row)}
+                    />
+                  </td>
                   <td className="pl-ops">
                     <button
                       onClick={() => void fetchOne(row)}
@@ -1545,7 +2250,7 @@ export default function PrinterListScreen() {
                   ))}
                   <td className="dt-group-sep">
                     {row.printer && row.printer.readings.length > 0 ? (
-                      <SupplyCell readings={row.printer.readings} />
+                      <SupplyCell readings={row.printer.readings} alerts={row.printer.alerts} />
                     ) : (
                       ''
                     )}

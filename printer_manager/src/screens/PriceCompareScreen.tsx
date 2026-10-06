@@ -19,11 +19,11 @@ import './PriceCompareScreen.css';
 
 /**
  * トナー価格比較。**見るだけの画面。** 入力はトナー登録（使っているトナーの価格）と
- * トナー情報登録（比較用の販売店ごとの値段）で行う。
+ * 比較用トナー登録（販売店ごとの値段）で行う。
  *
- * 上半分（OfferCompare）は、トナー登録の品番とトナー情報を 1 つの表に並べ、
+ * 上半分（OfferCompare）は、トナー登録の品番と比較用トナーを 1 つの表に並べ、
  * プリンターを選ぶとその台に使えるものを色ごとに比べる。
- * **トナー情報が出るのはこの画面だけ**（受付・注文・在庫などはトナー登録だけを使う）。
+ * **比較用トナーが出るのはこの画面だけ**（受付・注文・在庫などはトナー登録だけを使う）。
  *
  * 下半分はトナー登録の品番だけを見る、価格の推移と純正との差。
  *
@@ -602,7 +602,7 @@ export default function PriceCompareScreen() {
   const [limitHit, setLimitHit] = useState(false);
   const [measure, setMeasure] = useState<Measure>('costPerPage');
 
-  /** 比較用のトナー情報。上の表だけが使う。読めなかったときはトナー登録の品番だけで比べる */
+  /** 比較用トナー。上の表だけが使う。読めなかったときはトナー登録の品番だけで比べる */
   const [offers, setOffers] = useState<Offer[] | null>(null);
   const [offersError, setOffersError] = useState<string | null>(null);
   /** 上の表で選んでいるプリンター。'' / `asset:<id>` / `model:<key>` */
@@ -887,7 +887,7 @@ export default function PriceCompareScreen() {
           <h1>トナー価格比較</h1>
           <p>
             使っているプリンターに使えるトナーの値段を比べます。上の表は、トナー登録の品番
-            （実際に使っているトナー）と、トナー情報登録で入れた<strong>比較用のトナー</strong>
+            （実際に使っているトナー）と、<strong>比較用トナー登録</strong>で入れた値段を比べるためだけのトナー
             （販売店・購入形態ごとの値段）を並べたものです。プリンターを選ぶと、その台に使えるものを
             色ごとに並べ、今使っているトナーと 1 枚あたりで比べます。下は、トナー登録の品番の
             価格の推移と、純正とリサイクル品の組の比較です。

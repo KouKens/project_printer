@@ -9,6 +9,8 @@ import { hits, searchWords } from '../lib/search';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
 import { request } from '../lib/request';
+// 在庫の色分け。プリンター状況の「毎日チェック」と同じ判定を使う
+import { stockState } from '../lib/stock';
 import './DataTable.css';
 import './ModelTonerScreen.css';
 import { useCompany } from '../lib/company';
@@ -165,15 +167,6 @@ function ColorCell({ row }: { row: Row }) {
 function minStock(row: Row): number | null {
   if (row.toners.length === 0) return null;
   return Math.min(...row.toners.map((toner) => toner.stock));
-}
-
-/** 在庫の状態。0 は切らしているので赤、警告本数以下はオレンジ */
-function stockState(toner: ModelToner): 'out' | 'low' | null {
-  if (toner.stock <= 0) return 'out';
-  if (toner.alertThreshold !== null && toner.stock <= toner.alertThreshold) {
-    return 'low';
-  }
-  return null;
 }
 
 /** 台の呼び名。IP 未入力の台帳もあるので No. で代替する */

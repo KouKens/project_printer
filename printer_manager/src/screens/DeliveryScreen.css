@@ -29,6 +29,32 @@
 .dl-noorder { color: #6b4fa8; background: #f1edfa; }
 .dl-undated { color: #64748b; background: #f1f4f7; }
 
+/* --- 注文の入荷 --- */
+.dl-pending { color: #1f4f8b; background: #e9f0f9; }
+.dl-received { color: #1d6b48; background: #eef8f2; }
+/* 手動は、数が合わないまま人が入荷済みにしたもの。自動と見分けられる色にする */
+.dl-received-manual { color: #6b5410; background: #f6efd9; }
+.dl-receipt { white-space: nowrap; }
+.dl-receive {
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dl-receive:hover:not(:disabled) { background: #eef3f7; }
+.dl-receive:disabled { color: #a7b3bd; cursor: not-allowed; }
+
+/*
+ * 数が合わないまま手動で入荷済みにした行。人が確かめて片付いたので、
+ * 数の合わない行の赤・黄を弱めて、まだ手の要る行と見分けられるようにする
+ */
+.dt-table tbody tr.dl-row-settled td { background: #fbfaf5; }
+.dt-table tbody tr.dl-row-settled td:first-child { box-shadow: inset 3px 0 0 #c9b37a; }
+
 /* 差の本数。0 以外だけ目立たせる */
 .dl-diff { color: #b23a3a; font-weight: 600; }
 

@@ -196,7 +196,9 @@ export class TonerOffersService {
       include: { models: { orderBy: { id: 'asc' } } },
     });
     if (!row) {
-      throw new NotFoundException(`ID ${id} のトナー情報は登録されていません`);
+      throw new NotFoundException(
+        `ID ${id} の比較用トナーは登録されていません`,
+      );
     }
     return this.toResponse(row, await this.context());
   }
@@ -257,7 +259,9 @@ export class TonerOffersService {
       select: { id: true },
     });
     if (!found) {
-      throw new NotFoundException(`ID ${id} のトナー情報は登録されていません`);
+      throw new NotFoundException(
+        `ID ${id} の比較用トナーは登録されていません`,
+      );
     }
   }
 

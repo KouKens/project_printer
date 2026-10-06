@@ -52,6 +52,11 @@ export declare const CountLayout: {
     readonly COLOR_MONO: "COLOR_MONO";
 };
 export type CountLayout = (typeof CountLayout)[keyof typeof CountLayout];
+export declare const ReceiveMode: {
+    readonly AUTO: "AUTO";
+    readonly MANUAL: "MANUAL";
+};
+export type ReceiveMode = (typeof ReceiveMode)[keyof typeof ReceiveMode];
 export declare const OrderStatus: {
     readonly PENDING: "PENDING";
     readonly RECEIVED: "RECEIVED";

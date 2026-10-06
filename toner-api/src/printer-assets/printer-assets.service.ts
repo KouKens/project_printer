@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { fromDate, toDate, today } from '../common/date';
+import { SUPPLY_PARTS, SupplyPartInput } from '../common/supply-part';
 import { toText } from '../common/text';
 import { asIs, field, WriteMode } from '../common/write-mode';
 import { makerKey } from '../maint-vendors/maint-vendors.service';
@@ -124,6 +125,94 @@ function tonerColors(color: string | null): string[] {
     if (pattern.test(color)) return colors;
   }
   return [];
+}
+
+/** 未入荷の注文を引く鍵（品番 × 拠点）。在庫と同じ単位 */
+const pendingKey = (tonerId: string, companyId: number) =>
+  `${tonerId}\0${companyId}`;
+
+/**
+ * 未入荷の注文（status = PENDING）の本数を「品番 × 拠点」でまとめる。
+ * `groupBy` の結果を `linkedToners` が引ける形にするだけ
+ */
+export function pendingByToner(
+  rows: {
+    tonerId: string;
+    companyId: number;
+    _sum: { quantity: number | null };
+  }[],
+): Map<string, number> {
+  return new Map(
+    rows.map((row) => [
+      pendingKey(row.tonerId, row.companyId),
+      row._sum.quantity ?? 0,
+    ]),
+  );
+}
+
+/** 台帳に紐づけた品番 1 件。在庫は拠点ごとの行を全部持ってきて、台の拠点で選ぶ */
+type LinkedTonerSource = {
+  toner: {
+    id: string;
+    name: string | null;
+    color: string | null;
+    part: SupplyPartInput;
+    recycled: boolean;
+    alertThreshold: number | null;
+    stocks: { companyId: number; quantity: number }[];
+  };
+};
+
+/**
+ * その台に紐づけた品番と、**その台の拠点の在庫**。プリンター状況の「毎日チェック」が
+ * 残りの少ない色の横に出し、注文が要るか（在庫で替えられるか）をその場で決める。
+ *
+ * 在庫は「品番 × 拠点」なので、台が置いてある拠点の行を選ぶ。行が無ければ在庫 0
+ * （搬入して初めて行ができる）。他の拠点の在庫は足さない —— 取りに行けるとは限らない。
+ *
+ * 並びはトナー・インクを先に K C M Y、その後にドラム・廃トナー・メンテナンスボックス。
+ * 同じ色は純正を先に置く。`colors` は色欄を K C M Y の名前に畳んだもの
+ * （画面が実機の消耗品の色と突き合わせる。色欄が空なら空配列）。
+ *
+ * `onOrder` は未入荷の注文の本数（`pendingByToner` の結果）。在庫と同じく
+ * **台の拠点の分だけ**を数える。在庫 0 でも注文中なら、もう頼まなくてよい
+ */
+export function linkedToners(
+  links: LinkedTonerSource[],
+  companyId: number,
+  pending: ReadonlyMap<string, number> = new Map(),
+) {
+  const colorRank = (colors: string[]) => {
+    const index = COLOR_ORDER.indexOf(colors[0] ?? '');
+    return index < 0 ? COLOR_ORDER.length : index;
+  };
+
+  return links
+    .map(({ toner }) => {
+      const colors = tonerColors(toner.color);
+      return {
+        id: toner.id,
+        name: toner.name,
+        color: toner.color,
+        colors,
+        part: toner.part,
+        recycled: toner.recycled,
+        /** 在庫がこの本数以下なら少ない（トナー個数状況と同じ判定）。null は警告しない */
+        alertThreshold: toner.alertThreshold,
+        stock:
+          toner.stocks.find((row) => row.companyId === companyId)?.quantity ??
+          0,
+        /** この拠点の未入荷の注文の本数。入荷済み・取消は数えない */
+        onOrder: pending.get(pendingKey(toner.id, companyId)) ?? 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        SUPPLY_PARTS.indexOf(a.part) - SUPPLY_PARTS.indexOf(b.part) ||
+        colorRank(a.colors) - colorRank(b.colors) ||
+        Number(a.recycled) - Number(b.recycled) ||
+        a.id.localeCompare(b.id, 'ja', { numeric: true }),
+    );
 }
 
 /** 修理履歴のうち、一覧の集計に要る分だけ */
@@ -281,6 +370,8 @@ type AssetRow = {
   maintFee: number | null;
   note: string | null;
   countLayout: 'TOTAL' | 'MONO_COLOR' | 'COLOR_MONO';
+  /** 毎日チェックする機器か（トナー・インクを自分で発注する機器） */
+  dailyCheck: boolean;
   /** 無効にした日時。null なら有効 */
   disabledAt: Date | null;
   createdAt: Date;
@@ -364,44 +455,80 @@ export class PrinterAssetsService {
    * 取れないものは null で返す。画面はそれを空欄として出す。
    */
   async findOverview() {
-    const [assets, printers, dailies, repairs, byMaker] = await Promise.all([
-      // 無効にした台は出さない。今動いている機器を見る画面なので
-      this.prisma.printerAsset.findMany({
-        where: { disabledAt: null },
-        orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
-        include: { maintVendor: true, company: true },
-      }),
-      this.prisma.printer.findMany({
-        include: {
-          readings: { orderBy: { supplyIndex: 'asc' } },
-          alerts: { orderBy: { alertIndex: 'asc' } },
-        },
-      }),
-      /*
-       * 機器ごとの最新 1 件だけ要る。**絞り込みは DB 側で行う。**
-       * 日次の記録は 1 台につき 1 日 1 行ずつ増え続けるので、全期間を読んで
-       * 最新以外を捨てる形だと、運用した日数に比例して重くなる
-       */
-      this.prisma.pageCountDaily.findMany({
-        distinct: ['printerId'],
-        orderBy: [{ printerId: 'asc' }, { date: 'desc' }],
-      }),
-      // 修理は台帳に紐づくので、台帳ごとに数え直す
-      this.prisma.repairRecord.findMany({
-        select: {
-          printerAssetId: true,
-          handledBy: true,
-          restoredOn: true,
-          occurredOn: true,
-          cost: true,
-          status: true,
-        },
-      }),
-      this.vendorsByMaker(),
-    ]);
+    const [assets, printers, dailies, repairs, byMaker, pending] =
+      await Promise.all([
+        // 無効にした台は出さない。今動いている機器を見る画面なので
+        this.prisma.printerAsset.findMany({
+          where: { disabledAt: null },
+          orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
+          include: {
+            maintVendor: true,
+            company: true,
+            /*
+             * 毎日チェックの「品番・在庫」に出す紐づけ。**日々の画面なので、
+             * 無効にした品番と他の画面に出さない品番（hidden）は出さない**
+             * （トナー個数状況と同じ）。在庫は拠点ごとの行を全部読み、台の拠点で選ぶ
+             */
+            toners: {
+              where: { toner: { disabledAt: null, hidden: false } },
+              select: {
+                toner: {
+                  select: {
+                    id: true,
+                    name: true,
+                    color: true,
+                    part: true,
+                    recycled: true,
+                    alertThreshold: true,
+                    stocks: { select: { companyId: true, quantity: true } },
+                  },
+                },
+              },
+            },
+          },
+        }),
+        this.prisma.printer.findMany({
+          include: {
+            readings: { orderBy: { supplyIndex: 'asc' } },
+            alerts: { orderBy: { alertIndex: 'asc' } },
+          },
+        }),
+        /*
+         * 機器ごとの最新 1 件だけ要る。**絞り込みは DB 側で行う。**
+         * 日次の記録は 1 台につき 1 日 1 行ずつ増え続けるので、全期間を読んで
+         * 最新以外を捨てる形だと、運用した日数に比例して重くなる
+         */
+        this.prisma.pageCountDaily.findMany({
+          distinct: ['printerId'],
+          orderBy: [{ printerId: 'asc' }, { date: 'desc' }],
+        }),
+        // 修理は台帳に紐づくので、台帳ごとに数え直す
+        this.prisma.repairRecord.findMany({
+          select: {
+            printerAssetId: true,
+            handledBy: true,
+            restoredOn: true,
+            occurredOn: true,
+            cost: true,
+            status: true,
+          },
+        }),
+        this.vendorsByMaker(),
+        /*
+         * 毎日チェックの「注文中」。未入荷の注文を品番 × 拠点でまとめる。
+         * 搬入と本数が合えば入荷済みに変わる（toner-orders の reconcileOrders）ので、
+         * ここに残るのはまだ届いていない分だけ
+         */
+        this.prisma.tonerOrder.groupBy({
+          by: ['tonerId', 'companyId'],
+          where: { status: 'PENDING' },
+          _sum: { quantity: true },
+        }),
+      ]);
 
     const live = indexPrinters(printers, assets);
     const latest = new Map(dailies.map((row) => [row.printerId, row]));
+    const onOrder = pendingByToner(pending);
 
     const repairsByAsset = new Map<number, RepairSlice[]>();
     for (const repair of repairs) {
@@ -416,6 +543,8 @@ export class PrinterAssetsService {
 
       return {
         ...this.toResponse(asset, byMaker),
+        /** 紐づけた品番と、この台の拠点の在庫。K C M Y の順でトナー・インクが先 */
+        toners: linkedToners(asset.toners, asset.companyId, onOrder),
         repairs: this.countRepairs(asset, repairsByAsset.get(asset.id) ?? []),
         printer: printer
           ? {
@@ -831,6 +960,31 @@ export class PrinterAssetsService {
   }
 
   /**
+   * 毎日チェックの印を付ける／外す。一覧の ★ から呼ぶ。
+   *
+   * **更新日は動かさない。** 更新日は「実機を見て台帳を確かめた」記録で、
+   * 印を付け外ししただけで進むと、確かめていない台が確かめたように見える。
+   * Prisma は `@updatedAt` の列を update のたびに今の時刻にするので、
+   * 読んでおいた値を明示して書き戻す（明示した値はそのまま使われる）
+   */
+  async setDailyCheck(id: number, dailyCheck: boolean) {
+    const current = await this.prisma.printerAsset.findUnique({
+      where: { id },
+      select: { updatedAt: true },
+    });
+    if (!current) {
+      throw new NotFoundException(`ID ${id} の端末情報は登録されていません`);
+    }
+
+    const saved = await this.prisma.printerAsset.update({
+      where: { id },
+      data: { dailyCheck, updatedAt: current.updatedAt },
+      include: { maintVendor: true, company: true },
+    });
+    return this.toResponse(saved, await this.vendorsByMaker());
+  }
+
+  /**
    * 台帳から完全に消す。**無効にしたものだけ、修理履歴が無いときだけ。**
    *
    * 無効（`disabledAt`）が普段の止め方で、こちらは登録し間違えた行の後始末。
@@ -1106,6 +1260,7 @@ export class PrinterAssetsService {
       note: text(dto.note),
       // 入力欄が無い列。既定は集計表の 1 行ぶん（TOTAL）
       countLayout: field(mode, dto.countLayout, asIs, 'TOTAL' as const),
+      dailyCheck: field(mode, dto.dailyCheck, asIs, false),
     };
   }
 
@@ -1182,6 +1337,8 @@ export class PrinterAssetsService {
       maintFee: asset.maintFee,
       note: asset.note,
       countLayout: asset.countLayout,
+      /** 毎日チェックする機器か。プリンター状況の上の表に並ぶ */
+      dailyCheck: asset.dailyCheck,
       /** 無効にした日時。null なら有効。画面はこれで一覧を 2 つに分ける */
       disabledAt: asset.disabledAt,
       createdAt: asset.createdAt,

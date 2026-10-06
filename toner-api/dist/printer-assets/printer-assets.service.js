@@ -11,9 +11,12 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrinterAssetsService = void 0;
 exports.modelKey = modelKey;
+exports.pendingByToner = pendingByToner;
+exports.linkedToners = linkedToners;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const date_1 = require("../common/date");
+const supply_part_1 = require("../common/supply-part");
 const text_1 = require("../common/text");
 const write_mode_1 = require("../common/write-mode");
 const maint_vendors_service_1 = require("../maint-vendors/maint-vendors.service");
@@ -81,6 +84,39 @@ function tonerColors(color) {
     }
     return [];
 }
+const pendingKey = (tonerId, companyId) => `${tonerId}\0${companyId}`;
+function pendingByToner(rows) {
+    return new Map(rows.map((row) => [
+        pendingKey(row.tonerId, row.companyId),
+        row._sum.quantity ?? 0,
+    ]));
+}
+function linkedToners(links, companyId, pending = new Map()) {
+    const colorRank = (colors) => {
+        const index = COLOR_ORDER.indexOf(colors[0] ?? '');
+        return index < 0 ? COLOR_ORDER.length : index;
+    };
+    return links
+        .map(({ toner }) => {
+        const colors = tonerColors(toner.color);
+        return {
+            id: toner.id,
+            name: toner.name,
+            color: toner.color,
+            colors,
+            part: toner.part,
+            recycled: toner.recycled,
+            alertThreshold: toner.alertThreshold,
+            stock: toner.stocks.find((row) => row.companyId === companyId)?.quantity ??
+                0,
+            onOrder: pending.get(pendingKey(toner.id, companyId)) ?? 0,
+        };
+    })
+        .sort((a, b) => supply_part_1.SUPPLY_PARTS.indexOf(a.part) - supply_part_1.SUPPLY_PARTS.indexOf(b.part) ||
+        colorRank(a.colors) - colorRank(b.colors) ||
+        Number(a.recycled) - Number(b.recycled) ||
+        a.id.localeCompare(b.id, 'ja', { numeric: true }));
+}
 function withinMaint(repair, start, end) {
     const when = repair.restoredOn ?? repair.occurredOn;
     if (!when)
@@ -132,11 +168,30 @@ let PrinterAssetsService = class PrinterAssetsService {
         return assets.map((asset) => this.toResponse(asset, byMaker));
     }
     async findOverview() {
-        const [assets, printers, dailies, repairs, byMaker] = await Promise.all([
+        const [assets, printers, dailies, repairs, byMaker, pending] = await Promise.all([
             this.prisma.printerAsset.findMany({
                 where: { disabledAt: null },
                 orderBy: [{ department: 'asc' }, { no: 'asc' }, { id: 'asc' }],
-                include: { maintVendor: true, company: true },
+                include: {
+                    maintVendor: true,
+                    company: true,
+                    toners: {
+                        where: { toner: { disabledAt: null, hidden: false } },
+                        select: {
+                            toner: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    color: true,
+                                    part: true,
+                                    recycled: true,
+                                    alertThreshold: true,
+                                    stocks: { select: { companyId: true, quantity: true } },
+                                },
+                            },
+                        },
+                    },
+                },
             }),
             this.prisma.printer.findMany({
                 include: {
@@ -159,9 +214,15 @@ let PrinterAssetsService = class PrinterAssetsService {
                 },
             }),
             this.vendorsByMaker(),
+            this.prisma.tonerOrder.groupBy({
+                by: ['tonerId', 'companyId'],
+                where: { status: 'PENDING' },
+                _sum: { quantity: true },
+            }),
         ]);
         const live = (0, printer_match_1.indexPrinters)(printers, assets);
         const latest = new Map(dailies.map((row) => [row.printerId, row]));
+        const onOrder = pendingByToner(pending);
         const repairsByAsset = new Map();
         for (const repair of repairs) {
             const list = repairsByAsset.get(repair.printerAssetId) ?? [];
@@ -173,6 +234,7 @@ let PrinterAssetsService = class PrinterAssetsService {
             const daily = printer ? (latest.get(printer.id) ?? null) : null;
             return {
                 ...this.toResponse(asset, byMaker),
+                toners: linkedToners(asset.toners, asset.companyId, onOrder),
                 repairs: this.countRepairs(asset, repairsByAsset.get(asset.id) ?? []),
                 printer: printer
                     ? {
@@ -464,6 +526,21 @@ let PrinterAssetsService = class PrinterAssetsService {
         });
         return this.toResponse(saved, await this.vendorsByMaker());
     }
+    async setDailyCheck(id, dailyCheck) {
+        const current = await this.prisma.printerAsset.findUnique({
+            where: { id },
+            select: { updatedAt: true },
+        });
+        if (!current) {
+            throw new common_1.NotFoundException(`ID ${id} の端末情報は登録されていません`);
+        }
+        const saved = await this.prisma.printerAsset.update({
+            where: { id },
+            data: { dailyCheck, updatedAt: current.updatedAt },
+            include: { maintVendor: true, company: true },
+        });
+        return this.toResponse(saved, await this.vendorsByMaker());
+    }
     async remove(id) {
         const asset = await this.prisma.printerAsset.findUnique({
             where: { id },
@@ -613,6 +690,7 @@ let PrinterAssetsService = class PrinterAssetsService {
             maintFee: num(dto.maintFee),
             note: text(dto.note),
             countLayout: (0, write_mode_1.field)(mode, dto.countLayout, write_mode_1.asIs, 'TOTAL'),
+            dailyCheck: (0, write_mode_1.field)(mode, dto.dailyCheck, write_mode_1.asIs, false),
         };
     }
     async nextNo() {
@@ -667,6 +745,7 @@ let PrinterAssetsService = class PrinterAssetsService {
             maintFee: asset.maintFee,
             note: asset.note,
             countLayout: asset.countLayout,
+            dailyCheck: asset.dailyCheck,
             disabledAt: asset.disabledAt,
             createdAt: asset.createdAt,
             updatedAt: asset.updatedAt,

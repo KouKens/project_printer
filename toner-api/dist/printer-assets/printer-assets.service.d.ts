@@ -1,7 +1,40 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { SupplyPartInput } from '../common/supply-part';
 import { PrintersService } from '../printers/printers.service';
 import { CreatePrinterAssetDto } from './dto/create-printer-asset.dto';
 export declare function modelKey(maker: string | null, model: string | null): string;
+export declare function pendingByToner(rows: {
+    tonerId: string;
+    companyId: number;
+    _sum: {
+        quantity: number | null;
+    };
+}[]): Map<string, number>;
+type LinkedTonerSource = {
+    toner: {
+        id: string;
+        name: string | null;
+        color: string | null;
+        part: SupplyPartInput;
+        recycled: boolean;
+        alertThreshold: number | null;
+        stocks: {
+            companyId: number;
+            quantity: number;
+        }[];
+    };
+};
+export declare function linkedToners(links: LinkedTonerSource[], companyId: number, pending?: ReadonlyMap<string, number>): {
+    id: string;
+    name: string | null;
+    color: string | null;
+    colors: string[];
+    part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
+    recycled: boolean;
+    alertThreshold: number | null;
+    stock: number;
+    onOrder: number;
+}[];
 type TonerPrinter = {
     id: number;
     name: string | null;
@@ -84,6 +117,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -128,11 +162,23 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
     findOverview(): Promise<{
+        toners: {
+            id: string;
+            name: string | null;
+            color: string | null;
+            colors: string[];
+            part: "OTHER" | "TONER" | "DRUM" | "WASTE" | "MAINTENANCE";
+            recycled: boolean;
+            alertThreshold: number | null;
+            stock: number;
+            onOrder: number;
+        }[];
         repairs: {
             hasMaint: boolean;
             inHouse: number;
@@ -229,6 +275,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -296,6 +343,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -340,6 +388,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -442,6 +491,7 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -486,6 +536,52 @@ export declare class PrinterAssetsService {
         maintFee: number | null;
         note: string | null;
         countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
+        disabledAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    setDailyCheck(id: number, dailyCheck: boolean): Promise<{
+        id: number;
+        companyId: number;
+        company: {
+            id: number;
+            name: string;
+        } | null;
+        department: string | null;
+        no: string | null;
+        ipAddress: string | null;
+        maker: string | null;
+        model: string | null;
+        serialNumber: string | null;
+        purchasedOn: string | null;
+        purchasePrice: number | null;
+        contractNo: string | null;
+        maintVendorId: number | null;
+        maintVendor: {
+            id: number;
+            name: string;
+            phones: string[];
+        } | null;
+        effectiveVendor: {
+            source: "asset";
+            id: number;
+            name: string;
+            phones: string[];
+        } | {
+            source: "maker";
+            id: number;
+            name: string;
+            phones: string[];
+        } | null;
+        maintContract: string | null;
+        maintStartOn: string | null;
+        maintEndOn: string | null;
+        maintDealOn: string | null;
+        maintFee: number | null;
+        note: string | null;
+        countLayout: "TOTAL" | "MONO_COLOR" | "COLOR_MONO";
+        dailyCheck: boolean;
         disabledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;

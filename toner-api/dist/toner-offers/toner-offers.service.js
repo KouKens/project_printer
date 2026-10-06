@@ -95,7 +95,7 @@ let TonerOffersService = class TonerOffersService {
             include: { models: { orderBy: { id: 'asc' } } },
         });
         if (!row) {
-            throw new common_1.NotFoundException(`ID ${id} のトナー情報は登録されていません`);
+            throw new common_1.NotFoundException(`ID ${id} の比較用トナーは登録されていません`);
         }
         return this.toResponse(row, await this.context());
     }
@@ -141,7 +141,7 @@ let TonerOffersService = class TonerOffersService {
             select: { id: true },
         });
         if (!found) {
-            throw new common_1.NotFoundException(`ID ${id} のトナー情報は登録されていません`);
+            throw new common_1.NotFoundException(`ID ${id} の比較用トナーは登録されていません`);
         }
     }
     ensureDates(dto) {

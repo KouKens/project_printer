@@ -12,13 +12,13 @@ export declare class TonerEntriesController {
             name: string | null;
         };
     } & {
-        createdAt: Date;
         id: number;
-        companyId: number;
+        createdAt: Date;
         tonerId: string;
+        companyId: number;
+        quantity: number;
         userId: string;
         action: import("../generated/prisma/enums").TonerAction;
-        quantity: number;
         balance: number;
         receivedOn: Date | null;
     })[]>;
@@ -58,6 +58,7 @@ export declare class TonerEntriesController {
         stock: number;
         received: number;
         disposed: number;
+        ordersReopened: number;
     }>;
     stockTake(dto: StockTakeDto): Promise<import("./toner-entries.service").StockTakeRow[]>;
 }

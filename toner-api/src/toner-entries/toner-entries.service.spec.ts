@@ -189,7 +189,7 @@ describe('TonerEntriesService', () => {
               .mockResolvedValue({ id: 'T1', name: 'トナー黒', stocks: [] }),
           },
           tonerStock: { update: jest.fn(), upsert },
-          tonerEntry: { create: jest.fn() },
+          ...ordersMatching(0, 0),
         }),
       );
 
@@ -207,6 +207,95 @@ describe('TonerEntriesService', () => {
       expect(args.create.quantity).toBe(2);
       expect(args.create.received).toBe(2);
       expect(args.create.disposed).toBe(0);
+    });
+  });
+
+  /**
+   * 搬入の後に注文の入荷状態を決め直す（reconcileOrders）ための差し替え。
+   * 同じ拠点・品番・日付の注文の本数と、搬入の本数（今の 1 件を含む）を返す
+   */
+  function ordersMatching(ordered: number, arrived: number) {
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    return {
+      tonerEntry: {
+        create: jest.fn(),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: arrived } }),
+      },
+      tonerOrder: {
+        aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: ordered } }),
+        updateMany,
+      },
+    };
+  }
+
+  describe('搬入と注文の突き合わせ', () => {
+    function receiving(ordered: number, arrived: number) {
+      const parts = ordersMatching(ordered, arrived);
+      const prisma = txPrisma({
+        toner: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ id: 'T1', name: 'トナー黒', stocks: [] }),
+        },
+        tonerStock: {
+          upsert: jest
+            .fn()
+            .mockResolvedValue({ quantity: 2, received: 2, disposed: 0 }),
+        },
+        ...parts,
+      });
+      return { prisma, updateMany: parts.tonerOrder.updateMany };
+    }
+
+    it('搬入で注文と本数が合えば、その日の注文を入荷済み（自動）にする', async () => {
+      const { prisma, updateMany } = receiving(2, 2);
+      const service = await make(prisma);
+
+      const result = await service.create({
+        action: 'RECEIVE',
+        userId: 'u1',
+        companyId: 1,
+        tonerId: 'T1',
+        quantity: 2,
+        receivedOn: '2026-10-06',
+      });
+
+      const call = callArg<{
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }>(updateMany);
+      expect(call.where).toMatchObject({
+        companyId: 1,
+        tonerId: 'T1',
+        deliveryOn: new Date(Date.UTC(2026, 9, 6)),
+        status: 'PENDING',
+      });
+      expect(call.data).toMatchObject({
+        status: 'RECEIVED',
+        receiveMode: 'AUTO',
+      });
+      expect(result.ordersReceived).toBe(1);
+    });
+
+    it('本数が合わなければ入荷済みにしない（自動で入れたものだけ未入荷に戻す）', async () => {
+      const { prisma, updateMany } = receiving(3, 2);
+      const service = await make(prisma);
+
+      const result = await service.create({
+        action: 'RECEIVE',
+        userId: 'u1',
+        companyId: 1,
+        tonerId: 'T1',
+        quantity: 2,
+        receivedOn: '2026-10-06',
+      });
+
+      const call = callArg<{ where: Record<string, unknown> }>(updateMany);
+      expect(call.where).toMatchObject({
+        status: 'RECEIVED',
+        receiveMode: 'AUTO',
+      });
+      expect(result.ordersReceived).toBe(0);
     });
   });
 
@@ -288,6 +377,51 @@ describe('TonerEntriesService', () => {
       await expect(service.remove(5)).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
+    });
+
+    /**
+     * 搬入を取り消すと、その日の注文と本数が合わなくなる。
+     * 自動で入荷済みにしていた注文はそのとき未入荷に戻す
+     */
+    it('搬入を取り消したら、自動で入荷済みにした注文を未入荷に戻す', async () => {
+      const receivedOn = new Date(Date.UTC(2026, 9, 6));
+      // 注文 2 本に対して、取り消したあとの搬入は 0 本
+      const parts = ordersMatching(2, 0);
+      const service = await make(
+        txPrisma({
+          ...parts,
+          tonerEntry: {
+            ...parts.tonerEntry,
+            findUnique: jest.fn().mockResolvedValue({
+              ...disposeEntry,
+              action: 'RECEIVE',
+              quantity: 2,
+              receivedOn,
+            }),
+            delete: jest.fn(),
+          },
+          tonerStock: {
+            findUnique: jest
+              .fn()
+              .mockResolvedValue({ quantity: 2, received: 2, disposed: 0 }),
+            update: jest.fn(),
+          },
+        }),
+      );
+
+      const result = await service.remove(5);
+
+      const call = callArg<{
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }>(parts.tonerOrder.updateMany);
+      expect(call.where).toMatchObject({
+        deliveryOn: receivedOn,
+        status: 'RECEIVED',
+        receiveMode: 'AUTO',
+      });
+      expect(call.data).toMatchObject({ status: 'PENDING', receiveMode: null });
+      expect(result.ordersReopened).toBe(1);
     });
   });
 });

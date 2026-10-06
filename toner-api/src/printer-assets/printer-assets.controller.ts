@@ -9,7 +9,10 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CreatePrinterAssetDto } from './dto/create-printer-asset.dto';
+import {
+  CreatePrinterAssetDto,
+  DailyCheckDto,
+} from './dto/create-printer-asset.dto';
 import { PrinterAssetsService } from './printer-assets.service';
 
 /**
@@ -107,6 +110,18 @@ export class PrinterAssetsController {
   @Post(':id/enable')
   enable(@Param('id', ParseIntPipe) id: number) {
     return this.service.setDisabled(id, false);
+  }
+
+  /**
+   * 毎日チェックの印を付ける／外す。一覧の ★ から呼ぶ。
+   * 他の列には触らず、更新日も動かさない
+   */
+  @Post(':id/daily-check')
+  setDailyCheck(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DailyCheckDto,
+  ) {
+    return this.service.setDailyCheck(id, dto.dailyCheck);
   }
 
   /**

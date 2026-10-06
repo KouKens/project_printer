@@ -206,6 +206,8 @@ export const TonerOrderScalarFieldEnum = {
   orderedAt: 'orderedAt',
   deliveryOn: 'deliveryOn',
   status: 'status',
+  receivedAt: 'receivedAt',
+  receiveMode: 'receiveMode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -301,6 +303,7 @@ export const PrinterAssetScalarFieldEnum = {
   note: 'note',
   disabledAt: 'disabledAt',
   countLayout: 'countLayout',
+  dailyCheck: 'dailyCheck',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

@@ -37,7 +37,8 @@ import './DataTable.css';
 import './TonerOfferScreen.css';
 
 /**
- * トナー情報登録。**価格を比べるためだけの情報**を、販売店 × 買い方ごとに 1 件ずつ入れる。
+ * 比較用トナー登録。**価格を比べるためだけの情報**を、販売店 × 買い方ごとに 1 件ずつ入れる。
+ * コード上の名前は TonerOffer / `/toner-offers` のまま（以前の画面名は「トナー情報登録」）。
  *
  * ここに入れたものは**トナー価格比較にだけ出る。** 受付・注文・在庫・棚卸・請求書・
  * 運用コストはトナー登録（実際に使っているトナー）しか見ない。
@@ -831,7 +832,7 @@ export default function TonerOfferScreen() {
   const ledgerModels = useMemo(() => data?.models ?? [], [data]);
   const today = todayIso();
 
-  // 入力候補。登録済みのトナー情報（色はトナー登録の分も）から作る
+  // 入力候補。登録済みの比較用トナー（色はトナー登録の分も）から作る
   const sellers = useMemo(() => suggestions(offers.map((o) => o.seller)), [offers]);
   const brands = useMemo(() => suggestions(offers.map((o) => o.brand)), [offers]);
   const colors = useMemo(
@@ -971,7 +972,7 @@ export default function TonerOfferScreen() {
   const remove = async (offer: Offer) => {
     if (
       !window.confirm(
-        `${offer.code}（${offer.seller}）のトナー情報を削除します。元に戻せません。よろしいですか。`,
+        `比較用トナー ${offer.code}（${offer.seller}）を削除します。元に戻せません。よろしいですか。`,
       )
     ) {
       return;
@@ -1112,7 +1113,7 @@ export default function TonerOfferScreen() {
   return (
     <div className="dt to">
       <header className="dt-head">
-        <h1>トナー情報登録</h1>
+        <h1>比較用トナー登録</h1>
         <p>
           トナーを選び直すための材料として、<strong>販売店・購入形態ごとの値段と条件</strong>を登録します。
           ここに入れたトナーは<strong>トナー価格比較にだけ出ます。</strong>受付・注文・在庫・棚卸・請求書・
@@ -1122,7 +1123,7 @@ export default function TonerOfferScreen() {
       </header>
 
       <section className="to-form">
-        <h2>新しいトナー情報</h2>
+        <h2>新しい比較用トナー</h2>
         <OfferFields
           form={form}
           onChange={setForm}
@@ -1157,9 +1158,9 @@ export default function TonerOfferScreen() {
 
       <section className="dt-section">
         <h2>
-          登録したトナー情報（{offers.length} 件）
+          登録した比較用トナー（{offers.length} 件）
           <CsvButton
-            name="トナー情報登録"
+            name="比較用トナー登録"
             header={CSV_COLUMNS.map((col) => col.label)}
             rows={() => shown.map((offer) => CSV_COLUMNS.map((col) => col.value(offer)))}
             count={shown.length}
@@ -1187,7 +1188,7 @@ export default function TonerOfferScreen() {
         ) : offers.length === 0 ? (
           <p className="dt-empty">まだ登録がありません。上の欄を入力して登録してください。</p>
         ) : shown.length === 0 ? (
-          <p className="dt-empty">探す欄に当てはまるトナー情報がありません。</p>
+          <p className="dt-empty">探す欄に当てはまる比較用トナーがありません。</p>
         ) : (
           <TableBox className="dt-wrap" memoryKey="tonerOffer.list">
             <table className="dt-table to-table">
@@ -1290,7 +1291,7 @@ export default function TonerOfferScreen() {
         >
           {editing.mode === 'copy' && (
             <p className="to-hint to-copy-hint">
-              写した中身を直してから「登録」を押してください。元のトナー情報はそのまま残ります。
+              写した中身を直してから「登録」を押してください。元の比較用トナーはそのまま残ります。
             </p>
           )}
           <OfferFields

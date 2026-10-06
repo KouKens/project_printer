@@ -1,5 +1,6 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { whereArg } from '../common/testing';
+import { callArg, dataArg, whereArg } from '../common/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { TonerOrdersService } from './toner-orders.service';
 
@@ -209,6 +210,160 @@ describe('TonerOrdersService', () => {
 
       expect(rows[0].ordered).toBe(0);
       expect(rows[0].orders).toHaveLength(1);
+    });
+
+    /**
+     * 数が合わないまま手動で入荷済みにした行は、人が確かめたものとして片付いた扱い。
+     * 「入荷済みにする」で送る先（未入荷の注文）も行ごとに返す
+     */
+    it('未入荷の注文の ID と、片付いたかどうかを返す', async () => {
+      const order = {
+        ...HONIN,
+        tonerId: 'T1',
+        toner: TONER,
+        quantity: 1,
+        orderedAt: new Date('2026-09-01'),
+        deliveryOn: new Date(Date.UTC(2020, 0, 5)),
+      };
+      const service = await make(
+        prismaWith(
+          [
+            { ...order, id: 1, status: 'RECEIVED', receiveMode: 'MANUAL' },
+            { ...order, id: 2, status: 'PENDING', receiveMode: null },
+            {
+              ...order,
+              id: 3,
+              tonerId: 'T2',
+              status: 'RECEIVED',
+              receiveMode: 'MANUAL',
+            },
+          ],
+          [],
+        ),
+      );
+
+      const rows = await service.findDeliveryCheck(1, 90);
+      const t1 = rows.find((row) => row.tonerId === 'T1')!;
+      const t2 = rows.find((row) => row.tonerId === 'T2')!;
+
+      expect(t1.pendingOrderIds).toEqual([2]);
+      expect(t1.settled).toBe(false);
+      // 搬入は無いので short のままだが、手動で入荷済みにしたので片付いている
+      expect(t2.status).toBe('short');
+      expect(t2.pendingOrderIds).toEqual([]);
+      expect(t2.settled).toBe(true);
+    });
+  });
+
+  /** 入荷済みにする・戻す。$transaction は渡した関数をそのまま走らせる */
+  describe('入荷済みにする', () => {
+    const SAVED = {
+      id: 1,
+      tonerId: 'T1',
+      companyId: 1,
+      userId: null,
+      quantity: 2,
+      orderedAt: new Date('2026-09-01'),
+      deliveryOn: new Date(Date.UTC(2026, 8, 5)),
+      toner: { name: 'トナー黒' },
+      company: { name: '本院' },
+    };
+
+    function txWith(orders: Partial<typeof SAVED & Record<string, unknown>>[]) {
+      const updateMany = jest.fn().mockResolvedValue({ count: orders.length });
+      const update = jest.fn();
+      const tx = {
+        tonerOrder: {
+          findMany: jest.fn().mockResolvedValue(orders),
+          findUnique: jest.fn().mockResolvedValue(orders[0] ?? null),
+          findUniqueOrThrow: jest.fn().mockResolvedValue({
+            ...SAVED,
+            status: 'PENDING',
+            receivedAt: null,
+            receiveMode: null,
+          }),
+          updateMany,
+          update,
+          // 戻したあとの突き合わせ。注文 2 本・搬入 1 本で合わない
+          aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 2 } }),
+        },
+        tonerEntry: {
+          aggregate: jest.fn().mockResolvedValue({ _sum: { quantity: 1 } }),
+        },
+      };
+      return {
+        prisma: {
+          $transaction: (run: (t: object) => unknown) => run(tx),
+          ...tx,
+        },
+        updateMany,
+        update,
+      };
+    }
+
+    it('未入荷の注文を手動で入荷済みにする', async () => {
+      const { prisma, updateMany } = txWith([{ ...SAVED, status: 'PENDING' }]);
+      const service = await make(prisma);
+
+      await service.receive([1]);
+
+      const call = callArg<{
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }>(updateMany);
+      expect(call.where).toEqual({ id: { in: [1] } });
+      expect(call.data).toMatchObject({
+        status: 'RECEIVED',
+        receiveMode: 'MANUAL',
+      });
+    });
+
+    it('未入荷でないものが混ざっていれば全体を断る', async () => {
+      const { prisma, updateMany } = txWith([{ ...SAVED, status: 'RECEIVED' }]);
+      const service = await make(prisma);
+
+      await expect(service.receive([1])).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(updateMany).not.toHaveBeenCalled();
+    });
+
+    it('無い注文を指したら 404', async () => {
+      const { prisma } = txWith([]);
+      const service = await make(prisma);
+
+      await expect(service.receive([99])).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('手動で入荷済みにしたものは未入荷に戻せる', async () => {
+      const { prisma, update } = txWith([
+        { ...SAVED, status: 'RECEIVED', receiveMode: 'MANUAL' },
+      ]);
+      const service = await make(prisma);
+
+      const result = await service.unreceive(1);
+
+      expect(dataArg(update)).toEqual({
+        status: 'PENDING',
+        receiveMode: null,
+        receivedAt: null,
+      });
+      expect(result.status).toBe('PENDING');
+    });
+
+    /** 搬入と本数が合っているので、戻してもすぐ入荷済みに決め直されてしまう */
+    it('自動で入荷済みになったものは戻せない', async () => {
+      const { prisma, update } = txWith([
+        { ...SAVED, status: 'RECEIVED', receiveMode: 'AUTO' },
+      ]);
+      const service = await make(prisma);
+
+      await expect(service.unreceive(1)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(update).not.toHaveBeenCalled();
     });
   });
 });
