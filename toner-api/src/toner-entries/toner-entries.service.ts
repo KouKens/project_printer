@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { fromDate, toDate, today } from '../common/date';
+import { fromDate, periodOf, timeRange, toDate, today } from '../common/date';
 import { PrismaService, Tx } from '../prisma/prisma.service';
 import { reconcileOrders } from '../toner-orders/reconcile';
 import { BulkTonerEntryDto } from './dto/bulk-toner-entry.dto';
@@ -570,6 +570,8 @@ export class TonerEntriesService {
   /**
    * 受け払いの履歴（トナー入出状況の画面用。画面は全拠点を並べ、拠点を列に出す）。
    * `companyId` を渡せばその拠点の分だけ、渡さなければ全拠点まとめて返す。
+   * 期間は受付日時（createdAt）で絞る。from / to（YYYY-MM-DD）があればその範囲、
+   * 無ければ直近 days 日（`periodOf`）。
    *
    * 1 回に返すのは新しいほうから `HISTORY_LIMIT` 件まで。
    * **切れたときは `truncated` を立てて返す。** 黙って打ち切ると
@@ -577,17 +579,18 @@ export class TonerEntriesService {
    */
   async findHistory(params: {
     days?: number;
+    from?: string;
+    to?: string;
     action?: string;
     tonerId?: string;
     companyId?: number;
   }) {
     const days = params.days && params.days > 0 ? params.days : 60;
-    const from = new Date();
-    from.setDate(from.getDate() - days);
+    const period = periodOf(days, params.from, params.to);
 
     const found = await this.prisma.tonerEntry.findMany({
       where: {
-        createdAt: { gte: from },
+        createdAt: timeRange(period),
         ...(params.action ? { action: params.action as TonerAction } : {}),
         ...(params.tonerId ? { tonerId: params.tonerId } : {}),
         ...(params.companyId ? { companyId: params.companyId } : {}),

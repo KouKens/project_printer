@@ -42,21 +42,11 @@ function addDays(date, days) {
 function diffDays(later, earlier) {
     return Math.round((later.getTime() - earlier.getTime()) / 86_400_000);
 }
-function fromDateKey(value, label) {
-    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    const date = parts
-        ? new Date(Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])))
-        : null;
-    if (date === null || Number.isNaN(date.getTime())) {
-        throw new common_1.BadRequestException(`${label}は YYYY-MM-DD の形式で指定してください`);
-    }
-    return date;
-}
 function rangeOf(days, from, to) {
     const start = from
-        ? fromDateKey(from, '開始日')
+        ? (0, date_1.parseDateKey)(from, '開始日')
         : addDays((0, date_1.startOfDay)(new Date()), -days);
-    const end = to ? fromDateKey(to, '終了日') : null;
+    const end = to ? (0, date_1.parseDateKey)(to, '終了日') : null;
     if (end !== null && start > end) {
         throw new common_1.BadRequestException('開始日は終了日より前の日付を指定してください');
     }

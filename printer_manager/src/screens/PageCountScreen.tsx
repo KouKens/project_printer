@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import PeriodPicker from '../components/PeriodPicker';
 import SearchBox from '../components/SearchBox';
 import TableBox from '../components/TableBox';
 import { isSheetUnit } from '../lib/counter';
 import { saveCsv } from '../lib/csv';
-import { isoDaysAgo, todayIso } from '../lib/date';
 import { num } from '../lib/format';
+import { periodQuery, usePeriod } from '../lib/period';
 import { hits, searchWords } from '../lib/search';
 import { ipToNumber, nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -587,11 +588,8 @@ async function writeClipboard(text: string): Promise<boolean> {
 
 export default function PageCountScreen() {
   const [counts, setCounts] = useState<DailyCount[]>([]);
-  const [days, setDays] = useState(30);
-  /** 日付を直に指定するか。false のときは直近 days 日 */
-  const [byDate, setByDate] = useState(false);
-  const [from, setFrom] = useState(() => isoDaysAgo(29));
-  const [to, setTo] = useState(() => todayIso());
+  const periodState = usePeriod(30);
+  const { period, label: periodLabel } = periodState;
   const [printerId, setPrinterId] = useState<number | 'all'>('all');
   /** 探す文字。**取ってある記録をこの場で絞るだけで、API は叩かない** */
   const [query, setQuery] = useState('');
@@ -613,16 +611,17 @@ export default function PageCountScreen() {
 
   const load = useCallback(async () => {
     // 期間指定のときは日付を、そうでなければ日数を渡す。判定は API 側と揃えてある
-    const query = byDate ? `from=${from}&to=${to}` : `days=${days}`;
     try {
       setError(null);
-      const rows = await request<DailyCount[]>(`/printers/page-counts?${query}`);
+      const rows = await request<DailyCount[]>(
+        `/printers/page-counts?${periodQuery(period)}`,
+      );
       // 枚で数える機器だけ。単位を返さない機種はこれまでどおり枚として扱う
       setCounts(rows.filter((row) => isSheetUnit(row.counterUnit)));
     } catch (err) {
       setError((err as Error).message);
     }
-  }, [byDate, days, from, to]);
+  }, [period]);
 
   useEffect(() => {
     void load();
@@ -739,9 +738,6 @@ export default function PageCountScreen() {
     () => printers.find(([id]) => id === printerId)?.[1] ?? '',
     [printers, printerId],
   );
-
-  /** 見出しに出す期間。指定か直近かで書き分ける */
-  const periodLabel = byDate ? `${from} 〜 ${to}` : `直近 ${days} 日`;
 
   const noteOf = (row: DailyCount) => {
     if (row.pages === null) {
@@ -868,47 +864,7 @@ export default function PageCountScreen() {
       </header>
 
       <div className="dt-tools">
-        <label>
-          <span>期間</span>
-          <select
-            value={byDate ? 'range' : String(days)}
-            onChange={(e) => {
-              const value = e.target.value;
-              setByDate(value === 'range');
-              if (value !== 'range') setDays(Number(value));
-            }}
-          >
-            {DAY_CHOICES.map((d) => (
-              <option key={d} value={d}>
-                直近 {d} 日
-              </option>
-            ))}
-            <option value="range">日付を指定</option>
-          </select>
-        </label>
-
-        {byDate && (
-          <>
-            <label>
-              <span>開始日</span>
-              <input
-                type="date"
-                value={from}
-                max={to}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-            </label>
-            <label>
-              <span>終了日</span>
-              <input
-                type="date"
-                value={to}
-                min={from}
-                onChange={(e) => setTo(e.target.value)}
-              />
-            </label>
-          </>
-        )}
+        <PeriodPicker state={periodState} choices={DAY_CHOICES} />
 
         <label>
           <span>プリンター</span>

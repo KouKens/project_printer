@@ -202,9 +202,8 @@ let TonerOrdersService = class TonerOrdersService {
             }));
         });
     }
-    async findDeliveryCheck(companyId, days = 180) {
-        const from = new Date();
-        from.setDate(from.getDate() - days);
+    async findDeliveryCheck(companyId, days = 180, from, to) {
+        const period = (0, date_1.periodOf)(days, from, to);
         const include = {
             toner: { select: { name: true, color: true } },
             company: { select: { name: true, sortOrder: true } },
@@ -213,7 +212,10 @@ let TonerOrdersService = class TonerOrdersService {
             this.prisma.tonerOrder.findMany({
                 where: {
                     ...(companyId ? { companyId } : {}),
-                    orderedAt: { gte: from },
+                    OR: [
+                        { deliveryOn: (0, date_1.dayRange)(period) },
+                        { deliveryOn: null, orderedAt: (0, date_1.timeRange)(period) },
+                    ],
                 },
                 orderBy: { orderedAt: 'desc' },
                 include,
@@ -222,7 +224,10 @@ let TonerOrdersService = class TonerOrdersService {
                 where: {
                     ...(companyId ? { companyId } : {}),
                     action: 'RECEIVE',
-                    createdAt: { gte: from },
+                    OR: [
+                        { receivedOn: (0, date_1.dayRange)(period) },
+                        { receivedOn: null, createdAt: (0, date_1.timeRange)(period) },
+                    ],
                 },
                 orderBy: { createdAt: 'desc' },
                 include,

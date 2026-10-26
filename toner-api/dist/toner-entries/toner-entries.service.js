@@ -352,11 +352,10 @@ let TonerEntriesService = class TonerEntriesService {
     }
     async findHistory(params) {
         const days = params.days && params.days > 0 ? params.days : 60;
-        const from = new Date();
-        from.setDate(from.getDate() - days);
+        const period = (0, date_1.periodOf)(days, params.from, params.to);
         const found = await this.prisma.tonerEntry.findMany({
             where: {
-                createdAt: { gte: from },
+                createdAt: (0, date_1.timeRange)(period),
                 ...(params.action ? { action: params.action } : {}),
                 ...(params.tonerId ? { tonerId: params.tonerId } : {}),
                 ...(params.companyId ? { companyId: params.companyId } : {}),

@@ -3,7 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { fromDate, toDate, today } from '../common/date';
+import {
+  dayRange,
+  fromDate,
+  periodOf,
+  timeRange,
+  toDate,
+  today,
+} from '../common/date';
 import { PrismaService } from '../prisma/prisma.service';
 import { BulkTonerOrderDto } from './dto/bulk-toner-order.dto';
 import { CreateTonerOrderDto } from './dto/create-toner-order.dto';
@@ -316,10 +323,22 @@ export class TonerOrdersService {
    * 受け取った別の拠点の搬入が 1 行にまとまり、こちらの注文が埋まったように見えて
    * 差が消える。鍵に入っているので、`companyId` を省いて全拠点を返しても混ざらない
    * （トナー入出状況は全拠点を並べ、拠点を列に出す）。渡せばその拠点の分だけ
+   *
+   * **期間は突き合わせの日付（次回搬入日・搬入日）で絞る。** 注文日時・受付日時で
+   * 絞ると、期間の終わりに注文して期間の後に届いたものは搬入だけが外れて「不足」に、
+   * 期間の始まりより前の注文が期間内に届いたものは注文だけが外れて「注文なし」に見える。
+   * 同じ日付の注文と搬入はかならず一緒に入るので、1 行が途中で切れない。
+   * 日付を持たないもの（次回搬入日の無い注文・搬入日の無い搬入）だけは
+   * 注文日時・受付日時で絞る。from / to（YYYY-MM-DD）があればその範囲、
+   * 無ければ直近 days 日で、先は開いたまま（まだ来ていない搬入日の注文も出る）
    */
-  async findDeliveryCheck(companyId?: number, days = 180) {
-    const from = new Date();
-    from.setDate(from.getDate() - days);
+  async findDeliveryCheck(
+    companyId?: number,
+    days = 180,
+    from?: string,
+    to?: string,
+  ) {
+    const period = periodOf(days, from, to);
 
     const include = {
       toner: { select: { name: true, color: true } },
@@ -329,7 +348,10 @@ export class TonerOrdersService {
       this.prisma.tonerOrder.findMany({
         where: {
           ...(companyId ? { companyId } : {}),
-          orderedAt: { gte: from },
+          OR: [
+            { deliveryOn: dayRange(period) },
+            { deliveryOn: null, orderedAt: timeRange(period) },
+          ],
         },
         orderBy: { orderedAt: 'desc' },
         include,
@@ -338,7 +360,10 @@ export class TonerOrdersService {
         where: {
           ...(companyId ? { companyId } : {}),
           action: 'RECEIVE',
-          createdAt: { gte: from },
+          OR: [
+            { receivedOn: dayRange(period) },
+            { receivedOn: null, createdAt: timeRange(period) },
+          ],
         },
         orderBy: { createdAt: 'desc' },
         include,

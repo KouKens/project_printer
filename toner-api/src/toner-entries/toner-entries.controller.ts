@@ -37,6 +37,7 @@ export class TonerEntriesController {
 
   /**
    * 受付の履歴。トナー入出状況の画面で使う。既定は直近 60 日。
+   * from / to（YYYY-MM-DD・両端を含む）を渡すとその期間（受付日時で絞る）。
    * `companyId` を付けるとその拠点の分だけ返す（付けなければ全拠点）。
    * 数字でない値は 400 で断る（NaN は falsy で、絞り込みごと消えるため）
    */
@@ -47,8 +48,17 @@ export class TonerEntriesController {
     @Query('tonerId') tonerId?: string,
     @Query('companyId', new ParseIntPipe({ optional: true }))
     companyId?: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.service.findHistory({ days, action, tonerId, companyId });
+    return this.service.findHistory({
+      days,
+      from,
+      to,
+      action,
+      tonerId,
+      companyId,
+    });
   }
 
   /**

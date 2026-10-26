@@ -44,8 +44,8 @@ let TonerOrdersController = class TonerOrdersController {
     findPending(companyId) {
         return this.service.findPending(companyId);
     }
-    findDeliveryCheck(companyId, days) {
-        return this.service.findDeliveryCheck(companyId, days);
+    findDeliveryCheck(companyId, days, from, to) {
+        return this.service.findDeliveryCheck(companyId, days, from, to);
     }
 };
 exports.TonerOrdersController = TonerOrdersController;
@@ -102,8 +102,10 @@ __decorate([
     (0, common_1.Get)('delivery-check'),
     __param(0, (0, common_1.Query)('companyId', new common_1.ParseIntPipe({ optional: true }))),
     __param(1, (0, common_1.Query)('days', new common_1.DefaultValuePipe(180), common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('from')),
+    __param(3, (0, common_1.Query)('to')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:paramtypes", [Object, Number, String, String]),
     __metadata("design:returntype", void 0)
 ], TonerOrdersController.prototype, "findDeliveryCheck", null);
 exports.TonerOrdersController = TonerOrdersController = __decorate([

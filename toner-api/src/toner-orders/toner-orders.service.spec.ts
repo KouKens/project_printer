@@ -253,6 +253,59 @@ describe('TonerOrdersService', () => {
       expect(t2.pendingOrderIds).toEqual([]);
       expect(t2.settled).toBe(true);
     });
+
+    /**
+     * 注文日時・受付日時で絞ると、月末に頼んで翌月に届いた注文は搬入だけが外れて
+     * 「不足」に見える。突き合わせの日付で絞れば、同じ日付の注文と搬入は一緒に入る
+     */
+    it('日付を指定すると、次回搬入日・搬入日で両端を含めて絞る', async () => {
+      const prisma = prismaWith([], []);
+      const service = await make(prisma);
+
+      await service.findDeliveryCheck(
+        undefined,
+        90,
+        '2026-09-01',
+        '2026-09-30',
+      );
+
+      const range = {
+        gte: new Date(Date.UTC(2026, 8, 1)),
+        lte: new Date(Date.UTC(2026, 8, 30)),
+      };
+      // 日付を持たないものは時刻で。終了日の翌日 0 時（ローカル）の手前まで
+      const time = { gte: new Date(2026, 8, 1), lt: new Date(2026, 9, 1) };
+      expect(whereArg(prisma.tonerOrder.findMany).OR).toEqual([
+        { deliveryOn: range },
+        { deliveryOn: null, orderedAt: time },
+      ]);
+      expect(whereArg(prisma.tonerEntry.findMany).OR).toEqual([
+        { receivedOn: range },
+        { receivedOn: null, createdAt: time },
+      ]);
+    });
+
+    it('直近 N 日のときは先を開けておく（まだ来ていない搬入日の注文も出す）', async () => {
+      const prisma = prismaWith([], []);
+      const service = await make(prisma);
+
+      await service.findDeliveryCheck(undefined, 90);
+
+      const [byDay, byTime] = whereArg(prisma.tonerOrder.findMany).OR as {
+        deliveryOn: Record<string, Date>;
+        orderedAt?: Record<string, Date>;
+      }[];
+      expect(Object.keys(byDay.deliveryOn)).toEqual(['gte']);
+      expect(Object.keys(byTime.orderedAt!)).toEqual(['gte']);
+    });
+
+    it('開始日が終了日より後なら 400', async () => {
+      const service = await make(prismaWith([], []));
+
+      await expect(
+        service.findDeliveryCheck(undefined, 90, '2026-09-30', '2026-09-01'),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   /** 入荷済みにする・戻す。$transaction は渡した関数をそのまま走らせる */

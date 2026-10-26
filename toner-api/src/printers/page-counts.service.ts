@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { fromDate, startOfDay } from '../common/date';
+import { fromDate, parseDateKey, startOfDay } from '../common/date';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   SnmpService,
@@ -118,34 +118,14 @@ function diffDays(later: Date, earlier: Date): number {
 }
 
 /**
- * 'YYYY-MM-DD' を UTC 0 時の Date にする。
- * 画面の <input type="date"> から来る文字列をそのまま受ける。
- */
-function fromDateKey(value: string, label: string): Date {
-  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  const date = parts
-    ? new Date(
-        Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])),
-      )
-    : null;
-
-  if (date === null || Number.isNaN(date.getTime())) {
-    throw new BadRequestException(
-      `${label}は YYYY-MM-DD の形式で指定してください`,
-    );
-  }
-  return date;
-}
-
-/**
  * 取り出す期間を決める。from / to があればその範囲、無ければ直近 days 日。
  * 日付の欠けた指定（片方だけ）も受け、欠けた側は開いたままにする。
  */
 function rangeOf(days: number, from?: string, to?: string) {
   const start = from
-    ? fromDateKey(from, '開始日')
+    ? parseDateKey(from, '開始日')
     : addDays(startOfDay(new Date()), -days);
-  const end = to ? fromDateKey(to, '終了日') : null;
+  const end = to ? parseDateKey(to, '終了日') : null;
 
   if (end !== null && start > end) {
     throw new BadRequestException(

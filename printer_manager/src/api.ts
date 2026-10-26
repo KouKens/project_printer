@@ -3,6 +3,8 @@
  * ここだけ '/api' を直書きしていると VITE_API_BASE を変えたときに食い違う
  */
 import { API } from './lib/request'
+import { periodQuery } from './lib/period'
+import type { Period } from './lib/period'
 
 /**
  * 在庫を動かす操作。
@@ -259,12 +261,12 @@ export type EntryHistory = {
 }
 
 /**
- * 受付の履歴。区分で絞れる。
+ * 受付の履歴。区分で絞れる。期間は受付日時で絞る。
  * `companyId` を渡すとその拠点の分だけ、渡さなければ全拠点（トナー入出状況）
  */
-export function fetchEntryHistory(days: number, action?: string, companyId?: number) {
+export function fetchEntryHistory(period: Period, action?: string, companyId?: number) {
   const query =
-    `days=${days}${action ? `&action=${action}` : ''}` +
+    `${periodQuery(period)}${action ? `&action=${action}` : ''}` +
     `${companyId ? `&companyId=${companyId}` : ''}`
   return get<EntryHistory>(
     `${API}/toner-entries/history?${query}`,
@@ -303,11 +305,12 @@ export function unreceiveOrder(id: number) {
 
 /**
  * 注文と搬入の突き合わせ。拠点を渡さなければ全拠点（トナー入出状況）。
- * 拠点は突き合わせの鍵に入っているので、全拠点でも別の拠点の搬入は混ざらない
+ * 拠点は突き合わせの鍵に入っているので、全拠点でも別の拠点の搬入は混ざらない。
+ * 期間は突き合わせの日付（次回搬入日・搬入日）で絞る
  */
-export function fetchDeliveryCheck(days: number, companyId?: number) {
+export function fetchDeliveryCheck(period: Period, companyId?: number) {
   return get<DeliveryCheckRow[]>(
-    `${API}/toner-orders/delivery-check?days=${days}` +
+    `${API}/toner-orders/delivery-check?${periodQuery(period)}` +
       `${companyId ? `&companyId=${companyId}` : ''}`,
     '突き合わせを取得できませんでした',
   )

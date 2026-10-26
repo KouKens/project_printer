@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import CsvButton from '../components/CsvButton';
+import PeriodPicker from '../components/PeriodPicker';
 import SearchBox from '../components/SearchBox';
 import TableBox from '../components/TableBox';
 import type { DeliveryCheckRow, EntryRow, OrderRow } from '../api';
@@ -15,6 +16,7 @@ import {
   unreceiveOrder,
 } from '../api';
 import { num } from '../lib/format';
+import { usePeriod } from '../lib/period';
 import { hits, searchWords } from '../lib/search';
 import { nextSort, sortRows } from '../lib/table';
 import type { CellKind, SortDir } from '../lib/table';
@@ -215,7 +217,8 @@ export default function DeliveryScreen() {
   const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set());
   /** 表示を外した品番の記録も出すか。既定は出さない（トナー登録の印に従う） */
   const [showHidden, setShowHidden] = useState(false);
-  const [days, setDays] = useState(90);
+  const periodState = usePeriod(90);
+  const { period } = periodState;
   const [action, setAction] = useState<'' | 'RECEIVE' | 'ISSUE' | 'DISPOSE'>('');
   /** 突き合わせを問題のある行だけに絞る */
   const [onlyIssues, setOnlyIssues] = useState(false);
@@ -267,8 +270,8 @@ export default function DeliveryScreen() {
     // 全拠点を取る。拠点は行ごとに列で出す（上の集計も全拠点の合計）
     try {
       const [check, history, orderRows, hidden] = await Promise.all([
-        fetchDeliveryCheck(days),
-        fetchEntryHistory(days, action || undefined),
+        fetchDeliveryCheck(period),
+        fetchEntryHistory(period, action || undefined),
         fetchOrders(),
         // 隠す品番は補助。取れなくても記録はそのまま全部出す
         fetchHiddenTonerIds().catch(() => [] as string[]),
@@ -282,7 +285,7 @@ export default function DeliveryScreen() {
     } catch (err) {
       setError((err as Error).message);
     }
-  }, [days, action]);
+  }, [period, action]);
 
   useEffect(() => {
     void load();
@@ -550,21 +553,14 @@ export default function DeliveryScreen() {
           「次回搬入日」と受付の「搬入日」が同じものを 1 行にまとめて数を比べます
           （別の拠点の搬入は混ざりません）。数が合わない行には色が付きます。
           下に受付の履歴（搬入・持ち出し・廃棄）と注文の一覧を並べています。
+          期間は、突き合わせは<strong>搬入日</strong>（注文の次回搬入日・受付の搬入日）で、
+          受付の履歴は<strong>受付日時</strong>で絞ります。「日付を指定」を選ぶと開始日・終了日で絞れます。
           拠点ごとに見るときは、探す欄に拠点名を入れてください。
         </p>
       </header>
 
       <div className="dt-tools">
-        <label>
-          <span>期間</span>
-          <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            {DAY_CHOICES.map((d) => (
-              <option key={d} value={d}>
-                直近 {d} 日
-              </option>
-            ))}
-          </select>
-        </label>
+        <PeriodPicker state={periodState} choices={DAY_CHOICES} />
 
         <label>
           <span>履歴の区分</span>
@@ -618,7 +614,7 @@ export default function DeliveryScreen() {
       {truncated && (
         <p className="dt-msg dt-msg-warn">
           履歴が多いため、新しい順に {truncated.limit} 件までを出しています。
-          これより前の分は表示していません。日数を短くするか区分で絞ってください
+          これより前の分は表示していません。期間を短くするか区分で絞ってください
         </p>
       )}
 

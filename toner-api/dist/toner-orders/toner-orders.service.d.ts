@@ -75,7 +75,7 @@ export declare class TonerOrdersService {
         receivedAt: Date | null;
         receiveMode: "AUTO" | "MANUAL" | null;
     }>;
-    findDeliveryCheck(companyId?: number, days?: number): Promise<{
+    findDeliveryCheck(companyId?: number, days?: number, from?: string, to?: string): Promise<{
         pendingOrderIds: number[];
         settled: boolean;
         diff: number;

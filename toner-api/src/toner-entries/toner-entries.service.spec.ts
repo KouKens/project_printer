@@ -97,6 +97,20 @@ describe('TonerEntriesService', () => {
         companyName: '本院',
       });
     });
+
+    it('日付を指定すると受付日時で両端を含めて絞る', async () => {
+      const findMany = jest.fn().mockResolvedValue([]);
+      const service = await make({ tonerEntry: { findMany } });
+
+      await service.findHistory({ from: '2026-09-01', to: '2026-09-30' });
+
+      const args = callArg<{ where: { createdAt: unknown } }>(findMany);
+      // createdAt は時刻を持つので、ローカルの暦日の 0 時で区切る（終了日の翌日 0 時は含まない）
+      expect(args.where.createdAt).toEqual({
+        gte: new Date(2026, 8, 1),
+        lt: new Date(2026, 9, 1),
+      });
+    });
   });
 
   /** $transaction の中身をそのまま走らせる差し替え */

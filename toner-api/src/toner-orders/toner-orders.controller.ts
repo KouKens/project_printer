@@ -76,14 +76,18 @@ export class TonerOrdersController {
    * ':id' より前に置く必要はないが、pending と並べておく。
    *
    * `companyId` を付けるとその拠点の分だけ。省けば全拠点（トナー入出状況）。
-   * 拠点が鍵に入っているので、省いても他の拠点の搬入が本数に混ざらない
+   * 拠点が鍵に入っているので、省いても他の拠点の搬入が本数に混ざらない。
+   * from / to（YYYY-MM-DD・両端を含む）を渡すとその期間、無ければ直近 days 日。
+   * どちらも突き合わせの日付（次回搬入日・搬入日）で絞る
    */
   @Get('delivery-check')
   findDeliveryCheck(
     @Query('companyId', new ParseIntPipe({ optional: true }))
     companyId: number | undefined,
     @Query('days', new DefaultValuePipe(180), ParseIntPipe) days: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.service.findDeliveryCheck(companyId, days);
+    return this.service.findDeliveryCheck(companyId, days, from, to);
   }
 }
